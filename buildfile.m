@@ -1,6 +1,9 @@
 function plan = buildfile
 %BUILDFILE 根据任务函数构建编译计划并执行编译
 
+% 开发者：杨柳
+% 版权 2025 合肥瀚海量子科技有限公司
+
 import matlab.buildtool.tasks.CodeIssuesTask
 
 plan = buildplan(localfunctions);
@@ -38,19 +41,20 @@ end
 
 function packageTask(~)
 % 打包编译结果
-identifier = '5200919d-0e3d-4525-ad64-977f32dedd5d';
 toolboxFolder = fileparts(mfilename('fullpath'));
+outputFileName = sprintf('KSSOLV_Toolbox_V%s.mltbx', KSSOLV_Toolbox.Version);
 
-options = matlab.addons.toolbox.ToolboxOptions(toolboxFolder, identifier);
+options = matlab.addons.toolbox.ToolboxOptions(toolboxFolder, KSSOLV_Toolbox.Identifier);
 options.AuthorName = KSSOLV_Toolbox.Author;
 options.AuthorEmail = KSSOLV_Toolbox.AuthorEmail;
 options.AuthorCompany = KSSOLV_Toolbox.AuthorCompany;
 options.Description = KSSOLV_Toolbox.Description;
 options.Summary = KSSOLV_Toolbox.Summary;
 
-options.OutputFile = fullfile(toolboxFolder, "KSSOLV_Toolbox.mltbx");
+options.OutputFile = fullfile(toolboxFolder, 'Release', outputFileName);
 options.ToolboxName = KSSOLV_Toolbox.Name;
 options.ToolboxVersion = KSSOLV_Toolbox.Version;
+options.ToolboxImageFile = fullfile(KSSOLV_Toolbox.UIResourcesDirectory, 'icons', 'LOGO.png');
 options.AppGalleryFiles = "kssolv.m";
 options.SupportedPlatforms.Win64 = true;
 options.SupportedPlatforms.Maci64 = true;

@@ -25,6 +25,7 @@ Untitled*
 # Build Output
 StandaloneDesktopApp/
 Toolbox/
+Release/
 
 # Environment variable configurations
 .env

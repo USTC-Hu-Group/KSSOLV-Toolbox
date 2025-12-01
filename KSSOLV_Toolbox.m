@@ -6,24 +6,25 @@ classdef KSSOLV_Toolbox
 
     properties (Constant)
         Name string = 'KSSOLV Toolbox'
-        Version string = '0.2.3'
-        ReleaseDate string = '2025.11.25'
+        Version string = '0.2.4'
+        ReleaseDate string = '2025.12.01'
         License char = 'BSD 3-Clause "New" or "Revised" License'
 
         Author string = 'Liu Yang'
         AuthorEmail string = 'yliu7949@gmail.com'
         AuthorCompany string = 'Hefei Hanhai Quantum Technology Co., Ltd'
-        
+
+        Description string = "A MATLAB-Based Plane Wave Basis Set First-Principles Calculation Toolbox."
+        Summary string = "Plane Wave Basis, First-Principles Calculation"
+
         MinimumMATLABVersion char = 'R2024a'
         RecommendedMinimumMATLABVersion char = 'R2025b'
 
         RootDirectory char = fileparts(mfilename('fullpath'))
-        
-        Description string = "A MATLAB-Based Plane Wave Basis Set First-Principles Calculation Toolbox."
-        Summary string = "Plane Wave Basis, First-Principles Calculation"
     end
 
     properties (Constant, Hidden)
+        Identifier = '5200919d-0e3d-4525-ad64-977f32dedd5d'
         UIResourcesDirectory char = fullfile(fileparts(mfilename('fullpath')), '+kssolv', '+ui', 'resources')
     end
 end

@@ -10,7 +10,7 @@ arguments
 end
 
 % 从 .env 文件中读取环境变量
-envFilePath = fullfile(fileparts(mfilename("fullpath")), '.env');
+envFilePath = fullfile(KSSOLV_Toolbox.RootDirectory, '.env');
 if ~isdeployed && exist(envFilePath, "file")
     loadenv(envFilePath);
 end
@@ -32,9 +32,9 @@ kssolv.ui.util.DataStorage.setData('LoadingKsFile', false);
 
 % 添加文件夹到 MATLAB 搜索路径
 try
-    addpath(fullfile(fileparts(mfilename('fullpath')), '+kssolv', '+services', '+llm', 'patch'));
-    addpath(fullfile(fileparts(mfilename('fullpath')), '+kssolv', '+core', 'kssolv-3o'));
-    addpath(fullfile(fileparts(mfilename('fullpath')), '+kssolv', '+core', 'processsuite', 'seekpath'));
+    addpath(fullfile(KSSOLV_Toolbox.RootDirectory, '+kssolv', '+services', '+llm', 'patch'));
+    addpath(fullfile(KSSOLV_Toolbox.RootDirectory, '+kssolv', '+core', 'kssolv-3o'));
+    addpath(fullfile(KSSOLV_Toolbox.RootDirectory, '+kssolv', '+core', 'processsuite', 'seekpath'));
     evalc('KSSOLV.startup()');
 catch
 end

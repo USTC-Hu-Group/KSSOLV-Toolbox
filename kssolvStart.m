@@ -1,4 +1,4 @@
-function app = kssolvStart(ksFile, hostInBrowser)
+function kssolvStart(ksFile, hostInBrowser)
 %KSSOLVSTART 启动 KSSOLV 图形用户界面
 %
 % 该函数会展示图形用户界面并阻塞主进程，直到界面关闭。
@@ -15,9 +15,8 @@ end
 try
     app = kssolv(ksFile, hostInBrowser);
 catch exception
-    app = [];
     disp(exception.message);
-    writelines(exception.message, fullfile(userpath, 'KSSOLV_Toolbox', "kssolvStart.log"), "WriteMode", "append");
+    writelines(exception.message, fullfile(KSSOLV_Toolbox.LogsDirectory, "kssolvStart.log"), "WriteMode", "append");
     return
 end
 
@@ -27,7 +26,12 @@ while true
         if nargout == 0
             clear app
         end
-        return
+
+        if isdeployed
+            quit("force");
+        else
+            return
+        end
     end
 end
 end

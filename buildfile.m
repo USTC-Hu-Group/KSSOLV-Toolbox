@@ -40,7 +40,7 @@ pcode(filePaths{:}, "-inplace", "-R2022a");
 end
 
 function packageTask(~)
-% 打包编译结果
+% 将 KSSOLV Toolbox 打包为 .mltbx 文件
 toolboxFolder = fileparts(mfilename('fullpath'));
 outputFileName = sprintf('KSSOLV_Toolbox_V%s.mltbx', KSSOLV_Toolbox.Version);
 

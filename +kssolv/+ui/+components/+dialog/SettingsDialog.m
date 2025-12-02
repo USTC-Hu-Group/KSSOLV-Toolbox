@@ -5,8 +5,8 @@ classdef SettingsDialog < controllib.ui.internal.dialog.AbstractDialog
     % 版权 2025 合肥瀚海量子科技有限公司
 
     properties (SetAccess = private)
-        Widgets
-        Options
+        widgets
+        dialogOptions
     end
 
     properties (SetAccess = private, GetAccess = ?matlab.unittest.TestCase)
@@ -42,7 +42,7 @@ classdef SettingsDialog < controllib.ui.internal.dialog.AbstractDialog
         function close(this)
             %CLOSE 重载 close 方法
             close@controllib.ui.internal.dialog.AbstractDialog(this);
-            data = struct('KSSOLVOptions', this.Options);
+            data = struct('KSSOLVOptions', this.dialogOptions);
             event = matlab.ui.internal.databrowser.GenericEventData(data);
             this.notify('CloseEvent', event);
         end
@@ -68,7 +68,6 @@ classdef SettingsDialog < controllib.ui.internal.dialog.AbstractDialog
 
             % 构建 Tabs
             buildGeneralTab(this);
-            % buildValidationTab(this);
 
             % 控制控件默认条件下的显示和启用
             % enableWidgets(this);
@@ -194,7 +193,7 @@ classdef SettingsDialog < controllib.ui.internal.dialog.AbstractDialog
             LLMModelListFetchButton.Layout.Column = 3;
 
             % 添加到 Widgets
-            this.Widgets.GeneralTab = generalTab;
+            this.widgets.GeneralTab = generalTab;
         end
 
         function createButtonPanel(this)

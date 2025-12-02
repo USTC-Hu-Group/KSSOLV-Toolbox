@@ -17,7 +17,6 @@ classdef Diary < handle
     end
 
     properties (Access = private, Constant)
-        DIARY_DIR = fullfile(userpath, 'KSSOLV_Toolbox', 'Logs') % 日记缓存目录
         SCAN_INTERVAL = 0.1 % 文件检查间隔(秒)
     end
 
@@ -29,10 +28,10 @@ classdef Diary < handle
 
         function initializeDiary(this)
             % 初始化日记文件和目录
-            if ~isfolder(this.DIARY_DIR)
-                mkdir(this.DIARY_DIR);
+            if ~isfolder(KSSOLV_Toolbox.LogsDirectory)
+                mkdir(KSSOLV_Toolbox.LogsDirectory);
             end
-            this.diaryFile = fullfile(this.DIARY_DIR, [char(datetime('now', 'Format', 'uuuu-MM-dd HH-mm-ss')), '.log']);
+            this.diaryFile = fullfile(KSSOLV_Toolbox.LogsDirectory, [char(datetime('now', 'Format', 'uuuu-MM-dd HH-mm-ss')), '.log']);
 
             % 安全关闭现有日记
             if strcmp(get(0, 'Diary'), 'on')

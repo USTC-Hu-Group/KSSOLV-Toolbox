@@ -9,6 +9,7 @@ classdef KSSOLV_Toolbox
         Version string = '0.2.4'
         ReleaseDate string = '2025.12.01'
         License char = 'BSD 3-Clause "New" or "Revised" License'
+        CodeRepository char = 'https://github.com/yliu7949/KSSOLV-Toolbox'
 
         Author string = 'Liu Yang'
         AuthorEmail string = 'yliu7949@gmail.com'
@@ -26,5 +27,6 @@ classdef KSSOLV_Toolbox
     properties (Constant, Hidden)
         Identifier = '5200919d-0e3d-4525-ad64-977f32dedd5d'
         UIResourcesDirectory char = fullfile(fileparts(mfilename('fullpath')), '+kssolv', '+ui', 'resources')
+        LogsDirectory char = fullfile(userpath, 'KSSOLV_Toolbox', 'Logs')
     end
 end

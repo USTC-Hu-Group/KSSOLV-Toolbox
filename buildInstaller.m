@@ -37,7 +37,7 @@ end
 buildOptions = compiler.build.StandaloneApplicationOptions(fullfile(toolboxFolder, "kssolvStart.m"));
 buildOptions.AdditionalFiles = additionalFiles;
 buildOptions.AutoDetectDataFiles = true;
-buildOptions.OutputDir = fullfile(toolboxFolder, 'Release' ,'StandaloneDesktopApp', 'build');
+buildOptions.OutputDir = fullfile(toolboxFolder, 'Release', 'StandaloneDesktopApp', 'build');
 buildOptions.ObfuscateArchive = false;
 buildOptions.Verbose = true;
 buildOptions.EmbedArchive = true;
@@ -64,7 +64,7 @@ packageOptions.Summary = KSSOLV_Toolbox.Summary;
 packageOptions.Verbose = true;
 packageOptions.Version = KSSOLV_Toolbox.Version;
 packageOptions.RuntimeDelivery = runtimeDelivery;
-packageOptions.OutputDir = fullfile(toolboxFolder, 'Release' ,'StandaloneDesktopApp');
+packageOptions.OutputDir = fullfile(toolboxFolder, 'Release', 'StandaloneDesktopApp');
 packageOptions.InstallerIcon = fullfile(KSSOLV_Toolbox.UIResourcesDirectory, "icons", "LOGO.png");
 packageOptions.InstallerSplash = fullfile(KSSOLV_Toolbox.UIResourcesDirectory, "icons", "LOGO.png");
 packageOptions.InstallerName = sprintf('KSSOLV_Toolbox_V%s', KSSOLV_Toolbox.Version);

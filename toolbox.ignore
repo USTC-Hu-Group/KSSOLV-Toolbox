@@ -17,10 +17,11 @@ resources
 **/.buildtool/**/*
 .buildtool
 buildfile.m
+buildInstaller.m
+scripts
 
 *.mltbx
-Toolbox
-StandaloneDesktopApp
+Release
 
 **/+test/**/*
 **/doc/**/*

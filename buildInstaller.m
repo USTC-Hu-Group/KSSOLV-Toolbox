@@ -69,6 +69,20 @@ packageOptions.InstallerIcon = fullfile(KSSOLV_Toolbox.UIResourcesDirectory, "ic
 packageOptions.InstallerSplash = fullfile(KSSOLV_Toolbox.UIResourcesDirectory, "icons", "LOGO.png");
 packageOptions.InstallerName = sprintf('KSSOLV_Toolbox_V%s', KSSOLV_Toolbox.Version);
 
+% 删除旧的安装包
+filesToDelete = dir(fullfile(packageOptions.OutputDir, [packageOptions.InstallerName, '.*']));
+for k = 1:length(filesToDelete)
+    fullFilePath = fullfile(filesToDelete(k).folder, filesToDelete(k).name);
+    try
+        if filesToDelete(k).isdir
+            rmdir(fullFilePath, 's'); 
+        else
+            delete(fullFilePath);
+        end
+    catch ME
+    end
+end
+
 % 生成独立应用程序安装包
 compiler.package.installer(buildResult, "Options", packageOptions);
 end

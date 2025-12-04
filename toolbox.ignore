@@ -16,11 +16,12 @@ resources
 
 **/.buildtool/**/*
 .buildtool
+derived
 buildfile.m
 buildInstaller.m
 scripts
 
-*.mltbx
+**/*.mltbx
 Release
 
 **/+test/**/*

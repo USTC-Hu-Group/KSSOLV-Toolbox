@@ -5,7 +5,7 @@ function buildInstaller(runtimeDelivery)
 % 版权 2025 合肥瀚海量子科技有限公司
 
 arguments
-    runtimeDelivery {mustBeMember(runtimeDelivery, ["web", "installer", "none"])} = "installer"
+    runtimeDelivery {mustBeMember(runtimeDelivery, ["web", "installer", "none"])} = "web"
 end
 
 % 提示安装 LLMs with MATLAB 插件

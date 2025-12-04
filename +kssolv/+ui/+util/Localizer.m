@@ -11,7 +11,7 @@ classdef Localizer < handle
     %       message('KSSOLV:toolbox:WelcomeMessage')
 
     %   开发者：杨柳
-    %   版权 2024 合肥瀚海量子科技有限公司
+    %   版权 2024-2025 合肥瀚海量子科技有限公司
 
     properties (Access = private)
         % 键：Identifier，值：对应的本地化翻译
@@ -51,14 +51,13 @@ classdef Localizer < handle
         end
 
         function keyValueMap = readXmlFile(~, xmlFilePath, fileName)
-            % 读取 XML 文件并将内容转换为键值对集合
-            xDoc = xmlread(xmlFilePath);
-            allEntries = xDoc.getElementsByTagName('entry');
+            % 读取 XML 文件，并内容转换为键值对 Map
+            xmlStruct = readstruct(xmlFilePath, "FileType", "xml");
+            entries = xmlStruct.message.entry;
             keyValueMap = containers.Map('KeyType', 'char', 'ValueType', 'char');
-            for k = 0:allEntries.getLength-1
-                thisEntry = allEntries.item(k);
-                key = ['KSSOLV:', fileName, ':', char(thisEntry.getAttribute('key'))];
-                value = char(thisEntry.getTextContent());
+            for i = 1:numel(entries)
+                key = strcat('KSSOLV:', fileName, ':', entries(i).keyAttribute);
+                value = entries(i).Text;
                 keyValueMap(key) = value;
             end
         end

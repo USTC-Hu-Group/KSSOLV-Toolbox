@@ -10,7 +10,7 @@ arguments
 end
 
 % 从 .env 文件中读取环境变量
-envFilePath = fullfile(KSSOLV_Toolbox.RootDirectory, '.env');
+envFilePath = fullfile(fileparts(mfilename("fullpath")), '.env');
 if ~isdeployed && exist(envFilePath, "file")
     loadenv(envFilePath);
 end

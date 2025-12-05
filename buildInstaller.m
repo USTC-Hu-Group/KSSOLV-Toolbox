@@ -47,7 +47,12 @@ buildOptions.ExecutableVersion = KSSOLV_Toolbox.Version;
 buildOptions.TreatInputsAsNumeric = false;
 
 % 编译独立应用程序
-buildResult = compiler.build.standaloneApplication(buildOptions);
+if ispc
+    buildOptions.ExecutableSplashScreen = fullfile(KSSOLV_Toolbox.UIResourcesDirectory, "icons", "LOGO.png");
+    buildResult = compiler.build.standaloneWindowsApplication(buildOptions);
+else
+    buildResult = compiler.build.standaloneApplication(buildOptions);
+end
 
 % 下载 MATLAB Runtime
 compiler.runtime.download;
@@ -75,7 +80,7 @@ for k = 1:length(filesToDelete)
     fullFilePath = fullfile(filesToDelete(k).folder, filesToDelete(k).name);
     try
         if filesToDelete(k).isdir
-            rmdir(fullFilePath, 's'); 
+            rmdir(fullFilePath, 's');
         else
             delete(fullFilePath);
         end

@@ -27,6 +27,6 @@ classdef KSSOLV_Toolbox
     properties (Constant, Hidden)
         Identifier = '5200919d-0e3d-4525-ad64-977f32dedd5d'
         UIResourcesDirectory char = fullfile(fileparts(mfilename('fullpath')), '+kssolv', '+ui', 'resources')
-        LogsDirectory char = fullfile(getenv('HOME'), 'Documents', 'MATLAB', 'KSSOLV_Toolbox', 'Logs')
+        LogsDirectory char = fullfile(userpath, 'KSSOLV_Toolbox', 'Logs')
     end
 end

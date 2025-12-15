@@ -4,8 +4,6 @@ Welcome to the Technical Development Getting Started Guide for **KSSOLV Toolbox*
 
 This guide introduces the core technical components of KSSOLV Toolbox and explains how to configure and use them in a local development environment.
 
----
-
 ## Technology Stack Overview
 
 The core technology stack of KSSOLV Toolbox consists of the following components:

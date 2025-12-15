@@ -6,8 +6,6 @@ KSSOLV Toolbox is implemented in MATLAB and aims to eliminate the need for compl
 
 This document provides a concise guide to installation and basic usage for new users.
 
-------
-
 ## 1. Installation
 
 Before using KSSOLV Toolbox, please ensure that it is correctly installed on your system.
@@ -21,8 +19,6 @@ If you already have **MATLAB R2024b or later** installed, you can use KSSOLV Too
 3. After installation, KSSOLV Toolbox will appear in the **MATLAB Add-Ons Manager**, where it can also be updated or uninstalled.
 
 This mode is recommended for users who primarily work inside the MATLAB environment.
-
-------
 
 ### 1.2 Installing as a Standalone Application
 
@@ -65,8 +61,6 @@ After installation, start the application using:
     /home/ubuntu/Software/MATLAB/MATLAB_Runtime/R2025b
 ```
 
-------
-
 ## 2. Quick Start
 
 ### 2.1 User Interface Overview
@@ -79,8 +73,6 @@ After launching KSSOLV Toolbox, the main graphical interface is displayed:
 - **Bottom**: Command Browser
 
 All side panels can be collapsed or expanded to maximize workspace flexibility.
-
-------
 
 ### 2.2 Importing and Viewing Crystal Structures
 
@@ -108,8 +100,6 @@ Interaction tips:
 
 Multiple structures can be opened and viewed simultaneously.
 
-------
-
 ### 2.3 Creating a Computational Workflow
 
 1. Double-click **Workflow** in the Project Browser.
@@ -131,8 +121,6 @@ The default workflow contains a minimal set of computation nodes. You can:
 - Delete node: `Backspace`
 - Toggle minimap: `Ctrl/Cmd + M`
 
-------
-
 ### 2.4 Configuring and Running a Workflow
 
 Double-click any workflow node to open the **Config Editor** on the right.
@@ -153,8 +141,6 @@ A typical **SCF workflow** for an Si structure may include:
 Once configured, click **Run** in the menu bar to execute the workflow.
 
 During execution, nodes run sequentially. Upon completion, result plots (e.g., energy convergence vs. iteration) are automatically displayed.
-
-------
 
 ## 3. Project Files (.ks)
 
@@ -184,8 +170,6 @@ A `.ks` file stores:
 
 When closing a project or exiting the application, KSSOLV Toolbox will prompt you to save any unsaved changes.
 
-------
-
 ## 4. Command Browser and LLM Integration
 
 The **Command Browser** at the bottom of the interface serves two purposes:
@@ -208,8 +192,6 @@ Input text starting with `$` or `$$` in the Command Browser to send a prompt to 
 
 For LLMs that support *function calling*, KSSOLV Toolbox exposes workflow-related tools that the model can invoke automatically, enabling assisted workflow creation and configuration.
 
-------
-
 ## 5. Environment Variables
 
 The following environment variables can be used to customize behavior:
@@ -222,7 +204,5 @@ OPENAI_PROXY_URL="https://api.openai.com/v1/chat/completions"
 OPENAI_API_KEY="sk-xxxxxxxxxxxxxxxx"
 OPENAI_MODEL_LIST="o3-mini"
 ```
-
-------
 
 For additional details and advanced features, please refer to the full documentation and upcoming developer guides.

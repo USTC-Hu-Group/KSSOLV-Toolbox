@@ -1,7 +1,6 @@
 [submodule "+kssolv/+core/kssolv-3o"]
 	path = +kssolv/+core/kssolv-3o
 	url = http://git.pwdft.com/ustc/kssolv-3o.git
-[submodule "/+kssolv/+core/kssolv-3o"]
 	branch = dev
 [submodule "+kssolv/+core/processsuite"]
 	path = +kssolv/+core/processsuite

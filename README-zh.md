@@ -20,10 +20,9 @@
 
 ## 安装
 
-在 Windows、MacOS 和 Linux 的 MATLAB® 桌面版软件中可以直接使用：
+**KSSOLV Toolbox** 支持在 **MATLAB® 桌面版环境** 中安装使用，同时也提供可在 Windows、macOS 和 Linux 平台上部署的**独立应用程序版本**。
 
-- 从 [Releases](https://github.com/yliu7949/KSSOLV-Toolbox/releases/latest) 页面下载 `KSSOLV_Toolbox.mltbx`，双击即可完成安装。
-- 安装后，你可以在 MATLAB 的 **Add-Ons** 管理器中查看、启用或卸载 **KSSOLV Toolbox**。
+有关具体的安装方式与操作说明，请参阅[用户使用文档](https://github.com/yliu7949/KSSOLV-Toolbox/blob/main/docs/usage/start.md)。
 
 ## 贡献指南
 

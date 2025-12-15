@@ -20,10 +20,9 @@
 
 ## Installation
 
-The toolbox works directly in MATLAB® Desktop on Windows, macOS, and Linux:
+**KSSOLV Toolbox** supports installation and usage within the **MATLAB® desktop environment**, and also provides a **standalone application version** that can be deployed on Windows, macOS, and Linux platforms.
 
-- Download `KSSOLV_Toolbox.mltbx` from the [Releases](https://github.com/yliu7949/KSSOLV-Toolbox/releases/latest) page and double-click it to install.  
-- After installation, you can manage **KSSOLV Toolbox** through MATLAB’s **Add-Ons** manager.
+For detailed installation procedures and usage instructions, please refer to the [User Documentation](https://github.com/yliu7949/KSSOLV-Toolbox/blob/main/docs/usage/start.md).
 
 ## Contributing
 

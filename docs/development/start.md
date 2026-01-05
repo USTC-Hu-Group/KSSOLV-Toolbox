@@ -105,15 +105,16 @@ Release/StandaloneDesktopApp
 On macOS, additional notarization is required to allow installation on other machines.
 
 > \[!IMPORTANT]\
-> Before running the script below, you must first modify the information inside the notarize_app.sh file to match your specific configuration (e.g., your Apple Developer ID and app-specific password).
+> Before running the script below, you must first modify the information inside the `sign_and_notarize_app.sh` and `package_dmg.sh` files to match your specific configuration (e.g., your Apple Developer ID and app-specific password).
 
-Once you have updated the script, execute it from the project root:
+Once you have updated the scripts, execute them from the project root:
 
 ```bash
-./scripts/notarize_app.sh
+./scripts/sign_and_notarize_app.sh
+./scripts/package_dmg.sh
 ```
 
-After notarization completes successfully, a signed and notarized `.zip` archive will be produced. This file can be safely distributed and installed on other macOS systems.
+After notarization completes successfully, a signed and notarized `.dmg` archive will be produced. This file can be safely distributed and installed on other macOS systems.
 
 ## Notes
 

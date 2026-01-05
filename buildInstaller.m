@@ -41,14 +41,14 @@ buildOptions.OutputDir = fullfile(toolboxFolder, 'Release', 'StandaloneDesktopAp
 buildOptions.ObfuscateArchive = false;
 buildOptions.Verbose = true;
 buildOptions.EmbedArchive = true;
-buildOptions.ExecutableIcon = fullfile(KSSOLV_Toolbox.UIResourcesDirectory, "icons", "LOGO.png");
+buildOptions.ExecutableIcon = fullfile(KSSOLV_Toolbox.UIResourcesDirectory, "icons", "companyLOGO.png");
 buildOptions.ExecutableName = "KSSOLV_Toolbox";
 buildOptions.ExecutableVersion = KSSOLV_Toolbox.Version;
 buildOptions.TreatInputsAsNumeric = false;
 
 % 编译独立应用程序
 if ispc
-    buildOptions.ExecutableSplashScreen = fullfile(KSSOLV_Toolbox.UIResourcesDirectory, "icons", "LOGO.png");
+    buildOptions.ExecutableSplashScreen = fullfile(KSSOLV_Toolbox.UIResourcesDirectory, "icons", "companyLOGO.png");
     buildResult = compiler.build.standaloneWindowsApplication(buildOptions);
 else
     buildResult = compiler.build.standaloneApplication(buildOptions);
@@ -70,8 +70,8 @@ packageOptions.Verbose = true;
 packageOptions.Version = KSSOLV_Toolbox.Version;
 packageOptions.RuntimeDelivery = runtimeDelivery;
 packageOptions.OutputDir = fullfile(toolboxFolder, 'Release', 'StandaloneDesktopApp');
-packageOptions.InstallerIcon = fullfile(KSSOLV_Toolbox.UIResourcesDirectory, "icons", "LOGO.png");
-packageOptions.InstallerSplash = fullfile(KSSOLV_Toolbox.UIResourcesDirectory, "icons", "LOGO.png");
+packageOptions.InstallerIcon = fullfile(KSSOLV_Toolbox.UIResourcesDirectory, "icons", "companyLOGO.png");
+packageOptions.InstallerSplash = fullfile(KSSOLV_Toolbox.UIResourcesDirectory, "icons", "companyLOGO.png");
 packageOptions.InstallerName = sprintf('KSSOLV_Toolbox_V%s', KSSOLV_Toolbox.Version);
 
 % 删除旧的安装包

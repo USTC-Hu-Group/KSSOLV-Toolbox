@@ -1,13 +1,13 @@
 # KSSOLV Toolbox
 
-[![Github Release Version](https://img.shields.io/github/v/release/yliu7949/KSSOLV-Toolbox?color=blue&include_prereleases)](https://github.com/yliu7949/KSSOLV-Toolbox/releases/latest)
-[![GitHub License](https://img.shields.io/github/license/yliu7949/KSSOLV-Toolbox)](https://github.com/yliu7949/KSSOLV-Toolbox/blob/main/LICENSE)
-[![GitHub top language](https://img.shields.io/github/languages/top/yliu7949/KSSOLV-Toolbox)](https://matlab.mathworks.com/)
+[![Github Release Version](https://img.shields.io/github/v/release/USTC-Hu-Group/KSSOLV-Toolbox?color=blue&include_prereleases)](https://github.com/USTC-Hu-Group/KSSOLV-Toolbox/releases/latest)
+[![GitHub License](https://img.shields.io/github/license/yliu7949/KSSOLV-Toolbox)](https://github.com/USTC-Hu-Group/KSSOLV-Toolbox/blob/main/LICENSE)
+[![GitHub top language](https://img.shields.io/github/languages/top/USTC-Hu-Group/KSSOLV-Toolbox)](https://matlab.mathworks.com/)
 ![MATLAB Versions Tested](https://img.shields.io/badge/tested%20with-R2025b%20%7C%20R2025a-blue)
 
 **KSSOLV Toolbox** is a MATLAB-based graphical tool designed to make running density functional theory (DFT) calculations provided by the **Kohn-Sham Solver (KSSOLV)** package easier and more intuitive. It helps researchers avoid writing complex scripts and instead complete the full workflow—from structure import and calculation setup to post-analysis—through a user-friendly interface.
 
-![KSSOLV Toolbox GUI](https://github.com/yliu7949/KSSOLV-Toolbox/blob/main/assets/KSSOLV%20Toolbox%20GUI.png)
+![KSSOLV Toolbox GUI](https://github.com/USTC-Hu-Group/KSSOLV-Toolbox/blob/main/assets/KSSOLV%20Toolbox%20GUI.png)
 
 ## Key Features
 
@@ -22,7 +22,7 @@
 
 **KSSOLV Toolbox** supports installation and usage within the **MATLAB® desktop environment**, and also provides a **standalone application version** that can be deployed on Windows, macOS, and Linux platforms.
 
-For detailed installation procedures and usage instructions, please refer to the [User Documentation](https://github.com/yliu7949/KSSOLV-Toolbox/blob/main/docs/usage/start.md).
+For detailed installation procedures and usage instructions, please refer to the [User Documentation](https://github.com/USTC-Hu-Group/KSSOLV-Toolbox/blob/main/docs/usage/start.md).
 
 ## Contributing
 

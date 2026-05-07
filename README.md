@@ -1,7 +1,7 @@
 # KSSOLV Toolbox
 
 [![Github Release Version](https://img.shields.io/github/v/release/USTC-Hu-Group/KSSOLV-Toolbox?color=blue&include_prereleases)](https://github.com/USTC-Hu-Group/KSSOLV-Toolbox/releases/latest)
-[![GitHub License](https://img.shields.io/github/license/yliu7949/KSSOLV-Toolbox)](https://github.com/USTC-Hu-Group/KSSOLV-Toolbox/blob/main/LICENSE)
+[![GitHub License](https://img.shields.io/github/license/USTC-Hu-Group/KSSOLV-Toolbox)](https://github.com/USTC-Hu-Group/KSSOLV-Toolbox/blob/main/LICENSE)
 [![GitHub top language](https://img.shields.io/github/languages/top/USTC-Hu-Group/KSSOLV-Toolbox)](https://matlab.mathworks.com/)
 ![MATLAB Versions Tested](https://img.shields.io/badge/tested%20with-R2025b%20%7C%20R2025a-blue)
 

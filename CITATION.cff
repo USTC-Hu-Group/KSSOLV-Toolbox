@@ -1,0 +1,29 @@
+cff-version: 1.2.0
+message: "If you use KSSOLV Toolbox in your research, please cite the following article."
+title: "KSSOLV Toolbox"
+authors:
+  - family-names: "Yang"
+    given-names: "Liu"
+  - family-names: "Yang"
+    given-names: "Jinlong"
+  - family-names: "Hu"
+    given-names: "Wei"
+repository-code: "https://github.com/USTC-Hu-Group/KSSOLV-Toolbox"
+url: "https://pubs.acs.org/doi/10.1021/acs.jctc.6c00523"
+preferred-citation:
+  type: article
+  title: "KSSOLV Toolbox: A MATLAB Graphical User Interface for Plane-Wave Density Functional Theory Calculations"
+  authors:
+    - family-names: "Yang"
+      given-names: "Liu"
+    - family-names: "Yang"
+      given-names: "Jinlong"
+    - family-names: "Hu"
+      given-names: "Wei"
+  journal: "Journal of Chemical Theory and Computation"
+  publisher:
+    name: "American Chemical Society"
+  year: 2026
+  date-published: "2026-05-23"
+  doi: "10.1021/acs.jctc.6c00523"
+  url: "https://doi.org/10.1021/acs.jctc.6c00523"

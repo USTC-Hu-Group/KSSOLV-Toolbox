@@ -3,7 +3,7 @@
 [![Github Release Version](https://img.shields.io/github/v/release/yliu7949/KSSOLV-Toolbox?color=blue&include_prereleases)](https://github.com/yliu7949/KSSOLV-Toolbox/releases/latest)
 [![GitHub License](https://img.shields.io/github/license/yliu7949/KSSOLV-Toolbox)](https://github.com/yliu7949/KSSOLV-Toolbox/blob/main/LICENSE)
 [![GitHub top language](https://img.shields.io/github/languages/top/yliu7949/KSSOLV-Toolbox)](https://matlab.mathworks.com/)
-![MATLAB Versions Tested](https://img.shields.io/badge/tested%20with-R2025b%20%7C%20R2025a-blue)
+![MATLAB Versions Tested](https://img.shields.io/badge/tested%20with-R2026b%20%7C%20R2026a%20%7C%20R2025b-blue)
 
 **KSSOLV Toolbox** 是一个基于 MATLAB 的图形化工具箱，用来更轻松地运行 **Kohn-Sham Solver (KSSOLV)** 包提供的密度泛函理论 (DFT) 计算。它的目标是让研究人员摆脱繁琐的脚本编写，让研究人员能够以更直观的方式完成从结构导入、计算参数设置到结果分析的完整流程。
 
@@ -36,3 +36,19 @@
 ## 引用
 
 如果你在研究工作或论文中使用了 **KSSOLV Toolbox**，请引用下面的论文。
+
+```latex
+@article{YangLiu_KSSOLV_Toolbox_2026,
+  author = {Yang, Liu and Yang, Jinlong and Hu, Wei},
+  title = {KSSOLV Toolbox: A MATLAB Graphical User Interface for Plane-Wave Density Functional Theory Calculations},
+  journal = {Journal of Chemical Theory and Computation},
+  volume = {22},
+  number = {11},
+  pages = {5579--5593},
+  year = {2026},
+  doi = {10.1021/acs.jctc.6c00523},
+  note = {PMID: 42175909},
+  url = {https://doi.org/10.1021/acs.jctc.6c00523},
+  eprint = {https://doi.org/10.1021/acs.jctc.6c00523}
+}
+```

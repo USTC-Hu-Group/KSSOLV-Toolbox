@@ -3,7 +3,7 @@
 [![Github Release Version](https://img.shields.io/github/v/release/USTC-Hu-Group/KSSOLV-Toolbox?color=blue&include_prereleases)](https://github.com/USTC-Hu-Group/KSSOLV-Toolbox/releases/latest)
 [![GitHub License](https://img.shields.io/github/license/USTC-Hu-Group/KSSOLV-Toolbox)](https://github.com/USTC-Hu-Group/KSSOLV-Toolbox/blob/main/LICENSE)
 [![GitHub top language](https://img.shields.io/github/languages/top/USTC-Hu-Group/KSSOLV-Toolbox)](https://matlab.mathworks.com/)
-![MATLAB Versions Tested](https://img.shields.io/badge/tested%20with-R2025b%20%7C%20R2025a-blue)
+![MATLAB Versions Tested](https://img.shields.io/badge/tested%20with-R2026b%20%7C%20R2026a%20%7C%20R2025b-blue)
 
 **KSSOLV Toolbox** is a MATLAB-based graphical tool designed to make running density functional theory (DFT) calculations provided by the **Kohn-Sham Solver (KSSOLV)** package easier and more intuitive. It helps researchers avoid writing complex scripts and instead complete the full workflow—from structure import and calculation setup to post-analysis—through a user-friendly interface.
 
@@ -37,3 +37,18 @@ This project is licensed under the **BSD 3-Clause** license. Thank you for your 
 
 If you use **KSSOLV Toolbox** in your research or publications, please cite the following work.
 
+```latex
+@article{YangLiu_KSSOLV_Toolbox_2026,
+  author = {Yang, Liu and Yang, Jinlong and Hu, Wei},
+  title = {KSSOLV Toolbox: A MATLAB Graphical User Interface for Plane-Wave Density Functional Theory Calculations},
+  journal = {Journal of Chemical Theory and Computation},
+  volume = {22},
+  number = {11},
+  pages = {5579--5593},
+  year = {2026},
+  doi = {10.1021/acs.jctc.6c00523},
+  note = {PMID: 42175909},
+  url = {https://doi.org/10.1021/acs.jctc.6c00523},
+  eprint = {https://doi.org/10.1021/acs.jctc.6c00523}
+}
+```

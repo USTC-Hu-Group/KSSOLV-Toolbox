@@ -1,7 +1,7 @@
 # KSSOLV Toolbox
 
 [![Github Release Version](https://img.shields.io/github/v/release/USTC-Hu-Group/KSSOLV-Toolbox?color=blue&include_prereleases)](https://github.com/USTC-Hu-Group/KSSOLV-Toolbox/releases/latest)
-[![GitHub License](https://img.shields.io/github/license/USTC-Hu-Group/KSSOLV-Toolbox)](https://github.com/USTC-Hu-Group/KSSOLV-Toolbox/blob/main/LICENSE)
+[![License: BUSL-1.1](https://img.shields.io/badge/license-BUSL--1.1-blue)](https://github.com/USTC-Hu-Group/KSSOLV-Toolbox/blob/main/LICENSE)
 [![GitHub top language](https://img.shields.io/github/languages/top/USTC-Hu-Group/KSSOLV-Toolbox)](https://matlab.mathworks.com/)
 ![MATLAB Versions Tested](https://img.shields.io/badge/tested%20with-R2026b%20%7C%20R2026a%20%7C%20R2025b-blue)
 
@@ -31,7 +31,39 @@ For detailed installation procedures and usage instructions, please refer to the
 - **New feature?** Please open an Issue describing the request. After discussion and confirmation, you may submit a PR.  
 - **Bug fix?** You may directly submit a PR—just include a clear description of the issue and your fix.
 
-This project is licensed under the **BSD 3-Clause** license. Thank you for your support! 🌟
+> By submitting code, documentation, or any other contribution to this project,
+> the contributor represents that they have the right to submit it and, to the
+> fullest extent permitted by law, automatically and unconditionally assigns to
+> the **KSSOLV Development Team** (the Rights Holder), on a perpetual,
+> irrevocable, worldwide, and royalty-free basis, all transferable economic
+> copyrights and related rights in the contribution. To the extent that any such
+> right cannot legally be assigned, or the assignment is ineffective, the
+> contributor grants the Rights Holder a perpetual, irrevocable, worldwide,
+> royalty-free, transferable, and fully sublicensable license to use, reproduce,
+> modify, adapt, publish, distribute, and relicense the contribution under any
+> terms, including BUSL-1.1, the Change License, and commercial licenses.
+> Submission of a contribution constitutes acceptance of these terms.
+
+## License
+
+The original portions of **KSSOLV Toolbox** are available under the
+**Business Source License 1.1 (BUSL-1.1)**:
+
+- Non-production use is permitted under BUSL-1.1.
+- Production use is permitted for teaching and education, qualifying academic
+  or personal research, and qualifying charitable or nonprofit activities, as
+  specified in the `Additional Use Grant`.
+- Other production use, including commercial research and development,
+  requires a separate [commercial license](COMMERCIAL-LICENSE.md).
+- On **July 22, 2030**, or the fourth anniversary of a version's first public
+  distribution under BUSL-1.1, whichever comes first, that version will become
+  available under **GNU GPL v3.0 or later**.
+
+BUSL-1.1 is a source-available license and is not an Open Source license before
+the applicable Change Date. Third-party components remain under their
+respective licenses; see [Third-Party Licenses](THIRD-PARTY-LICENSES.md).
+Releases distributed before this license change remain subject to the licenses
+that accompanied those releases.
 
 ## Citation
 

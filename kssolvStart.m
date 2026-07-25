@@ -9,7 +9,7 @@ function kssolvStart(ksFile, hostInBrowser)
 
 arguments
     ksFile string = ""
-    hostInBrowser (1, 1) logical = strcmpi(getenv("HostAppInBrowser"), 'true')
+    hostInBrowser (1, 1) logical = kssolv.settings.Environment.hostInBrowser()
 end
 
 try
@@ -35,4 +35,3 @@ while true
     end
 end
 end
-

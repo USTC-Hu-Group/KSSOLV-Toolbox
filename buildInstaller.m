@@ -8,10 +8,12 @@ arguments
     runtimeDelivery {mustBeMember(runtimeDelivery, ["web", "installer", "none"])} = "web"
 end
 
-% 提示安装 LLMs with MATLAB 插件
+% 编译仅支持使用公开 OpenAI-compatible API 的 4.9.0 及以上版本。
 if ~kssolv.services.llm.isLLMWithMATLABAddonAvailable
-    warning('KSSOLV:Deployment:MissingRequiredAddOns', ...
-        "Before compiling, you need to manually install the plugins that KSSOLV Toolbox depends on.");
+    error('KSSOLV:Deployment:UnsupportedLLMAddon', ...
+        'Before compiling, install and enable %s version %s or later.', ...
+        kssolv.services.llm.Addon.Name, ...
+        kssolv.services.llm.Addon.MinimumVersion);
 end
 
 % 设定代码依赖自动推断无法正确判断的、必须要包含的文件夹
@@ -19,6 +21,7 @@ toolboxFolder = fileparts(mfilename('fullpath'));
 kssolv3Home = fullfile(toolboxFolder, "+kssolv", "+core", "kssolv-3o");
 processsuiteHome = fullfile(toolboxFolder, "+kssolv", "+core", "processsuite");
 additionalFiles = [fullfile(toolboxFolder, "ks.ks"), ...
+    fullfile(toolboxFolder, "+kssolv", "+settings"), ...
     fullfile(toolboxFolder, "+kssolv", "+ui"), ...
     fullfile(toolboxFolder, "+kssolv", "+services"), ...
     fullfile(kssolv3Home, "+example"), ...
@@ -27,11 +30,22 @@ additionalFiles = [fullfile(toolboxFolder, "ks.ks"), ...
 
 % 包含第三方 Add-Ons
 installedAddOns = matlab.internal.addons.registry.getInstalledAddOnsMetadata;
-addOnIndex = strcmp(string({installedAddOns.name}), "Large Language Models (LLMs) with MATLAB");
-if any(addOnIndex)
-    addOnPath = string(installedAddOns(addOnIndex).registrationRoot);
-    additionalFiles = [additionalFiles addOnPath];
+addOnIndex = strcmp(string({installedAddOns.name}), ...
+    kssolv.services.llm.Addon.Name);
+if isfield(installedAddOns, 'version')
+    supportedVersion = arrayfun(@(addon) ...
+        kssolv.services.llm.Addon.isVersionSupported( ...
+        string(addon.version)), installedAddOns);
+    supportedVersion = reshape(supportedVersion, size(addOnIndex));
+    addOnIndex = addOnIndex & supportedVersion;
 end
+if ~any(addOnIndex)
+    error('KSSOLV:Deployment:LLMAddonFilesNotFound', ...
+        'Unable to locate the supported LLM Add-On files for packaging.');
+end
+addOn = installedAddOns(find(addOnIndex, 1, 'last'));
+addOnPath = string(addOn.registrationRoot);
+additionalFiles = [additionalFiles addOnPath];
 
 % 设置编译属性
 buildOptions = compiler.build.StandaloneApplicationOptions(fullfile(toolboxFolder, "kssolvStart.m"));

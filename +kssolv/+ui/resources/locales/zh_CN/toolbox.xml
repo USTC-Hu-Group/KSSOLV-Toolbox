@@ -77,7 +77,6 @@
         <entry key="OfficialSiteListItemLabel">官方网站</entry>
         <entry key="CheckUpdateListItemLabel">检查更新</entry>
         <entry key="CheckLicenseListItemLabel">许可</entry>
-        <entry key="TermsOfUseListItemLabel">使用条款</entry>
         <entry key="AboutUsListItemLabel">关于 KSSOLV</entry>
         
         <entry key="OperationSectionTitle">操作</entry>
@@ -180,6 +179,9 @@
         <entry key="CommandReferencesFileGenerated">命令参考文件已生成： \n   %s\n</entry>
         <entry key="CommandReferencesFileOpenError">文件无法打开: </entry>
         <entry key="LLMServiceInitializationFailed">初始化 LLM 服务失败。</entry>
+        <entry key="LLMConfigurationMissing">OpenAI 兼容服务配置不完整。请检查设置中的 API 基础地址和 API Key。</entry>
+        <entry key="LLMAddonUnavailable">需要 4.9.0 或更高版本的 Large Language Models (LLMs) with MATLAB。请安装、升级或启用该附加功能后重试。</entry>
+        <entry key="LLMRequestFailed">LLM 请求失败。请检查服务设置和连接后重试。</entry>
 
         <!-- Document Group -->
         <entry key="DocumentStructureTitle">结构</entry>

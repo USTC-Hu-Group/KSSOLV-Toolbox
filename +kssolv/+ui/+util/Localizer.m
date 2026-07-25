@@ -114,6 +114,14 @@ classdef Localizer < handle
         function msg = message(key)
             % 返回给定键的本地化字符串
             instance = kssolv.ui.util.Localizer.getInstance();
+            if ~isKey(instance.keyValueMap, key)
+                % 开发期间资源文件可能在 MATLAB 会话中被更新。当前语言
+                % 的缓存缺少键时重新载入一次，避免异步 UI 回调因旧缓存
+                % 中断并留下不一致的控件状态。
+                locale = instance.currentLocale;
+                delete(instance);
+                instance = kssolv.ui.util.Localizer.getInstance(locale);
+            end
             if isKey(instance.keyValueMap, key)
                 msg = instance.keyValueMap(key);
             else
@@ -129,4 +137,3 @@ classdef Localizer < handle
         end
     end
 end
-

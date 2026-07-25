@@ -43,6 +43,37 @@
         <entry key="RunTimeUsed">用时：</entry>
         <entry key="RunTimeUsedUnit">秒</entry>
 
+        <!-- 帮助菜单对话框 -->
+        <entry key="DialogCloseButton">关闭</entry>
+        <!-- UpdateDialog -->
+        <entry key="UpdateDialogTitle">检查更新</entry>
+        <entry key="UpdateDialogCurrentVersionLabel">当前版本：</entry>
+        <entry key="UpdateDialogLatestVersionLabel">最新 Release：</entry>
+        <entry key="UpdateDialogChecking">正在检查更新…</entry>
+        <entry key="UpdateDialogCheckingDetail">正在连接 GitHub 上的 KSSOLV Toolbox Release 页面。网络较慢时可能需要等待数秒。</entry>
+        <entry key="UpdateDialogUpdateAvailable">发现可用更新</entry>
+        <entry key="UpdateDialogUpdateAvailableDetail">KSSOLV Toolbox %s 已发布。可打开 Release 页面查看并下载。</entry>
+        <entry key="UpdateDialogUpToDate">KSSOLV Toolbox 已是最新版本</entry>
+        <entry key="UpdateDialogUpToDateDetail">当前安装版本与最新发布版本相同或更新。</entry>
+        <entry key="UpdateDialogNoRelease">未找到已发布的 Release</entry>
+        <entry key="UpdateDialogNoReleaseDetail">GitHub 仓库存在，但目前没有最新的已发布 Release。</entry>
+        <entry key="UpdateDialogCheckFailed">无法检查更新</entry>
+        <entry key="UpdateDialogTimedOut">检查更新超时。请检查网络连接后重试。</entry>
+        <entry key="UpdateDialogNetworkUnavailable">无法连接 GitHub。请检查网络、代理或安全连接设置后重试。</entry>
+        <entry key="UpdateDialogInvalidResponse">最新 Release 未包含有效版本号，或 GitHub 返回了无效响应。</entry>
+        <entry key="UpdateDialogUnexpectedError">GitHub 返回了意外响应，请稍后重试。</entry>
+        <entry key="UpdateDialogRetryButton">重试</entry>
+        <entry key="UpdateDialogViewReleaseButton">查看 Release</entry>
+        <!-- LicenseDialog -->
+        <entry key="LicenseDialogTitle">KSSOLV Toolbox 许可</entry>
+        <entry key="LicenseDialogHeading">Business Source License 1.1</entry>
+        <entry key="LicenseDialogReadFailed">无法读取本地 LICENSE 文件。</entry>
+        <!-- AboutDialog -->
+        <entry key="AboutDialogTitle">关于 KSSOLV Toolbox</entry>
+        <entry key="AboutDialogVersion">版本 %s · 发布日期 %s</entry>
+        <entry key="AboutDialogCopyright">版权所有 © 2024–2026 %s。保留所有权利。</entry>
+        <entry key="AboutDialogRepositoryButton">GitHub 仓库</entry>
+
         <!-- SettingsDialog -->
         <entry key="SettingsDialogName">设置</entry>
         <entry key="SettingsDialogHelpButtonText">帮助</entry>
@@ -58,5 +89,38 @@
         <entry key="SettingsDialogGeneralTabLLMPanelName">大语言模型</entry>
         <entry key="SettingsDialogGeneralTabLLMType">类型：</entry>
         <entry key="SettingsDialogGeneralTabLLMModelName">使用的模型：</entry>
+        <entry key="SettingsDialogOllamaServerURL">服务地址：</entry>
+        <entry key="SettingsDialogOpenAIBaseURL">API 基础地址：</entry>
+        <entry key="SettingsDialogOpenAIAPIKey">API Key：</entry>
+        <entry key="SettingsDialogTestConnection">测试连接</entry>
+        <entry key="SettingsDialogStopTest">停止测试</entry>
+        <entry key="SettingsDialogRefreshModels">刷新模型列表</entry>
+        <entry key="SettingsDialogOllamaNote">连接 Ollama 服务并刷新后，可从服务端已安装的模型中选择；也可以直接输入模型名称。</entry>
+        <entry key="SettingsDialogOpenAIKeyNote">点击“确认”后将自动加密保存 API Key；清空后点击“确认”可删除已保存的密钥。</entry>
+        <entry key="SettingsDialogConnectionChecking">正在连接并获取模型列表…</entry>
+        <entry key="SettingsDialogConnectionStopped">连接测试已停止。</entry>
+        <entry key="SettingsDialogConnectionSucceeded">连接成功，已获取模型</entry>
+        <entry key="SettingsDialogConnectionFailed">无法连接到服务。请检查服务地址，并确认服务已启动。</entry>
+        <entry key="SettingsDialogConnectionTimedOut">连接测试超时。请检查服务地址和网络连接。</entry>
+        <entry key="SettingsDialogAuthenticationFailed">身份验证失败。请检查 API Key 和服务权限。</entry>
+        <entry key="SettingsDialogEndpointNotFound">未找到模型列表接口。请检查 API 基础地址。</entry>
+        <entry key="SettingsDialogRateLimited">请求已达到服务速率限制。请稍后重试。</entry>
+        <entry key="SettingsDialogHTTPError">服务请求失败（HTTP %d）。</entry>
+        <entry key="SettingsDialogSecureConnectionFailed">无法建立安全连接。请检查服务证书和地址。</entry>
+        <entry key="SettingsDialogInvalidServiceResponse">服务返回了无效的模型列表响应。</entry>
+        <entry key="SettingsDialogConnectionUnexpectedError">无法完成连接测试。请检查设置后重试。</entry>
+        <entry key="SettingsDialogNoModelsFound">服务连接成功，但没有返回可用模型。</entry>
+        <entry key="SettingsDialogAPIKeyRequired">OpenAI 兼容服务需要 API Key；无需鉴权的服务请填写 EMPTY。</entry>
+        <entry key="SettingsDialogModelRequired">模型名称不能为空。</entry>
+        <entry key="SettingsDialogInvalidURL">请输入以 http:// 或 https:// 开头的有效服务地址。</entry>
+        <entry key="SettingsDialogOpenAIBaseURLIncludesEndpoint">请仅填写 API 基础地址，不要附加 /chat/completions 或 /models。</entry>
+        <entry key="SettingsDialogInvalidLocale">所选语言不受支持。</entry>
+        <entry key="SettingsDialogInvalidLLMType">所选大语言模型服务类型不受支持。</entry>
+        <entry key="SettingsDialogInvalidSettings">无法验证设置。请检查输入内容后重试。</entry>
+        <entry key="SettingsDialogValidationTitle">设置无效</entry>
+        <entry key="SettingsDialogSaveErrorTitle">无法保存设置</entry>
+        <entry key="SettingsDialogSaveFailed">无法保存设置。请确认首选项目录可写后重试。</entry>
+        <entry key="SettingsDialogHelpErrorTitle">无法打开帮助</entry>
+        <entry key="SettingsDialogHelpFailed">无法在系统浏览器中打开帮助。</entry>
     </message>
 </rsccat>

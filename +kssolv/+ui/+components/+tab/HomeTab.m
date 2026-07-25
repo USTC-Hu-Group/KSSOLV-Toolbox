@@ -2,7 +2,7 @@ classdef HomeTab < handle
     %HOMETAB Toolstrip 菜单栏中的 Home 标签页
 
     %   开发者：杨柳、高俊、林海饶
-    %   版权 2024-2025 合肥瀚海量子科技有限公司
+    %   版权 2024-2026 合肥瀚海量子科技有限公司
 
     properties
         Tab       % Home 标签页
@@ -13,6 +13,9 @@ classdef HomeTab < handle
 
     properties (Access = private)
         settingsDialog % 设置对话框
+        updateDialog   % 检查更新对话框
+        licenseDialog  % 许可对话框
+        aboutDialog    % 关于对话框
     end
 
     methods
@@ -86,10 +89,14 @@ classdef HomeTab < handle
             % Resource Section
             addlistener(this.Widgets.ResourceSection.ResourceDocumentationButton, ...
                 'ButtonPushed', @(src, data) callbackResourceDocumentationButton(this));
-            addlistener(this.Widgets.ResourceSection.ResourceHelpButton.Popup.getChildByIndex(1), ...
-                'ItemPushed', @(src, data) callbackExamplesButton(this));
-            addlistener(this.Widgets.ResourceSection.ResourceHelpButton.Popup.getChildByIndex(2), ...
+            addlistener(this.Widgets.ResourceSection.OfficialSiteListItem, ...
                 'ItemPushed', @(src, data) callbackOpenOfficialSiteButton(this));
+            addlistener(this.Widgets.ResourceSection.CheckUpdateListItem, ...
+                'ItemPushed', @(src, data) callbackCheckUpdateButton(this));
+            addlistener(this.Widgets.ResourceSection.CheckLicenseListItem, ...
+                'ItemPushed', @(src, data) callbackCheckLicenseButton(this));
+            addlistener(this.Widgets.ResourceSection.AboutUsListItem, ...
+                'ItemPushed', @(src, data) callbackAboutUsButton(this));
             addlistener(this.Widgets.ResourceSection.ResourceSupportButton, ...
                 'ButtonPushed', @(src, data) callbackResourceSupportButton(this));
         end
@@ -106,6 +113,7 @@ classdef HomeTab < handle
             this.Widgets.ProjectSection.ProjectVariableButton.Popup.getChildByIndex(1).Enabled = false;
             this.Widgets.EnvironmentSection.EnvironmentRemoteButton.Popup.getChildByIndex(1).Enabled = false;
             this.Widgets.EnvironmentSection.EnvironmentExtraButton.Popup.getChildByIndex(1).Enabled = false;
+            this.Widgets.ResourceSection.ExamplesListItem.Enabled = false;
         end
     end
 
@@ -341,14 +349,12 @@ classdef HomeTab < handle
             OpenOfficialSiteListItem = CreateListItem('default', 'OfficialSite', section.Tag, 0, 'link_globe');
             CheckUpdateListItem = CreateListItem('default', 'CheckUpdate', section.Tag);
             CheckLicenseListItem = CreateListItem('default', 'CheckLicense', section.Tag);
-            TermsOfUseListItem = CreateListItem('default', 'TermsOfUse', section.Tag);
             AboutUsListItem = CreateListItem('default', 'AboutUs', section.Tag);
             HelpPopup.add(ExamplesListItem);
             HelpPopup.add(OpenOfficialSiteListItem);
             HelpPopup.addSeparator;
             HelpPopup.add(CheckUpdateListItem);
             HelpPopup.add(CheckLicenseListItem);
-            HelpPopup.add(TermsOfUseListItem);
             HelpPopup.add(AboutUsListItem);
             ResourceHelpButton.Popup = HelpPopup;
 
@@ -366,7 +372,12 @@ classdef HomeTab < handle
             % 添加到 Widgets
             this.Widgets.ResourceSection = struct('ResourceDocumentationButton', ResourceDocumentationButton, ...
                 'ResourceCommunityButton', ResourceCommunityButton, 'ResourceHelpButton', ResourceHelpButton, ...
-                'ResourceSupportButton', ResourceSupportButton);
+                'ResourceSupportButton', ResourceSupportButton, ...
+                'ExamplesListItem', ExamplesListItem, ...
+                'OfficialSiteListItem', OpenOfficialSiteListItem, ...
+                'CheckUpdateListItem', CheckUpdateListItem, ...
+                'CheckLicenseListItem', CheckLicenseListItem, ...
+                'AboutUsListItem', AboutUsListItem);
         end
 
         %% 回调函数
@@ -706,14 +717,39 @@ classdef HomeTab < handle
             web(url);
         end
 
-        function callbackExamplesButton(~, ~, ~)
-            url = 'https://gleamore.feishu.cn/docx/O64DdiY7LoPykxxLWAJcr0oxnfd';
-            web(url);
-        end
-
         function callbackOpenOfficialSiteButton(~, ~, ~)
             url = 'https://pwdft.com/prod/43.html';
             web(url);
+        end
+
+        function callbackCheckUpdateButton(this, ~, ~)
+            if isempty(this.updateDialog) || ~isvalid(this.updateDialog)
+                this.updateDialog = ...
+                    kssolv.ui.components.dialog.UpdateDialog();
+            end
+            appContainer = ...
+                kssolv.ui.util.DataStorage.getData('AppContainer');
+            this.updateDialog.show(appContainer);
+        end
+
+        function callbackCheckLicenseButton(this, ~, ~)
+            if isempty(this.licenseDialog) || ~isvalid(this.licenseDialog)
+                this.licenseDialog = ...
+                    kssolv.ui.components.dialog.LicenseDialog();
+            end
+            appContainer = ...
+                kssolv.ui.util.DataStorage.getData('AppContainer');
+            this.licenseDialog.show(appContainer);
+        end
+
+        function callbackAboutUsButton(this, ~, ~)
+            if isempty(this.aboutDialog) || ~isvalid(this.aboutDialog)
+                this.aboutDialog = ...
+                    kssolv.ui.components.dialog.AboutDialog();
+            end
+            appContainer = ...
+                kssolv.ui.util.DataStorage.getData('AppContainer');
+            this.aboutDialog.show(appContainer);
         end
 
         function callbackResourceSupportButton(~, ~, ~)
@@ -722,8 +758,17 @@ classdef HomeTab < handle
             web(url);
         end
 
-        function settingsDialogClosed(this, ~, ~)
+        function settingsDialogClosed(this, dialog, ~)
             this.Widgets.EnvironmentSection.EnvironmentSettingsButton.Enabled = true;
+
+            % 已应用新的服务或模型后，下一次提问应创建新的聊天对象，
+            % 避免继续使用旧端点和旧模型。取消对话框时保留现有会话。
+            if isfield(dialog.dialogOptions, 'Applied') && dialog.dialogOptions.Applied
+                commandWindow = kssolv.ui.util.DataStorage.getData('CommandWindow');
+                if ~isempty(commandWindow) && isvalid(commandWindow)
+                    commandWindow.ChatBot = [];
+                end
+            end
         end
     end
 
@@ -780,4 +825,3 @@ classdef HomeTab < handle
         end
     end
 end
-

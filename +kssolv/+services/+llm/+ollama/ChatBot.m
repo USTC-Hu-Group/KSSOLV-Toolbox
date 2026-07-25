@@ -22,16 +22,18 @@ classdef ChatBot < kssolv.services.llm.internal.AbstractChatBot
 
     methods (Access = protected)
         function buildChatBot(this)
+            settings = kssolv.settings.Settings.load();
+            endpoint = settings.OllamaServerURL;
+
             if ismember('tools', this.modelCapabilities)
                 this.systemPrompt = strcat(this.systemPrompt, ...
                     "Always respond to the user, even if the tool's return result is blank.");
                 this.bot = ollamaChat(this.modelName, this.systemPrompt, Temperature=0.6, ...
-                    StreamFun=this.streamFunction, Tools=this.toolsList);
+                    StreamFun=this.streamFunction, Tools=this.toolsList, Endpoint=endpoint);
             else
                 this.bot = ollamaChat(this.modelName, this.systemPrompt, Temperature=0.6, ...
-                    StreamFun=this.streamFunction);
+                    StreamFun=this.streamFunction, Endpoint=endpoint);
             end
         end
     end
 end
-

@@ -19,7 +19,7 @@ classdef (Abstract) tools < handle
             getCurrentGraphTool = openAIFunction("getCurrentGraph", ...
                 "Retrieve the current workflow's information in JSON format");
             % 注册 getCurrentGraph 工具函数
-            this.register(getCurrentGraphTool, @(~) workflow.getCurrentGraph());
+            this.register(getCurrentGraphTool, @() workflow.getCurrentGraph());
 
             % 定义 changeNodeLabel 工具函数
             changeNodeLabelTool = openAIFunction("changeNodeLabel", ...
@@ -52,7 +52,15 @@ classdef (Abstract) tools < handle
 
         function output = functionCallAttempt(this, functionCall)
             %FUNCTIONCALLATTEMPT 核对函数后，尝试运行被调用的函数
-            functionName = functionCall.function.name;
+            if ~isstruct(functionCall) || ~isscalar(functionCall) || ...
+                    ~isfield(functionCall, "function") || ...
+                    ~isstruct(functionCall.function) || ...
+                    ~isfield(functionCall.function, "name")
+                error("KSSOLV:LLM:ImproperFunctionCalling", ...
+                    "The tool call is missing its function name.");
+            end
+
+            functionName = char(string(functionCall.function.name));
 
             % 校验被调用的工具函数的名称
             if ~isKey(this.registry, functionName)
@@ -62,16 +70,45 @@ classdef (Abstract) tools < handle
             % 获取注册的工具函数
             registeredFunction = this.registry(functionName);
             if ~isempty(registeredFunction)
-                requiredArguments = fields(registeredFunction.required);
+                parameterNames = fields(registeredFunction.required);
+                requiredArguments = {};
+                for i = 1:numel(parameterNames)
+                    parameter = registeredFunction.required.(parameterNames{i});
+                    if ~isfield(parameter, "required") || parameter.required
+                        requiredArguments{end + 1} = parameterNames{i}; %#ok<AGROW>
+                    end
+                end
             else
                 output = sprintf("The function “%s” doesn't exist.", functionName);
                 return
             end
 
             % 解析参数并执行工具函数
-            if ~isempty(requiredArguments)
-                % 校验参数
+            if ~isempty(parameterNames)
+                if ~isfield(functionCall.function, "arguments")
+                    error("KSSOLV:LLM:ImproperFunctionCalling", ...
+                        "Function “%s” is missing its arguments.", functionName);
+                end
+
                 functionArguments = functionCall.function.arguments;
+                if ischar(functionArguments) || ...
+                        (isstring(functionArguments) && isscalar(functionArguments))
+                    try
+                        functionArguments = jsondecode(functionArguments);
+                    catch exception
+                        error("KSSOLV:LLM:ImproperFunctionCalling", ...
+                            "Function “%s” provided invalid JSON arguments: %s", ...
+                            functionName, exception.message);
+                    end
+                end
+
+                if ~isstruct(functionArguments) || ~isscalar(functionArguments)
+                    error("KSSOLV:LLM:ImproperFunctionCalling", ...
+                        "Function “%s” arguments must be a JSON object or scalar structure.", ...
+                        functionName);
+                end
+
+                % 校验参数
                 if ~all(isfield(functionArguments, requiredArguments))
                     missingArguments = requiredArguments(~isfield(functionArguments, requiredArguments));
                     error("KSSOLV:LLM:ImproperFunctionCalling", ...
@@ -90,4 +127,3 @@ classdef (Abstract) tools < handle
         end
     end
 end
-

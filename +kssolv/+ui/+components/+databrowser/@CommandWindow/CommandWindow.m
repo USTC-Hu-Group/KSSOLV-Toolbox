@@ -24,6 +24,8 @@ classdef CommandWindow < matlab.ui.internal.databrowser.AbstractDataBrowser
             this.Panel.PreferredHeight = 280;
             % 将该 Browser 放在界面右侧
             this.Panel.Region = "bottom";
+            % 保存实例，设置变更后可使已有聊天会话失效。
+            kssolv.ui.util.DataStorage.setData('CommandWindow', this);
 
             % 初始化命令行变量工作空间
             if ~isMATLABReleaseOlderThan('R2025a', "release")
@@ -144,17 +146,47 @@ classdef CommandWindow < matlab.ui.internal.databrowser.AbstractDataBrowser
 
             userPrompt = event.HTMLEventData;
 
+            initializationFailure = [];
             try
                 if isempty(this.ChatBot)
                     % 若未初始化对话机器人，则创建对话机器人
-                    this.ChatBot = kssolv.services.llm.chatBot('', '', ...
+                    [this.ChatBot, initializationFailure] = ...
+                        kssolv.services.llm.chatBot('', '', ...
                         @(tokens) this.addChat(tokens));
                 end
-            catch ME
-                this.addChat(message('KSSOLV:toolbox:LLMServiceInitializationFailed'));
+            catch exception
+                initializationFailure = exception;
             end
 
-            this.ChatBot.chat(userPrompt.prompt, userPrompt.useHistory);
+            if ~isempty(initializationFailure)
+                this.addChat(this.initializationFailureMessage( ...
+                    initializationFailure));
+                return
+            end
+
+            if isempty(this.ChatBot) || ~isvalid(this.ChatBot)
+                this.addChat(message('KSSOLV:toolbox:LLMServiceInitializationFailed'));
+                return
+            end
+            try
+                this.ChatBot.chat(userPrompt.prompt, userPrompt.useHistory);
+            catch
+                this.addChat(message('KSSOLV:toolbox:LLMRequestFailed'));
+            end
+        end
+
+        function content = initializationFailureMessage(~, failure)
+            import kssolv.ui.util.Localizer.message
+
+            switch string(failure.identifier)
+                case "KSSOLV:LLM:MissingOpenAIConfiguration"
+                    key = 'KSSOLV:toolbox:LLMConfigurationMissing';
+                case "KSSOLV:LLM:AddonUnavailable"
+                    key = 'KSSOLV:toolbox:LLMAddonUnavailable';
+                otherwise
+                    key = 'KSSOLV:toolbox:LLMServiceInitializationFailed';
+            end
+            content = message(key);
         end
 
         function callbackEventSent(~, ~, event)

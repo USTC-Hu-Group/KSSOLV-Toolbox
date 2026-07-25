@@ -5,7 +5,7 @@ classdef AbstractChatBot < kssolv.services.llm.internal.tools
     %  - https://github.com/matlab-deep-learning/llms-with-matlab
 
     % 开发者：杨柳
-    % 版权 2025 合肥瀚海量子科技有限公司
+    % 版权 2025-2026 合肥瀚海量子科技有限公司
 
     properties
         bot (1, 1) % 对话机器人对象
@@ -40,8 +40,9 @@ classdef AbstractChatBot < kssolv.services.llm.internal.tools
             this.streamFunction = streamFunction;
             this.messageHistory = messageHistory();
 
-            if ~kssolv.services.llm.isLLMWithMATLABAddonAvailable
-                return
+            if ~kssolv.services.llm.isLLMWithMATLABAddonAvailable(chatType)
+                error('KSSOLV:LLM:AddonUnavailable', ...
+                    'The Large Language Models with MATLAB Add-On is unavailable.');
             end
 
             getModelCapabilities(this);
@@ -56,8 +57,10 @@ classdef AbstractChatBot < kssolv.services.llm.internal.tools
                 useHistoryMessages (1, 1) logical = true
             end
 
-            if ~kssolv.services.llm.isLLMWithMATLABAddonAvailable
-                return
+            if ~kssolv.services.llm.isLLMWithMATLABAddonAvailable( ...
+                    this.chatType)
+                error('KSSOLV:LLM:AddonUnavailable', ...
+                    'The Large Language Models with MATLAB Add-On is unavailable.');
             end
 
             % 将本次用户的 prompt 保存到历史消息中
@@ -80,18 +83,39 @@ classdef AbstractChatBot < kssolv.services.llm.internal.tools
             % 将 LLM 的响应消息保存到历史消息中
             promptHistory = addResponseMessage(promptHistory, message);
 
-            if response.StatusCode == "OK" && ismember('tools', this.modelCapabilities)
-                if isfield(message, 'tool_calls') && ~isempty(message.tool_calls)
-                    functionCall = message.tool_calls;
-                    functionId = "";
-                    if isfield(functionCall, "id")
-                        functionId = string(functionCall.id);
+            if response.StatusCode == "OK" && ...
+                    ismember('tools', this.modelCapabilities)
+                maxToolCallRounds = 8;
+                toolCallRound = 0;
+
+                while isfield(message, 'tool_calls') && ...
+                        ~isempty(message.tool_calls)
+                    toolCallRound = toolCallRound + 1;
+                    if toolCallRound > maxToolCallRounds
+                        error("KSSOLV:LLM:TooManyToolCallRounds", ...
+                            "The model exceeded %d consecutive tool-call rounds.", ...
+                            maxToolCallRounds);
                     end
 
-                    functionResult = this.functionCallAttempt(functionCall);
-                    promptHistory = addToolMessage(promptHistory, ...
-                        functionId, functionCall.function.name, functionResult);
-                    [~, message, ~] = generate(this.bot, promptHistory, MaxNumTokens=Inf);
+                    functionCalls = message.tool_calls;
+                    if iscell(functionCalls)
+                        functionCalls = [functionCalls{:}];
+                    end
+
+                    for i = 1:numel(functionCalls)
+                        functionCall = functionCalls(i);
+                        functionId = "";
+                        if isfield(functionCall, "id")
+                            functionId = string(functionCall.id);
+                        end
+
+                        functionResult = this.functionCallAttempt(functionCall);
+                        promptHistory = addToolMessage(promptHistory, ...
+                            functionId, functionCall.function.name, functionResult);
+                    end
+
+                    [~, message, ~] = generate(this.bot, promptHistory, ...
+                        MaxNumTokens=Inf);
                     promptHistory = addResponseMessage(promptHistory, message);
                 end
             end
@@ -130,12 +154,13 @@ classdef AbstractChatBot < kssolv.services.llm.internal.tools
 
         function getModelCapabilities(this)
             %GETMODELCAPABILITIES 获取模型的能力
-            proxyBase = string(strtrim(getenv("OPENAI_PROXY_URL")));
-
-            if isempty(proxyBase)
+            if strcmp(this.chatType, 'ollamaChat')
                 % 本地 Ollama 模型
                 try
-                    url = "http://localhost:11434/api/show";
+                    settings = kssolv.settings.Settings.load();
+                    ollamaEndpoint = settings.OllamaServerURL;
+                    ollamaEndpoint = strip(ollamaEndpoint, 'right', '/');
+                    url = ollamaEndpoint + "/api/show";
                     options = weboptions("Timeout", 30, "ContentType", "json");
                     response = webwrite(url, struct("name", this.modelName), options);
                     this.modelCapabilities = response.capabilities;
@@ -145,41 +170,20 @@ classdef AbstractChatBot < kssolv.services.llm.internal.tools
                 return
             end
 
-            % 将 URL 提取到 /v1（例如 https://aihubmix.com/v1）
-            proxyBaseV1 = regexp(proxyBase, '^(https?://[^?#]*?/v1)', 'tokens', 'once');
-
-            if contains(lower(proxyBaseV1), "/v1")
-                % 若为 OpenAI 风格代理（例如 https://api.openai.com/v1）
-
-                apiKey = getenv("OPENAI_API_KEY");
-                if strlength(apiKey) == 0
-                    error("OPENAI_API_KEY is not set, unable to get model information from OpenAI style agent.");
-                end
-
-                % 通过尝试 tool using 功能来判断在线大模型是否支持工具调用
-                tempBot = openAIChat(this.systemPrompt, ModelName=this.modelName, ...
-                    Temperature=0.6, Tools=this.toolsList);
-                try
-                    generate(tempBot, "Hi", MaxNumTokens=Inf);
-                    this.modelCapabilities = {'tools'};
-                catch
-                    this.modelCapabilities = {};
-                end
-                return
+            % 探测 OpenAI 兼容模型的能力。
+            settings = kssolv.settings.Settings.load();
+            if strlength(settings.OpenAIAPIKey) == 0
+                error("KSSOLV:LLM:NonExistOpenAIAPIKey", "OPENAI_API_KEY is not set, unable to get model information from OpenAI style agent.");
             end
 
             try
-                % 假设为 Ollama 兼容的代理/base（例如 http://my-ollama-host:11434）
-                url = proxyBaseV1 + "/api/show";
-                options = weboptions("Timeout", 30, "ContentType", "json");
-                response = webwrite(url, struct("name", this.modelName), options);
-                if isfield(response, "capabilities")
-                    this.modelCapabilities = response.capabilities;
-                else
-                    this.modelCapabilities = {};
-                end
-            catch ME
-                warning("Failed to obtain model capabilities.");
+                % 能力探测失败不应阻止基础聊天客户端初始化。
+                tempBot = ...
+                    kssolv.services.llm.online.ChatBot.createClient( ...
+                    this.systemPrompt, this.modelName, [], this.toolsList);
+                generate(tempBot, "Hi", MaxNumTokens=Inf);
+                this.modelCapabilities = {'tools'};
+            catch
                 this.modelCapabilities = {};
             end
         end

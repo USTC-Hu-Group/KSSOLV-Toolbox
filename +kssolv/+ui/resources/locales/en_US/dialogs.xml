@@ -41,6 +41,37 @@
         <entry key="RunTimeUsed">Time Used: </entry>
         <entry key="RunTimeUsedUnit">seconds</entry>
 
+        <!-- Help menu dialogs -->
+        <entry key="DialogCloseButton">Close</entry>
+        <!-- UpdateDialog -->
+        <entry key="UpdateDialogTitle">Check for Updates</entry>
+        <entry key="UpdateDialogCurrentVersionLabel">Installed version:</entry>
+        <entry key="UpdateDialogLatestVersionLabel">Latest release:</entry>
+        <entry key="UpdateDialogChecking">Checking for updates…</entry>
+        <entry key="UpdateDialogCheckingDetail">Connecting to the KSSOLV Toolbox releases page on GitHub. A slow network may take several seconds.</entry>
+        <entry key="UpdateDialogUpdateAvailable">An update is available</entry>
+        <entry key="UpdateDialogUpdateAvailableDetail">KSSOLV Toolbox %s is available. Open the release page to review and download it.</entry>
+        <entry key="UpdateDialogUpToDate">KSSOLV Toolbox is up to date</entry>
+        <entry key="UpdateDialogUpToDateDetail">The installed version is the same as or newer than the latest published release.</entry>
+        <entry key="UpdateDialogNoRelease">No published release was found</entry>
+        <entry key="UpdateDialogNoReleaseDetail">The GitHub repository exists, but it does not currently have a latest published release.</entry>
+        <entry key="UpdateDialogCheckFailed">Unable to check for updates</entry>
+        <entry key="UpdateDialogTimedOut">The update check timed out. Check the network connection and try again.</entry>
+        <entry key="UpdateDialogNetworkUnavailable">GitHub could not be reached. Check the network connection, proxy, or secure connection settings and try again.</entry>
+        <entry key="UpdateDialogInvalidResponse">The latest release does not contain a valid version number or GitHub returned an invalid response.</entry>
+        <entry key="UpdateDialogUnexpectedError">GitHub returned an unexpected response. Try again later.</entry>
+        <entry key="UpdateDialogRetryButton">Retry</entry>
+        <entry key="UpdateDialogViewReleaseButton">View Release</entry>
+        <!-- LicenseDialog -->
+        <entry key="LicenseDialogTitle">KSSOLV Toolbox License</entry>
+        <entry key="LicenseDialogHeading">Business Source License 1.1</entry>
+        <entry key="LicenseDialogReadFailed">The local LICENSE file could not be read.</entry>
+        <!-- AboutDialog -->
+        <entry key="AboutDialogTitle">About KSSOLV Toolbox</entry>
+        <entry key="AboutDialogVersion">Version %s · Released %s</entry>
+        <entry key="AboutDialogCopyright">Copyright 2024–2026 %s. All rights reserved.</entry>
+        <entry key="AboutDialogRepositoryButton">GitHub Repository</entry>
+
         <!-- SettingsDialog -->
         <entry key="SettingsDialogName">Settings</entry>
         <entry key="SettingsDialogHelpButtonText">Help</entry>
@@ -56,5 +87,38 @@
         <entry key="SettingsDialogGeneralTabLLMPanelName">LLM</entry>
         <entry key="SettingsDialogGeneralTabLLMType">Type:</entry>
         <entry key="SettingsDialogGeneralTabLLMModelName">Model Used:</entry>
+        <entry key="SettingsDialogOllamaServerURL">Server URL:</entry>
+        <entry key="SettingsDialogOpenAIBaseURL">API Base URL:</entry>
+        <entry key="SettingsDialogOpenAIAPIKey">API Key:</entry>
+        <entry key="SettingsDialogTestConnection">Test Connection</entry>
+        <entry key="SettingsDialogStopTest">Stop Test</entry>
+        <entry key="SettingsDialogRefreshModels">Refresh model list</entry>
+        <entry key="SettingsDialogOllamaNote">Connect to Ollama to select an installed server model, or enter a model name directly.</entry>
+        <entry key="SettingsDialogOpenAIKeyNote">The API key is encrypted and saved automatically when you click OK. Clear it and click OK to remove the saved key.</entry>
+        <entry key="SettingsDialogConnectionChecking">Connecting and retrieving models…</entry>
+        <entry key="SettingsDialogConnectionStopped">Connection test stopped.</entry>
+        <entry key="SettingsDialogConnectionSucceeded">Connected; models retrieved</entry>
+        <entry key="SettingsDialogConnectionFailed">Unable to connect to the service. Verify the service URL and make sure the service is running.</entry>
+        <entry key="SettingsDialogConnectionTimedOut">The connection test timed out. Verify the service URL and network connection.</entry>
+        <entry key="SettingsDialogAuthenticationFailed">Authentication failed. Verify the API key and service permissions.</entry>
+        <entry key="SettingsDialogEndpointNotFound">The model-list endpoint was not found. Verify the API base URL.</entry>
+        <entry key="SettingsDialogRateLimited">The service rate limit was reached. Wait briefly and try again.</entry>
+        <entry key="SettingsDialogHTTPError">The service request failed (HTTP %d).</entry>
+        <entry key="SettingsDialogSecureConnectionFailed">A secure connection could not be established. Verify the service certificate and URL.</entry>
+        <entry key="SettingsDialogInvalidServiceResponse">The service returned an invalid model-list response.</entry>
+        <entry key="SettingsDialogConnectionUnexpectedError">The connection test could not be completed. Verify the settings and try again.</entry>
+        <entry key="SettingsDialogNoModelsFound">The service connected successfully but returned no available models.</entry>
+        <entry key="SettingsDialogAPIKeyRequired">An API key is required for the OpenAI-compatible service. Enter EMPTY for a service that does not require authentication.</entry>
+        <entry key="SettingsDialogModelRequired">The model name cannot be empty.</entry>
+        <entry key="SettingsDialogInvalidURL">Enter a valid service URL beginning with http:// or https://.</entry>
+        <entry key="SettingsDialogOpenAIBaseURLIncludesEndpoint">Enter the API base URL only. Do not append /chat/completions or /models.</entry>
+        <entry key="SettingsDialogInvalidLocale">The selected language is not supported.</entry>
+        <entry key="SettingsDialogInvalidLLMType">The selected LLM service type is not supported.</entry>
+        <entry key="SettingsDialogInvalidSettings">The settings could not be validated. Review the entered values and try again.</entry>
+        <entry key="SettingsDialogValidationTitle">Invalid Settings</entry>
+        <entry key="SettingsDialogSaveErrorTitle">Unable to Save Settings</entry>
+        <entry key="SettingsDialogSaveFailed">The settings could not be saved. Verify that the preferences directory is writable and try again.</entry>
+        <entry key="SettingsDialogHelpErrorTitle">Unable to Open Help</entry>
+        <entry key="SettingsDialogHelpFailed">Help could not be opened in the system browser.</entry>
     </message>
 </rsccat>

@@ -21,8 +21,9 @@ classdef KSSOLVToolbox < handle
 
             import kssolv.ui.util.Localizer.*
 
-            % 根据环境变量设置本地化
-            setLocale(getenv("KSSOLV_LOCALE"));
+            % 根据统一设置服务返回的配置设置本地化。
+            settings = kssolv.settings.Settings.load();
+            setLocale(settings.Locale);
 
             % 创建 App Container
             appOptions.Title = 'KSSOLV Toolbox';
@@ -267,4 +268,3 @@ classdef KSSOLVToolbox < handle
         end
     end
 end
-

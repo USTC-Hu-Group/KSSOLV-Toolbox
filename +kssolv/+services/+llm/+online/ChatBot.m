@@ -22,12 +22,42 @@ classdef ChatBot < kssolv.services.llm.internal.AbstractChatBot
 
     methods (Access = protected)
         function buildChatBot(this)
+            tools = openAIFunction.empty;
             if ismember('tools', this.modelCapabilities)
-                this.bot = openAIChat(this.systemPrompt, ModelName=this.modelName, Temperature=0.6, ...
-                    StreamFun=this.streamFunction, Tools=this.toolsList);
+                tools = this.toolsList;
+            end
+            this.bot = ...
+                kssolv.services.llm.online.ChatBot.createClient( ...
+                this.systemPrompt, this.modelName, ...
+                this.streamFunction, tools);
+        end
+    end
+
+    methods (Static)
+        function bot = createClient(systemPrompt, modelName, streamFunction, tools)
+            %CREATECLIENT 使用 KSSOLV 设置创建 OpenAI 兼容客户端。
+            arguments
+                systemPrompt (1, 1) string = ""
+                modelName (1, 1) string = "gpt-5-mini"
+                streamFunction = []
+                tools (1, :) {mustBeA(tools, "openAIFunction")} = ...
+                    openAIFunction.empty
+            end
+
+            settings = kssolv.settings.Settings.load();
+            kssolv.settings.Environment.apply(settings);
+
+            if isempty(streamFunction)
+                bot = openAIChat(systemPrompt, ...
+                    ModelName=modelName, Temperature=0.6, ...
+                    Tools=tools, BaseURL=settings.OpenAIBaseURL, ...
+                    APIKey=settings.OpenAIAPIKey);
             else
-                this.bot = openAIChat(this.systemPrompt, ModelName=this.modelName, Temperature=0.6, ...
-                    StreamFun=this.streamFunction);
+                bot = openAIChat(systemPrompt, ...
+                    ModelName=modelName, Temperature=0.6, ...
+                    StreamFun=streamFunction, Tools=tools, ...
+                    BaseURL=settings.OpenAIBaseURL, ...
+                    APIKey=settings.OpenAIAPIKey);
             end
         end
     end

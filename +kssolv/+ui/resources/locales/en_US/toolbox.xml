@@ -77,7 +77,6 @@
         <entry key="OfficialSiteListItemLabel">Official Website</entry>
         <entry key="CheckUpdateListItemLabel">Check for updates</entry>
         <entry key="CheckLicenseListItemLabel">License</entry>
-        <entry key="TermsOfUseListItemLabel">Terms of use</entry>
         <entry key="AboutUsListItemLabel">About KSSOLV</entry>
         
         <entry key="OperationSectionTitle">Operation</entry>
@@ -180,6 +179,9 @@
         <entry key="CommandReferencesFileGenerated">Command reference file has been generated: \n   %s\n</entry>
         <entry key="CommandReferencesFileOpenError">File cannot be opened: </entry>
         <entry key="LLMServiceInitializationFailed">Failed to initialize LLM service.</entry>
+        <entry key="LLMConfigurationMissing">The OpenAI-compatible service configuration is incomplete. Review the API base URL and API key in Settings.</entry>
+        <entry key="LLMAddonUnavailable">Large Language Models (LLMs) with MATLAB version 4.9.0 or later is required. Install, update, or enable the Add-On and try again.</entry>
+        <entry key="LLMRequestFailed">The LLM request failed. Verify the service settings and connection, then try again.</entry>
 
         <!-- Document Group -->
         <entry key="DocumentStructureTitle">Structure</entry>

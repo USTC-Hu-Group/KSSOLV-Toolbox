@@ -1,0 +1,8 @@
+{
+  "name": "@kssolv/tree-table",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "build": "node ../../scripts/build-tree-table.mjs"
+  }
+}

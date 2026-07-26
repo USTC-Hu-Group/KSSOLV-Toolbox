@@ -1,0 +1,15 @@
+{
+  "name": "kssolv-frontend",
+  "private": true,
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "scripts": {
+    "build": "pnpm --recursive --if-present build",
+    "build:tree-table": "pnpm --filter @kssolv/tree-table build",
+    "build:workflow": "pnpm --filter @kssolv/workflow build",
+    "sync:runtime": "node scripts/sync-runtime.mjs",
+    "deploy": "pnpm build && pnpm sync:runtime"
+  },
+  "packageManager": "pnpm@11.17.0"
+}

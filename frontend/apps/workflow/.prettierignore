@@ -1,0 +1,8 @@
+# Node modules
+node_modules/
+
+# Build output
+dist/
+
+# pnpm lock file
+pnpm-lock.yaml

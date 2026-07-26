@@ -26,6 +26,9 @@ Untitled*
 StandaloneDesktopApp/
 Toolbox/
 Release/
+frontend/node_modules/
+frontend/apps/*/node_modules/
+frontend/apps/*/dist/
 
 # Environment variable configurations
 .env

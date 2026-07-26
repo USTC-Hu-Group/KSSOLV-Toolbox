@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Collapsible Tree Table</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+    }
+    .table-container {
+      display: flex;
+      justify-content: center;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%; /* 宽度为100%，以便于响应式变化 */
+      border-radius: 2px;
+      overflow: hidden;
+      font-size: 13px;
+      color: #565656;
+    }
+    th, td {
+      border: 1px solid #e0e0e0;
+      padding: 4px;
+      text-align: left;
+      white-space: nowrap; /* Prevent text wrapping */
+      overflow: hidden; /* Hide text that overflows */
+      text-overflow: ellipsis; /* Optional: add ellipsis for overflowed text */
+    }
+    th {
+      background-color: #eeeeee;
+      user-select: none; /* 禁止选择文字 */
+      position: relative;
+    }
+    tr {
+      user-select: none;
+      background-color: white;
+    }
+    tr.hidden {
+      display: none;
+    }
+    .selected {
+      background-color: #e2f1fb; /* 被选中行的背景色 */
+    }
+    .selected td {
+      background-color: #e2f1fb; /* 被选中单元格的更深背景色 */
+    }
+    .folder-icon {
+      background-image: url('assets/folder.svg');
+    }
+    .workflow-icon {
+      background-image: url("assets/workflow.svg");
+    }
+    .file-icon {
+      background-image: url("assets/file.svg");
+    }
+    .toggle-icon {
+      cursor: pointer;
+    }
+    .resize-handle {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 3px; /* width of the draggable area */
+      height: 100%;
+      cursor: col-resize;
+      background-color: transparent; /* or a color for visibility */
+    }
+    .icon-container {
+      display: inline-block;
+      width: 16px; /* Adjust the width as necessary */
+      height: 16px; /* Adjust the height as necessary */
+      vertical-align: middle; /* To align with the text */
+      background-size: contain; /* 或者使用 cover，根据需要调整 */
+      background-position: center; /* 使背景图像居中 */
+      background-repeat: no-repeat; /* 防止背景图像重复 */
+    }
+    .icon-container:hover {
+      opacity: 0.7;
+    }
+  </style>
+  <script>
+    // JSON data for test purpose
+    let tableData = `
+      {
+       "name": "Project(459fd9f4-4de9-4526-9063-cc6a77b13df6)",
+       "label": "Project",
+       "description": "None",
+       "type": "Project",
+       "children": [
+         {
+           "name": "Workflow(daf54931-2fd9-4030-9497-19e58da2d084)",
+           "label": "Workflow",
+           "description": "None",
+           "type": "Folder",
+           "children": [
+             {
+               "name": "Workflow1(0ab204c5-a502-43d3-830d-20b30949c448)",
+               "label": "Workflow1",
+               "description": "None",
+               "type": "Workflow",
+               "children": [],
+               "childrenCount": "0x0"
+             },
+             {
+               "name": "Workflow2(25d5350c-5ca1-4b6c-ac61-a6cb67c63c34)",
+               "label": "Workflow2",
+               "description": "None",
+               "type": "Workflow",
+               "children": [],
+               "childrenCount": "0x0"
+             }
+           ],
+           "childrenCount": "2x1"
+         },
+         {
+           "name": "Structure(746d2d80-116a-4cbc-b1a1-157abcccb386)",
+           "label": "Structure",
+           "description": "None",
+           "type": "Folder",
+           "children": [
+             {
+               "name": "Structure1(b1840013-26d9-49c5-bcdd-e38e16d843ef)",
+               "label": "Structure1",
+               "description": "None",
+               "type": "Structure",
+               "children": [],
+               "childrenCount": "0x0"
+             },
+             {
+               "name": "Structure2(25f9dc9d-157d-41a6-89ca-0a08aacc7afc)",
+               "label": "Structure2",
+               "description": "None",
+               "type": "Structure",
+               "children": [],
+               "childrenCount": "0x0"
+             }
+           ],
+           "childrenCount": "2x1"
+         }
+       ],
+       "childrenCount": "2x1"
+     }`
+    let debug = false;
+    let MATLAB;
+
+    // 找到给定节点的所有直接和递归子节点
+    function findAllChildNodes(treeData, nodeName) {
+      let allChildren = [];
+
+      // 递归搜索子节点的辅助函数
+      function searchChildren(node, isParentNode) {
+        if (node.name === nodeName || isParentNode) {
+          if (node.children) {
+            node.children.forEach(child => {
+              allChildren.push(child.name);
+              searchChildren(child, true);
+            });
+          }
+        } else if (node.children) {
+          node.children.forEach(child => searchChildren(child, false));
+        }
+      }
+
+      // 从树的根节点开始递归搜索
+      searchChildren(treeData[0], false);
+
+      return allChildren;
+    }
+
+    // 根据指定行的点击事件切换子节点的显示状态
+    function toggleChildren(event) {
+      const parentRowElement = event.target.closest('tr');
+      const parentName = parentRowElement.getAttribute('data-name');
+      const parentLevel = parentRowElement.getAttribute('data-level');
+
+      const allChildren = findAllChildNodes(tableData, parentName);
+      // debugLog(allChildren.toLocaleString());
+      const allRows = document.querySelectorAll('tr[data-name]');
+
+      const isCurrentlyExpanded = parentRowElement.classList.contains('expanded');
+      parentRowElement.classList.toggle('expanded', !isCurrentlyExpanded);
+
+      // 检查是否应该将 expanded 类添加到所有子节点
+      const shouldExpandChildren = !isCurrentlyExpanded && parentLevel === '0';
+
+      // 遍历所有子节点并设置显示或隐藏状态
+      allChildren.forEach(childName => {
+        const row = [...allRows].find(row => row.getAttribute('data-name') === childName);
+        if (row) {
+          const shouldHide = isCurrentlyExpanded; // 如果当前已经展开，则折叠，否则展开
+          row.classList.toggle('hidden', shouldHide);
+          row.style.display = shouldHide ? 'none' : '';
+
+          // 如果父节点级别为 0 且要展开子节点，将 expanded 类添加到每个子节点
+          if (shouldExpandChildren) {
+            row.classList.add('expanded');
+          }
+        }
+      });
+    }
+
+    // Function to toggle row selection
+    function toggleRowSelection(event) {
+      const allRows = document.querySelectorAll('tr');
+      allRows.forEach(row => {
+        row.classList.remove('selected'); // Remove the 'selected' class
+      });
+
+      const rowElement = event.target.closest('tr');
+      rowElement.classList.add('selected'); // Add the 'selected' class to the clicked row
+      debugLog(rowElement.innerText);
+    }
+
+    // Function to create the table rows
+    function createRow(data, level, parentId) {
+      const row = document.createElement('tr');
+      row.setAttribute('data-level', level);
+      row.setAttribute('data-name', data.name);
+      row.setAttribute('data-parent', parentId);
+      row.addEventListener('click', function (event) {
+        toggleRowSelection(event);
+        const rowElement = event.target.closest('tr');
+        if (typeof MATLAB !== 'undefined') {
+          MATLAB.sendEventToMATLAB("RowClicked", rowElement.getAttribute('data-name'));
+        }
+      });
+      row.addEventListener('dblclick', function (event) {
+        toggleRowSelection(event);
+        const rowElement = event.target.closest('tr');
+        if (typeof MATLAB !== 'undefined') {
+          MATLAB.sendEventToMATLAB("RowDoubleClicked", rowElement.getAttribute('data-name'));
+        }
+      });
+      row.addEventListener('contextmenu', function (event) {
+        // 阻止默认的上下文菜单显示
+        event.preventDefault();
+
+        // 执行toggleRowSelection函数
+        toggleRowSelection(event);
+      });
+
+      const nameCell = document.createElement('td');
+      nameCell.style.paddingLeft = `${20 * level + 10}px`;
+
+      if (data.type === "Folder" || data.type === "Project") {
+        // Create a container for the SVG to enable CSS styling and events
+        const folderIconContainer = document.createElement('div');
+        folderIconContainer.className = 'icon-container toggle-icon folder-icon';
+        folderIconContainer.setAttribute('data-target', data.name);
+        folderIconContainer.onclick = toggleChildren;
+
+        nameCell.appendChild(folderIconContainer);
+      } else {
+        const fileIconContainer = document.createElement('div');
+        fileIconContainer.className = 'icon-container file-icon';
+
+        nameCell.appendChild(fileIconContainer);
+      }
+
+      nameCell.append(` ${data.label}`);
+      row.classList.add('expanded');
+      row.appendChild(nameCell);
+
+      const sizeCell = document.createElement('td');
+      sizeCell.innerText = data.childrenCount || ''; // Added fallback for 'size' property
+      row.appendChild(sizeCell);
+
+      const typeCell = document.createElement('td');
+      typeCell.innerText = data.type;
+      row.appendChild(typeCell);
+
+      return row;
+    }
+
+    // Function to build the table
+    function buildTable(data, table, level = 0, parentId = '') {
+      data.forEach(item => {
+        const row = createRow(item, level, parentId);
+        table.appendChild(row);
+
+        if (item.children && item.children.length > 0) {
+          buildTable(item.children, table, level + 1, item.name);
+        }
+      });
+    }
+
+    // Function to resizable columns
+    function addResizableColumns() {
+      const thElements = document.querySelectorAll('th');
+      thElements.forEach((th, index) => {
+        // 显式地设定 width 属性，避免折叠行时，列的宽度会发生变化
+        th.style.width = window.getComputedStyle(th).width;
+
+        // Skip the last header cell
+        if (index === (thElements.length - 1)) return;
+
+        const resizeHandle = document.createElement('div');
+        resizeHandle.classList.add('resize-handle');
+
+        // 获取右侧相邻的 th 元素
+        const nextTh = th.nextElementSibling;
+        const totalWidth = th.offsetWidth + nextTh.offsetWidth;
+
+        resizeHandle.addEventListener('mousedown', e => {
+          let start = e.pageX;
+          let initialThWidth = parseFloat(window.getComputedStyle(th).width);
+          let initialNextThWidth = parseFloat(window.getComputedStyle(nextTh).width);
+
+          document.addEventListener('mousemove', onMouseMove);
+          document.addEventListener('mouseup', onMouseUp);
+
+          function onMouseMove(e) {
+            const diff = e.pageX - start;
+            if (diff < 0) {
+              const newThWidth = diff + initialThWidth;
+              if (newThWidth > 0) {
+                nextTh.style.width = '';
+                th.style.width = newThWidth + 'px';
+              }
+            } else {
+              const newNextThWidth = initialNextThWidth - diff;
+              if (newNextThWidth > 0) {
+                th.style.width = '';
+                nextTh.style.width = newNextThWidth + 'px';
+              }
+            }
+          }
+
+          function onMouseUp() {
+            thElements.forEach((th) => {
+              // 显式地设定 width 属性，避免折叠行时，列的宽度会发生变化
+              th.style.width = window.getComputedStyle(th).width;
+            });
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+          }
+        });
+
+        th.appendChild(resizeHandle);
+      });
+    }
+
+    // 使用退格键删除选中的行
+    function handleBackspaceKey() {
+      document.addEventListener('keydown', function(event) {
+        if (event.key === 'Backspace') {
+          const selectedRow = document.querySelector('tr.selected');
+          if (selectedRow) {
+            const itemType = selectedRow.querySelector('td:nth-child(3)').textContent;
+            if (itemType !== 'Project' && itemType !== 'Folder') {
+              const itemName = selectedRow.getAttribute('data-name');
+              selectedRow.remove();
+              if (typeof MATLAB !== 'undefined') {
+                MATLAB.sendEventToMATLAB("RowRemoved", itemName);
+              }
+              event.preventDefault(); // 防止页面导航等默认行为
+            }
+          }
+        }
+      });
+    }
+
+    // Building the table on window load
+    /*
+    window.onload = function() {
+      const table = document.getElementById('tree-table');
+      tableData = [JSON.parse(tableData)];
+      buildTable(tableData, table.children[1]);
+      addResizableColumns();
+      handleBackspaceKey();
+    };
+     */
+
+    function testAddItem() {
+      let eventData = `{
+       "itemName": "Workflow(daf54931-2fd9-4030-9497-19e58da2d084)",
+       "itemJSON": "{\\n  \\"name\\": \\"new(e9eebc15-a0a8-4408-abb3-218cb29ce01a)\\",\\n  \\"label\\": \\"new\\",\\n  \\"description\\": \\"None\\",\\n  \\"type\\": \\"Structure\\",\\n  \\"children\\": [],\\n  \\"childrenCount\\": \\"0x0\\"\\n}"
+     }`;
+      eventData = JSON.parse(eventData);
+      const itemName = eventData.itemName;
+      const itemObject = JSON.parse(eventData.itemJSON);
+      const table = document.getElementById('tree-table');
+      const tbody = table.querySelector('tbody');
+
+      // 查找父元素的行
+      const parentRow = tbody.querySelector(`tr[data-name="${itemName}"]`);
+      if (!parentRow) {
+        console.error('Parent item not found');
+        return;
+      }
+
+      const isExpanded = parentRow.classList.contains('expanded');
+      const parentLevel = parseInt(parentRow.getAttribute('data-level'));
+      const newRow = createRow(itemObject, parentLevel + 1, itemName);
+      newRow.classList.toggle('hidden', !isExpanded);
+
+      let insertAfterRow = parentRow;
+      let nextRow = parentRow.nextElementSibling;
+
+      while (nextRow && parseInt(nextRow.getAttribute('data-level')) > parentLevel) {
+        insertAfterRow = nextRow;
+        nextRow = nextRow.nextElementSibling;
+      }
+
+      insertAfterRow.after(newRow);
+
+      if (!isExpanded) {
+        toggleChildren({target: parentRow.querySelector('.toggle-icon')});
+      }
+
+      toggleRowSelection({target: newRow});
+    }
+
+    function createDebugElement() {
+      const debugElement = document.createElement('div');
+      debugElement.id = 'debugElement';
+      debugElement.style.position = 'fixed';
+      debugElement.style.bottom = '0';
+      debugElement.style.left = '0';
+      debugElement.style.width = '100%';
+      debugElement.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+      debugElement.style.color = 'white';
+      debugElement.style.padding = '10px';
+      debugElement.style.boxSizing = 'border-box';
+      debugElement.style.zIndex = '1000';
+      debugElement.style.fontSize = '12px';
+      document.body.appendChild(debugElement);
+    }
+
+    function debugLog(info) {
+      if (!debug) return;
+
+      let debugElement = document.getElementById('debugElement');
+      if (!debugElement) {
+        createDebugElement();
+        debugElement = document.getElementById('debugElement');
+      }
+
+      // 清空之前的内容
+      debugElement.innerHTML = '';
+
+      // 格式化输出内容
+      const formattedInfo = typeof info === 'object' ? JSON.stringify(info, null, 2) : info;
+      const logItem = document.createElement('div');
+      logItem.textContent = formattedInfo;
+      debugElement.appendChild(logItem);
+    }
+
+    // MATLAB execute this setup function
+    function setup(htmlComponent) {
+      MATLAB = htmlComponent;
+      htmlComponent.addEventListener("DataChanged", dataFromMATLABToHTML);
+      htmlComponent.addEventListener("updateTreeTableData", updateTreeTableData);
+      htmlComponent.addEventListener("enableDebugLog", () => { debug = true; });
+      htmlComponent.addEventListener("addItem", addItem);
+      htmlComponent.addEventListener("patchItem", patchItem);
+      htmlComponent.addEventListener("deleteItem", deleteItem);
+      handleBackspaceKey();
+
+      function dataFromMATLABToHTML(event) {
+        const table = document.getElementById('tree-table');
+        let text = htmlComponent.Data;
+        tableData = [JSON.parse(text)];
+        buildTable(tableData, table.children[1]);
+        addResizableColumns();
+      }
+
+      function updateTreeTableData(event) {
+        tableData = [JSON.parse(event.Data)];
+      }
+
+      function addItem(event) {
+        const eventData = JSON.parse(event.Data);
+        const itemName = eventData.itemName;
+        const itemObject = JSON.parse(eventData.itemJSON);
+        const table = document.getElementById('tree-table');
+        const tbody = table.querySelector('tbody');
+
+        const parentRow = tbody.querySelector(`tr[data-name="${itemName}"]`);
+        if (!parentRow) {
+          console.error('Parent item not found');
+          return;
+        }
+
+        const isExpanded = parentRow.classList.contains('expanded');
+        const parentLevel = parseInt(parentRow.getAttribute('data-level'));
+        const newRow = createRow(itemObject, parentLevel + 1, itemName);
+        newRow.classList.toggle('hidden', !isExpanded);
+
+        let insertAfterRow = parentRow;
+        let nextRow = parentRow.nextElementSibling;
+
+        while (nextRow && parseInt(nextRow.getAttribute('data-level')) > parentLevel) {
+          insertAfterRow = nextRow;
+          nextRow = nextRow.nextElementSibling;
+        }
+
+        insertAfterRow.after(newRow);
+
+        if (!isExpanded) {
+          toggleChildren({target: parentRow.querySelector('.toggle-icon')});
+        }
+
+        toggleRowSelection({target: newRow});
+        MATLAB.sendEventToMATLAB("RowClicked", itemObject.name);
+      }
+
+      function patchItem(event) {
+        const eventData = JSON.parse(event.Data);
+        const itemName = eventData.itemName;
+        const itemObject = JSON.parse(eventData.itemJSON);
+        const table = document.getElementById('tree-table');
+        const tbody = table.querySelector('tbody');
+
+        const rowToPatch = tbody.querySelector(`tr[data-name="${itemName}"]`);
+
+        if (!rowToPatch) {
+          console.error('Item not found in the table');
+          return;
+        }
+
+        const nameCell = rowToPatch.querySelector('td:nth-child(1)');
+        const sizeCell = rowToPatch.querySelector('td:nth-child(2)');
+        const typeCell = rowToPatch.querySelector('td:nth-child(3)');
+
+        // 清除并重新创建名字单元格的内容，以便保留图标
+        nameCell.innerHTML = ''; // 清空现有内容
+        const iconContainer = document.createElement('div');
+        iconContainer.className = (itemObject.type === "Folder" || itemObject.type === "Project") ?
+                'icon-container toggle-icon folder-icon' : 'icon-container file-icon';
+        nameCell.appendChild(iconContainer);
+        nameCell.append(` ${itemObject.label}`); // 添加新的标签文本
+
+        sizeCell.textContent = itemObject.childrenCount || '';
+        typeCell.textContent = itemObject.type;
+
+        rowToPatch.setAttribute('data-name', itemObject.name);
+
+        // 添加图标的事件处理，如果有子节点的话
+        if (itemObject.children && itemObject.children.length > 0) {
+          iconContainer.setAttribute('data-target', itemObject.name);
+          iconContainer.onclick = toggleChildren;
+        }
+      }
+
+      function deleteItem(event) {
+        const eventData = JSON.parse(event.Data);
+        const itemName = eventData.itemName;
+        const table = document.getElementById('tree-table');
+        const tbody = table.querySelector('tbody');
+
+        const rowToDelete = tbody.querySelector(`tr[data-name="${itemName}"]`);
+
+        if (rowToDelete) {
+          const itemType = rowToDelete.querySelector('td:nth-child(3)').textContent;
+          if (itemType !== 'Project' && itemType !== 'Folder') {
+            rowToDelete.remove();
+            if (typeof MATLAB !== 'undefined') {
+              MATLAB.sendEventToMATLAB("RowRemoved", itemName);
+            }
+          }
+        } else {
+          console.error('Item to delete not found: ', itemName);
+        }
+      }
+    }
+  </script>
+</head>
+<body>
+
+<div class="table-container">
+  <table id="tree-table">
+    <thead>
+    <tr>
+      <th>Name</th>
+      <th>Size</th>
+      <th>Type</th>
+    </tr>
+    </thead>
+    <tbody>
+    <!-- Table rows will be inserted here dynamically -->
+    </tbody>
+  </table>
+</div>
+
+</body>
+</html>

@@ -1,7 +1,7 @@
 classdef SymmetryAnalysisTask < kssolv.services.workflow.module.AbstractTask
     %SYMMETRYANALYSISTASK 对称性分析和用于能带计算的 K 点路径推荐任务。
 
-    % 该类依赖 +kssolv/+core/processsuite 包。
+    % 该类依赖 kssolv.analysis.seekpath 包。
 
     %   开发者：杨柳
     %   版权 2025 合肥瀚海量子科技有限公司
@@ -39,9 +39,11 @@ classdef SymmetryAnalysisTask < kssolv.services.workflow.module.AbstractTask
             taskOptions = this.optionsUI.options;
 
             structure = convertMoleculeToCell(context("molecule"));
-            result = seekpath.hpkot.getPath(structure, taskOptions.withTimeReversal, ...
+            result = kssolv.analysis.seekpath.hpkot.getPath(structure, taskOptions.withTimeReversal, ...
                 taskOptions.symmetryThreshold, taskOptions.symmetryPrecision, taskOptions.angleTolerance);
-            result.reciprocal_primitive_lattice = seekpath.utils.getReciprocalCellRows(context("molecule").supercell * 0.5291772083);
+            result.reciprocal_primitive_lattice = ...
+                kssolv.analysis.seekpath.utils.getReciprocalCellRows( ...
+                context("molecule").supercell * 0.5291772083);
 
             % 输出 context
             context("symmetry") = result;
@@ -56,4 +58,3 @@ atomicNumbers = [MoleculeObject.atomlist.anum]';
 
 structureCell = {cell, positions, atomicNumbers};
 end
-

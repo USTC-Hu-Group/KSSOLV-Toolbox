@@ -31,7 +31,6 @@ kssolv.ui.util.DataStorage.setData('LoadingKsFile', false);
 % 添加文件夹到 MATLAB 搜索路径
 try
     addpath(fullfile(KSSOLV_Toolbox.RootDirectory, '+kssolv', '+core', 'kssolv-3o'));
-    addpath(fullfile(KSSOLV_Toolbox.RootDirectory, '+kssolv', '+core', 'processsuite', 'seekpath'));
     evalc('KSSOLV.startup()');
 catch
 end

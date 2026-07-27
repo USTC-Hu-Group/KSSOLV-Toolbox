@@ -28,14 +28,14 @@ classdef BrillouinZonePlot < kssolv.services.workflow.module.visualization.chart
             if plot2D
                 this.b1 = this.b1(1, 1:2);
                 this.b2 = this.b2(1, 1:2);
-                this.facesData = seekpath.brillouinzone.get2DBrillouinZone(this.b1, this.b2);
+                this.facesData = kssolv.analysis.seekpath.brillouinzone.get2DBrillouinZone(this.b1, this.b2);
                 if this.withPath
                     this.plot2DBZWithPath();
                 else
                     this.plot2DBZ();
                 end
             else
-                this.facesData = seekpath.brillouinzone.getBrillouinZone(this.b1, this.b2, this.b3);
+                this.facesData = kssolv.analysis.seekpath.brillouinzone.getBrillouinZone(this.b1, this.b2, this.b3);
                 if this.withPath
                     this.plot3DBZWithPath();
                 else

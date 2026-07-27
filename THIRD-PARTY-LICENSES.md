@@ -11,8 +11,10 @@ Known third-party or separately licensed components include:
 - `+kssolv/+core/kssolv-3o/src/+geometryoptimization/external/hanso2_2/` and
   `+kssolv/+core/kssolv-3o/src/+geometryoptimization/external/nlcg1_0/`:
   GNU GPL v3 notices included in those directories.
-- `+kssolv/+core/processsuite/`: BSD 3-Clause License, with separate notices
-  for bundled components such as Spglib.
+- `+kssolv/+analysis/+seekpath/`: MIT License.
+- `+kssolv/+analysis/+spglib/`: the MATLAB wrapper is distributed under
+  the MIT License; bundled Spglib binaries retain the BSD 3-Clause notice
+  distributed in that directory.
 - `+kssolv/+ui/+components/+databrowser/@CommandWindow/html/`: separate
   notices for Highlight.js, markdown-it, and KaTeX.
 - `+kssolv/+ui/+components/+figuredocument/@MoleculeDisplay/3Dmol/`: the
@@ -36,7 +38,9 @@ KSSOLV Toolbox 原创部分，不替代或覆盖任何第三方组件自身的�
 - `+kssolv/+core/kssolv-3o/src/+geometryoptimization/external/hanso2_2/` 和
   `+kssolv/+core/kssolv-3o/src/+geometryoptimization/external/nlcg1_0/`：
   相应目录中包含 GNU GPL v3 许可证声明。
-- `+kssolv/+core/processsuite/`：采用 BSD 3-Clause 许可证，其中 Spglib 等内置组件具有独立的权利声明。
+- `+kssolv/+analysis/+seekpath/`：采用 MIT 许可证。
+- `+kssolv/+analysis/+spglib/`：MATLAB 封装采用 MIT 许可证；随附的
+  Spglib 二进制组件仍采用该目录内的 BSD 3-Clause 权利声明。
 - `+kssolv/+ui/+components/+databrowser/@CommandWindow/html/`：包含
   Highlight.js、markdown-it 和 KaTeX 的独立权利声明。
 - `+kssolv/+ui/+components/+figuredocument/@MoleculeDisplay/3Dmol/`：包含随

@@ -1,0 +1,485 @@
+{
+  "metadata": {
+    "api_count": 7,
+    "fixture_sha256": {
+      "executor_inputs/POTCAR_C2.gz": "bb580e2cad3f0dcbb317f97c1a05164ddf4d2b27ebcfa9c40caa16bd24a257e2",
+      "spin_polarized/DDEC6_even_tempered_atomic_spin_moments.xyz": "da74576fa370876606fae30db8bf2b4e8f4723caa105937b0aa23575201778de",
+      "spin_polarized/DDEC6_even_tempered_bond_orders.xyz": "6f3e76479ffdf7ff000868589b3d1107fcc3ce30a6440c65d381fcfb66caecae",
+      "spin_polarized/DDEC6_even_tempered_net_atomic_charges.xyz": "2f1334df1f4a1e9bb47351269084142fcf88bf5db06a29eee142a34a8f45b9df",
+      "spin_polarized/DDEC_atomic_Rcubed_moments.xyz": "2e4b7c21a0c2f7647bc47dc990bc85dc9299ee6e784f39d9c82421471df0e51c",
+      "spin_polarized/DDEC_atomic_Rfourth_moments.xyz": "40bf22a1e62cd1c1e0a6d27975e8f199711eced7feec7281e11d70352f130e7b",
+      "spin_polarized/DDEC_atomic_Rsquared_moments.xyz": "9eeed5cc8dc7f0e64822acb8d7258f694a0e3487464016baaa706ab2e403506c",
+      "spin_unpolarized/CHGCAR.gz": "3e4bc577eef06339d025696451e94861a4fd4b25d9a208a522599659d106c745",
+      "spin_unpolarized/DDEC6_even_tempered_bond_orders.xyz": "dd45a5513608b56d7393a0ade048a77c992d41ef676f697a64e97d275ba3b5a9",
+      "spin_unpolarized/DDEC6_even_tempered_net_atomic_charges.xyz": "4177221426df2a6f12d0911ec24de7346c5362ab838245171a5a9cca21ac37b9",
+      "spin_unpolarized/DDEC_atomic_Rcubed_moments.xyz": "514abfab213cc69f4b89e529970cd14bcbd13085103407e5d75dedc24ddee753",
+      "spin_unpolarized/DDEC_atomic_Rfourth_moments.xyz": "3bfbf104424dea1268e4399e7d6fd57f6ff82b9063470b70dffdd1bf16ba6a01",
+      "spin_unpolarized/DDEC_atomic_Rsquared_moments.xyz": "b4e5b0daf6c2449572b87309bec1a26650b9f80609022e773f3f24ccff81f435",
+      "spin_unpolarized/VASP_DDEC_analysis.output": "c83e8262b87b5513e06fd91230b1ec3febdf4051d8692c0a2255c4b4b8d00472",
+      "spin_unpolarized/overlap_populations.xyz": "acf4934f5f21e69f75466a9b8410e1df6d17a4c6af89ae51b784bfa32b80796b"
+    },
+    "module": "pymatgen.command_line.chargemol_caller",
+    "source": "pymatgen-core",
+    "tag": "v2026.7.24"
+  },
+  "spin_polarized": {
+    "bond_order_dict": {
+      "0": {
+        "bond_order_sum": 2.859091,
+        "bonded_to": [
+          {
+            "bond_order": 1.4295,
+            "direction": [
+              0,
+              0,
+              0
+            ],
+            "element": "O",
+            "index": 1,
+            "spin_polarization": 0.049
+          },
+          {
+            "bond_order": 1.4295,
+            "direction": [
+              0,
+              0,
+              0
+            ],
+            "element": "O",
+            "index": 2,
+            "spin_polarization": 0.049
+          }
+        ],
+        "element": "O"
+      },
+      "1": {
+        "bond_order_sum": 1.459862,
+        "bonded_to": [
+          {
+            "bond_order": 1.4295,
+            "direction": [
+              0,
+              0,
+              0
+            ],
+            "element": "O",
+            "index": 0,
+            "spin_polarization": 0.049
+          },
+          {
+            "bond_order": 0.0303,
+            "direction": [
+              0,
+              0,
+              0
+            ],
+            "element": "O",
+            "index": 2,
+            "spin_polarization": 0.0532
+          }
+        ],
+        "element": "O"
+      },
+      "2": {
+        "bond_order_sum": 1.459862,
+        "bonded_to": [
+          {
+            "bond_order": 1.4295,
+            "direction": [
+              0,
+              0,
+              0
+            ],
+            "element": "O",
+            "index": 0,
+            "spin_polarization": 0.049
+          },
+          {
+            "bond_order": 0.0303,
+            "direction": [
+              0,
+              0,
+              0
+            ],
+            "element": "O",
+            "index": 1,
+            "spin_polarization": 0.0532
+          }
+        ],
+        "element": "O"
+      }
+    },
+    "bond_order_sums": [
+      2.859091,
+      1.459862,
+      1.459862
+    ],
+    "cm5_charges": null,
+    "ddec_charges": [
+      0.482714,
+      0.258643,
+      0.258643
+    ],
+    "dipoles": [
+      [
+        -0.0,
+        0.0,
+        -0.127251
+      ],
+      [
+        0.0,
+        -0.027857,
+        -0.010944
+      ],
+      [
+        0.0,
+        0.027857,
+        -0.010944
+      ]
+    ],
+    "has_structure": false,
+    "natoms": null,
+    "rcubed_moments": [
+      16.171495,
+      17.265805,
+      17.265806
+    ],
+    "rfourth_moments": [
+      34.56327,
+      36.604245,
+      36.60425
+    ],
+    "rsquared_moments": [
+      9.165248,
+      9.779784,
+      9.779785
+    ],
+    "spin_moments": [
+      0.201595,
+      0.399203,
+      0.399203
+    ]
+  },
+  "spin_unpolarized": {
+    "bond_order_dict": {
+      "0": {
+        "bond_order_sum": 0.53992,
+        "bonded_to": [
+          {
+            "bond_order": 0.0882,
+            "direction": [
+              -1,
+              -1,
+              0
+            ],
+            "element": "Cl",
+            "index": 1,
+            "spin_polarization": 0.0
+          },
+          {
+            "bond_order": 0.0882,
+            "direction": [
+              -1,
+              0,
+              -1
+            ],
+            "element": "Cl",
+            "index": 1,
+            "spin_polarization": 0.0
+          },
+          {
+            "bond_order": 0.0882,
+            "direction": [
+              -1,
+              0,
+              0
+            ],
+            "element": "Cl",
+            "index": 1,
+            "spin_polarization": 0.0
+          },
+          {
+            "bond_order": 0.0882,
+            "direction": [
+              0,
+              -1,
+              -1
+            ],
+            "element": "Cl",
+            "index": 1,
+            "spin_polarization": 0.0
+          },
+          {
+            "bond_order": 0.0882,
+            "direction": [
+              0,
+              -1,
+              0
+            ],
+            "element": "Cl",
+            "index": 1,
+            "spin_polarization": 0.0
+          },
+          {
+            "bond_order": 0.0882,
+            "direction": [
+              0,
+              0,
+              -1
+            ],
+            "element": "Cl",
+            "index": 1,
+            "spin_polarization": 0.0
+          }
+        ],
+        "element": "Na"
+      },
+      "1": {
+        "bond_order_sum": 0.901058,
+        "bonded_to": [
+          {
+            "bond_order": 0.0882,
+            "direction": [
+              1,
+              1,
+              0
+            ],
+            "element": "Na",
+            "index": 0,
+            "spin_polarization": 0.0
+          },
+          {
+            "bond_order": 0.0882,
+            "direction": [
+              1,
+              0,
+              1
+            ],
+            "element": "Na",
+            "index": 0,
+            "spin_polarization": 0.0
+          },
+          {
+            "bond_order": 0.0882,
+            "direction": [
+              1,
+              0,
+              0
+            ],
+            "element": "Na",
+            "index": 0,
+            "spin_polarization": 0.0
+          },
+          {
+            "bond_order": 0.0882,
+            "direction": [
+              0,
+              1,
+              1
+            ],
+            "element": "Na",
+            "index": 0,
+            "spin_polarization": 0.0
+          },
+          {
+            "bond_order": 0.0882,
+            "direction": [
+              0,
+              1,
+              0
+            ],
+            "element": "Na",
+            "index": 0,
+            "spin_polarization": 0.0
+          },
+          {
+            "bond_order": 0.0882,
+            "direction": [
+              0,
+              0,
+              1
+            ],
+            "element": "Na",
+            "index": 0,
+            "spin_polarization": 0.0
+          },
+          {
+            "bond_order": 0.0306,
+            "direction": [
+              0,
+              0,
+              1
+            ],
+            "element": "Cl",
+            "index": 1,
+            "spin_polarization": 0.0
+          },
+          {
+            "bond_order": 0.0306,
+            "direction": [
+              0,
+              0,
+              -1
+            ],
+            "element": "Cl",
+            "index": 1,
+            "spin_polarization": 0.0
+          },
+          {
+            "bond_order": 0.0306,
+            "direction": [
+              0,
+              1,
+              -1
+            ],
+            "element": "Cl",
+            "index": 1,
+            "spin_polarization": 0.0
+          },
+          {
+            "bond_order": 0.0306,
+            "direction": [
+              0,
+              -1,
+              1
+            ],
+            "element": "Cl",
+            "index": 1,
+            "spin_polarization": 0.0
+          },
+          {
+            "bond_order": 0.0306,
+            "direction": [
+              0,
+              1,
+              0
+            ],
+            "element": "Cl",
+            "index": 1,
+            "spin_polarization": 0.0
+          },
+          {
+            "bond_order": 0.0306,
+            "direction": [
+              0,
+              -1,
+              0
+            ],
+            "element": "Cl",
+            "index": 1,
+            "spin_polarization": 0.0
+          },
+          {
+            "bond_order": 0.0306,
+            "direction": [
+              1,
+              -1,
+              0
+            ],
+            "element": "Cl",
+            "index": 1,
+            "spin_polarization": 0.0
+          },
+          {
+            "bond_order": 0.0306,
+            "direction": [
+              -1,
+              1,
+              0
+            ],
+            "element": "Cl",
+            "index": 1,
+            "spin_polarization": 0.0
+          },
+          {
+            "bond_order": 0.0306,
+            "direction": [
+              1,
+              0,
+              -1
+            ],
+            "element": "Cl",
+            "index": 1,
+            "spin_polarization": 0.0
+          },
+          {
+            "bond_order": 0.0306,
+            "direction": [
+              -1,
+              0,
+              1
+            ],
+            "element": "Cl",
+            "index": 1,
+            "spin_polarization": 0.0
+          },
+          {
+            "bond_order": 0.0306,
+            "direction": [
+              1,
+              0,
+              0
+            ],
+            "element": "Cl",
+            "index": 1,
+            "spin_polarization": 0.0
+          },
+          {
+            "bond_order": 0.0306,
+            "direction": [
+              -1,
+              0,
+              0
+            ],
+            "element": "Cl",
+            "index": 1,
+            "spin_polarization": 0.0
+          }
+        ],
+        "element": "Cl"
+      }
+    },
+    "bond_order_sums": [
+      0.53992,
+      0.901058
+    ],
+    "cm5_charges": [
+      0.420172,
+      -0.420172
+    ],
+    "ddec_charges": [
+      0.8432,
+      -0.8432
+    ],
+    "dipoles": [
+      [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      [
+        -0.0,
+        -0.0,
+        -0.0
+      ]
+    ],
+    "has_structure": true,
+    "natoms": [
+      1,
+      1
+    ],
+    "rcubed_moments": [
+      14.496002,
+      88.169236
+    ],
+    "rfourth_moments": [
+      37.648248,
+      277.371929
+    ],
+    "rsquared_moments": [
+      8.261378,
+      34.237274
+    ],
+    "spin_moments": null
+  }
+}

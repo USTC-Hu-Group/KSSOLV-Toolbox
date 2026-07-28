@@ -1,0 +1,22 @@
+{
+  "source": "pymatgen 2026.5.4",
+  "cross_section": {
+    "title": "XANES Feff9.6 Calculation for Fe in FeO unit cell",
+    "xlabel": "Energies (eV)",
+    "ylabel": "Absorption Cross-section",
+    "labels": [
+      "Single Fe K edge",
+      "Fe K edge in FeO"
+    ]
+  },
+  "dos_keys": [
+    "Total",
+    "Site 0 Fe",
+    "Site 1 O",
+    "Fe",
+    "O",
+    "s"
+  ],
+  "environment_status": 0,
+  "environment_transcript": "Chemical Environment package (ChemEnv)\nfrozen options\nThank you for using the ChemEnv package\n"
+}

@@ -1,0 +1,188 @@
+{
+  "materials_docs": [
+    "summary",
+    "core",
+    "elasticity",
+    "phonon",
+    "eos",
+    "similarity",
+    "xas",
+    "grain_boundaries",
+    "electronic_structure",
+    "tasks",
+    "substrates",
+    "surface_properties",
+    "robocrys",
+    "synthesis",
+    "magnetism",
+    "insertion_electrodes",
+    "conversion_electrodes",
+    "oxidation_states",
+    "provenance",
+    "alloys",
+    "absorption",
+    "chemenv",
+    "bonds",
+    "piezoelectric",
+    "dielectric"
+  ],
+  "method_calls": [
+    {
+      "method": "GET",
+      "mp_decode": true,
+      "payload": {
+        "material_ids": "mp-1,mp-2",
+        "nsites": "1,4"
+      },
+      "sub_url": "materials/summary/?_fields=material_id,formula_pretty&_all_fields=False",
+      "timeout": 60
+    },
+    {
+      "method": "GET",
+      "mp_decode": true,
+      "payload": {
+        "formula": "Fe2O3"
+      },
+      "sub_url": "materials/summary/?_all_fields=True",
+      "timeout": 60
+    },
+    {
+      "method": "GET",
+      "mp_decode": true,
+      "payload": {
+        "formula": "Fe2O3"
+      },
+      "sub_url": "materials/summary/?_all_fields=True",
+      "timeout": 60
+    },
+    {
+      "method": "GET",
+      "mp_decode": true,
+      "payload": {
+        "formula": "Al2O3"
+      },
+      "sub_url": "materials/summary/?_fields=material_id",
+      "timeout": 60
+    },
+    {
+      "method": "GET",
+      "mp_decode": true,
+      "payload": {
+        "material_ids": "mp-19770"
+      },
+      "sub_url": "materials/summary/?_fields=formula_pretty",
+      "timeout": 60
+    },
+    {
+      "method": "GET",
+      "mp_decode": true,
+      "payload": {
+        "formula": "Al2O3"
+      },
+      "sub_url": "materials/summary/?_fields=material_id",
+      "timeout": 60
+    },
+    {
+      "method": "GET",
+      "mp_decode": true,
+      "payload": null,
+      "sub_url": "materials/summary/?formula=Mn3O4&_all_fields=false&_fields=structure",
+      "timeout": 60
+    },
+    {
+      "method": "GET",
+      "mp_decode": true,
+      "payload": null,
+      "sub_url": "materials/summary/?chemsys=Li-Fe-O&_all_fields=false&_fields=initial_structure",
+      "timeout": 60
+    },
+    {
+      "method": "GET",
+      "mp_decode": true,
+      "payload": null,
+      "sub_url": "materials/summary?material_ids=mp-1&_fields=structure",
+      "timeout": 60
+    },
+    {
+      "method": "GET",
+      "mp_decode": true,
+      "payload": null,
+      "sub_url": "materials/summary/mp-1/?_fields=initial_structures",
+      "timeout": 60
+    },
+    {
+      "method": "GET",
+      "mp_decode": true,
+      "payload": null,
+      "sub_url": "materials/thermo/?_fields=entries&chemsys=Fe-Li-O",
+      "timeout": 60
+    },
+    {
+      "method": "GET",
+      "mp_decode": true,
+      "payload": null,
+      "sub_url": "materials/thermo/?_fields=entries&chemsys=Fe2O3,Fe-Li-O",
+      "timeout": 60
+    },
+    {
+      "method": "GET",
+      "mp_decode": true,
+      "payload": null,
+      "sub_url": "materials/thermo/?_fields=entries&chemsys=Li,Fe,O,Fe-Li,Li-O,Fe-O,Fe-Li-O",
+      "timeout": 60
+    }
+  ],
+  "pagination": {
+    "error": "REST query returned with error status code 503",
+    "paged_calls": [
+      {
+        "params": {
+          "formula": "Fe"
+        },
+        "timeout": 60,
+        "url": "https://api.materialsproject.org/materials/summary/?_all_fields=True&_per_page=1000&_page=1",
+        "verify": true
+      },
+      {
+        "params": {
+          "formula": "Fe"
+        },
+        "timeout": 60,
+        "url": "https://api.materialsproject.org/materials/summary/?_all_fields=True&_per_page=1000&_page=2",
+        "verify": true
+      }
+    ],
+    "paged_count": 1002,
+    "retry_calls": [
+      {
+        "params": null,
+        "timeout": 60,
+        "url": "https://api.materialsproject.org/materials/core/?_all_fields=True&_per_page=1000&_page=1",
+        "verify": true
+      },
+      {
+        "params": null,
+        "timeout": 60,
+        "url": "https://api.materialsproject.org/materials/core/?_all_fields=True",
+        "verify": true
+      }
+    ],
+    "retry_data": [
+      {
+        "material_id": "mp-13"
+      }
+    ]
+  },
+  "s3": {
+    "calls": [
+      {
+        "timeout": 7,
+        "url": "https://s3.us-east-1.amazonaws.com/materialsproject-parsed/ph-dos/dfpt/mp-661.json.gz"
+      }
+    ],
+    "value": {
+      "marker": 17
+    }
+  },
+  "source": "pymatgen 2026.5.4"
+}

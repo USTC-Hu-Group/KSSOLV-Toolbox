@@ -1,0 +1,30 @@
+{
+  "source": "pymatgen-core 2026.7.24 with deterministic ICET seam",
+  "composition": {
+    "A": {
+      "Mg": 0.5,
+      "Al": 0.5
+    },
+    "B": {
+      "O": 1.0
+    }
+  },
+  "cutoffs_list": [
+    5,
+    3
+  ],
+  "sqs_method": "enumeration",
+  "sqs_kwargs": {
+    "optimality_weight": null,
+    "tol": 1e-05,
+    "include_smaller_cells": false,
+    "pbc": [
+      true,
+      true,
+      true
+    ]
+  },
+  "sqs_vector": [
+    0.5
+  ]
+}

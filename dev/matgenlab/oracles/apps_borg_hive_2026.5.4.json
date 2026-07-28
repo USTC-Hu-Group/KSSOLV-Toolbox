@@ -1,0 +1,367 @@
+{
+  "drone_dicts": {
+    "gaussian": {
+      "@class": "GaussianToComputedEntryDrone",
+      "@module": "pymatgen.apps.borg.hive",
+      "init_args": {
+        "data": [
+          "corrections",
+          "properly_terminated",
+          "stationary_type"
+        ],
+        "file_extensions": [
+          ".log"
+        ],
+        "inc_structure": false,
+        "parameters": [
+          "basis_set",
+          "charge",
+          "functional",
+          "route_parameters",
+          "spin_multiplicity"
+        ]
+      }
+    },
+    "gaussian_structure": {
+      "@class": "GaussianToComputedEntryDrone",
+      "@module": "pymatgen.apps.borg.hive",
+      "init_args": {
+        "data": [
+          "properly_terminated",
+          "stationary_type"
+        ],
+        "file_extensions": [
+          ".log"
+        ],
+        "inc_structure": true,
+        "parameters": [
+          "basis_set",
+          "charge",
+          "functional",
+          "route_parameters",
+          "spin_multiplicity"
+        ]
+      }
+    },
+    "simple": {
+      "@class": "SimpleVaspToComputedEntryDrone",
+      "@module": "pymatgen.apps.borg.hive",
+      "init_args": {
+        "inc_structure": true
+      }
+    },
+    "vasp": {
+      "@class": "VaspToComputedEntryDrone",
+      "@module": "pymatgen.apps.borg.hive",
+      "init_args": {
+        "data": [
+          "efermi"
+        ],
+        "inc_structure": false,
+        "parameters": [
+          "hubbards",
+          "is_hubbard",
+          "potcar_spec",
+          "potcar_symbols",
+          "run_type"
+        ]
+      }
+    },
+    "vasp_structure": {
+      "@class": "VaspToComputedEntryDrone",
+      "@module": "pymatgen.apps.borg.hive",
+      "init_args": {
+        "data": [],
+        "inc_structure": true,
+        "parameters": [
+          "hubbards",
+          "is_hubbard",
+          "potcar_spec",
+          "potcar_symbols",
+          "run_type"
+        ]
+      }
+    }
+  },
+  "entries": {
+    "gaussian": {
+      "class": "ComputedEntry",
+      "data": {
+        "corrections": {},
+        "properly_terminated": true,
+        "stationary_type": "Minimum"
+      },
+      "energy": -39.9768775602,
+      "formula": "H4C",
+      "parameters": {
+        "basis_set": "3-21G",
+        "charge": 0,
+        "functional": "hf",
+        "route_parameters": {
+          "opt": null
+        },
+        "spin_multiplicity": 1
+      }
+    },
+    "gaussian_structure": {
+      "cart_coords": [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.625213,
+          0.625213,
+          0.625213
+        ],
+        [
+          -0.625213,
+          -0.625213,
+          0.625213
+        ],
+        [
+          -0.625213,
+          0.625213,
+          -0.625213
+        ],
+        [
+          0.625213,
+          -0.625213,
+          -0.625213
+        ]
+      ],
+      "class": "ComputedStructureEntry",
+      "data": {
+        "properly_terminated": true,
+        "stationary_type": "Minimum"
+      },
+      "energy": -39.9768775602,
+      "formula": "H4C",
+      "parameters": {
+        "basis_set": "3-21G",
+        "charge": 0,
+        "functional": "hf",
+        "route_parameters": {
+          "opt": null
+        },
+        "spin_multiplicity": 1
+      }
+    },
+    "simple_structure": {
+      "class": "ComputedStructureEntry",
+      "data": {
+        "delta_volume": 0.728
+      },
+      "energy": -7.123456789,
+      "formula": "C",
+      "frac_coords": [
+        [
+          0.25,
+          0.25,
+          0.25
+        ]
+      ],
+      "lattice": [
+        [
+          6.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          6.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          6.0
+        ]
+      ],
+      "parameters": {
+        "hubbards": {},
+        "is_hubbard": false,
+        "potcar_spec": [
+          {
+            "hash": null,
+            "summary_stats": {
+              "keywords": {
+                "data": [
+                  "localpart",
+                  "gradientcorrectionsusedforxc",
+                  "corecharge-density(partial)",
+                  "kineticenergydensity(partial)",
+                  "atomicpseudocharge-density",
+                  "nonlocalpart",
+                  "reciprocalspacepart",
+                  "realspacepart",
+                  "reciprocalspacepart",
+                  "realspacepart",
+                  "nonlocalpart",
+                  "reciprocalspacepart",
+                  "realspacepart",
+                  "reciprocalspacepart",
+                  "realspacepart",
+                  "pawradialsets",
+                  "(5e20.12)",
+                  "augmentationcharges(nonsperical)",
+                  "uccopanciesinatom",
+                  "grid",
+                  "aepotential",
+                  "corecharge-density",
+                  "kineticenergy-density",
+                  "mkineticenergy-densitypseudized",
+                  "localpseudopotentialcore",
+                  "pspotentialvalenceonly",
+                  "corecharge-density(pseudized)",
+                  "pseudowavefunction",
+                  "aewavefunction",
+                  "pseudowavefunction",
+                  "aewavefunction",
+                  "pseudowavefunction",
+                  "aewavefunction",
+                  "pseudowavefunction",
+                  "aewavefunction",
+                  "endofdataset"
+                ],
+                "header": [
+                  "dexc",
+                  "eatom",
+                  "eaug",
+                  "enmax",
+                  "enmin",
+                  "icore",
+                  "iunscr",
+                  "lcor",
+                  "lexch",
+                  "lpaw",
+                  "lultra",
+                  "ndata",
+                  "orbitaldescriptions",
+                  "orbitals",
+                  "pomass",
+                  "raug",
+                  "rcore",
+                  "rdep",
+                  "rdept",
+                  "rmax",
+                  "rpacor",
+                  "rrkj",
+                  "rwigs",
+                  "step",
+                  "titel",
+                  "vrhfin",
+                  "zval",
+                  "nentries"
+                ]
+              },
+              "stats": {
+                "data": {
+                  "ABSMEAN": 111.60721363976256,
+                  "MAX": 38332.8804076,
+                  "MEAN": 88.56566669109269,
+                  "MIN": -1781.0705,
+                  "VAR": 1749764.4044817348
+                },
+                "header": {
+                  "ABSMEAN": 21.94674493902439,
+                  "MAX": 644.873,
+                  "MEAN": 21.94674493902439,
+                  "MIN": 0.0,
+                  "VAR": 5952.980070808864
+                }
+              }
+            },
+            "symbol": "C",
+            "titel": "PAW_PBE C 08Apr2002"
+          }
+        ],
+        "run_type": null
+      }
+    },
+    "vasp": {
+      "class": "ComputedEntry",
+      "data": {
+        "efermi": -6.62148548
+      },
+      "energy": 0.5559329,
+      "formula": "Xe",
+      "parameters": {
+        "hubbards": {},
+        "is_hubbard": false,
+        "potcar_spec": [
+          {
+            "hash": null,
+            "summary_stats": {},
+            "titel": "PAW_PBE Xe 07Sep2000"
+          }
+        ],
+        "potcar_symbols": [
+          "PAW_PBE Xe 07Sep2000"
+        ],
+        "run_type": "PBEsol"
+      }
+    },
+    "vasp_structure": {
+      "class": "ComputedStructureEntry",
+      "data": {},
+      "energy": 0.5559329,
+      "formula": "Xe",
+      "frac_coords": [
+        [
+          -0.0,
+          -0.0,
+          0.0
+        ]
+      ],
+      "lattice": [
+        [
+          -4.6189141,
+          0.0,
+          1.2e-07
+        ],
+        [
+          0.0,
+          -4.6189141,
+          1.2e-07
+        ],
+        [
+          2.30945789,
+          2.30945789,
+          3.29565321
+        ]
+      ],
+      "parameters": {
+        "hubbards": {},
+        "is_hubbard": false,
+        "potcar_spec": [
+          {
+            "hash": null,
+            "summary_stats": {},
+            "titel": "PAW_PBE Xe 07Sep2000"
+          }
+        ],
+        "potcar_symbols": [
+          "PAW_PBE Xe 07Sep2000"
+        ],
+        "run_type": "PBEsol"
+      }
+    }
+  },
+  "source": "pymatgen 2026.5.4",
+  "strings": {
+    "gaussian": "GaussianToComputedEntryDrone",
+    "simple": "SimpleVaspToComputedEntryDrone",
+    "vasp": "VaspToComputedEntryDrone"
+  },
+  "valid_paths": {
+    "gaussian": [
+      "methane.log",
+      "job.out"
+    ],
+    "vasp": [
+      "+fixtures"
+    ]
+  }
+}

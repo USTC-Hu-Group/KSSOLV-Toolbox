@@ -1,0 +1,25 @@
+{
+  "dispatch_symmetry_stdout": "Filename                                                                                               Int Symbol      Int number  Hall\n-----------------------------------------------------------------------------------------------------  ------------  ------------  --------\n<FIXTURES>/Li2O.cif  Fm-3m                  225  -F 4 2 3\n",
+  "element_group_stdout": "Group 0: \n- <FIXTURES>/Li2O.cif (Li8 O4)\n\nGroup 1: \n- <FIXTURES>/Li.cif (Li1)\n\n",
+  "fixture_formulas": {
+    "Li.cif": "Li1",
+    "Li2O.cif": "Li8 O4"
+  },
+  "localenv": {
+    "first_site_distances": [
+      1.996188555723131,
+      1.996188555723131,
+      1.9961885557231314,
+      1.9961885557231314
+    ],
+    "stdout": "Analyzing <FIXTURES>/Li2O.cif...\n  #  Center    Ligand    Dists\n---  --------  --------  --------------------------\n  0  Li        O         1.996, 1.996, 1.996, 1.996\n  1  Li        O         1.996, 1.996, 1.996, 1.996\n  2  Li        O         1.996, 1.996, 1.996, 1.996\n  3  Li        O         1.996, 1.996, 1.996, 1.996\n  4  Li        O         1.996, 1.996, 1.996, 1.996\n  5  Li        O         1.996, 1.996, 1.996, 1.996\n  6  Li        O         1.996, 1.996, 1.996, 1.996\n  7  Li        O         1.996, 1.996, 1.996, 1.996\n"
+  },
+  "pymatgen_version": "2026.5.4",
+  "species_group_stdout": "Group 0: \n- <FIXTURES>/Li.cif (Li1)\n\nGroup 1: \n- <FIXTURES>/Li2O.cif (Li8 O4)\n\n",
+  "symmetry": {
+    "hall": "-F 4 2 3",
+    "international": "Fm-3m",
+    "number": 225,
+    "stdout": "Filename                                                                                               Int Symbol      Int number  Hall\n-----------------------------------------------------------------------------------------------------  ------------  ------------  --------\n<FIXTURES>/Li2O.cif  Fm-3m                  225  -F 4 2 3\n"
+  }
+}

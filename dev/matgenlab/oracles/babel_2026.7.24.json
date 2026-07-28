@@ -1,0 +1,41 @@
+{
+  "pymatgen_core_version": "2026.7.24",
+  "source": "pymatgen-core test-files/io",
+  "methane": {
+    "formula": "H4 C1",
+    "atomic_numbers": [
+      6,
+      1,
+      1,
+      1,
+      1
+    ],
+    "carbon_hydrogen_distances": [
+      1.089,
+      1.0889999563640946,
+      1.0890004071739368,
+      1.0890004071739368
+    ]
+  },
+  "ethane_pdb": {
+    "formula": "H6 C2",
+    "atom_count": 8,
+    "first_coordinate": [
+      -0.752,
+      0.001,
+      -0.141
+    ],
+    "last_coordinate": [
+      1.24,
+      0.737,
+      -0.496
+    ]
+  },
+  "multiple_xyz": {
+    "frame_count": 302,
+    "first_formula": "Mg1 H28 C14 S2 N1 O10 F6",
+    "last_formula": "Mg1 H28 C14 S2 N1 O10 F6",
+    "first_atom_count": 62,
+    "last_atom_count": 62
+  }
+}

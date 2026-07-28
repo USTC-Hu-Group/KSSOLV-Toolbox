@@ -1,0 +1,25 @@
+{
+  "upstream": "pymatgen-core 2026.7.24",
+  "structure": {
+    "edges": 2,
+    "coordination": 4,
+    "types": {
+      "H-H": [1.0, 3.0]
+    },
+    "stats": {
+      "all_weights": [1.0, 3.0],
+      "min": 1.0,
+      "max": 3.0,
+      "mean": 2.0,
+      "variance": 2.0
+    },
+    "environments": ["H-H(4)"],
+    "anonymous": ["A-A(4)"]
+  },
+  "molecule": {
+    "coordination": 2,
+    "ring": [[6, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6]],
+    "fragment_groups": 5,
+    "fragment_count": 5
+  }
+}

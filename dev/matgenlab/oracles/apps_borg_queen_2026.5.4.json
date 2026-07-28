@@ -1,0 +1,10 @@
+{
+  "pymatgen_version": "2026.5.4",
+  "serial": {
+    "count": 1,
+    "energy": 0.5559329,
+    "formula": "Xe"
+  },
+  "loaded_count": 1,
+  "loaded_energy": -269.38319884
+}

@@ -20,7 +20,8 @@ data/
 .buildtool/
 
 # Debug scipts
-dev/
+dev/*
+!dev/matgenlab/
 Untitled*
 
 # Build Output

@@ -1,0 +1,14 @@
+{
+  "baseline_date": "2026-07-24",
+  "repository": "https://github.com/materialsproject/pymatgen-core.git",
+  "tag": "v2026.7.24",
+  "commit": "c71faa7a95df9bbcd20cb3d14ff112d0f72d8e39",
+  "source_test": "tests/core/test_structure_matcher.py",
+  "linear_assignment_min_costs": [194, 125, 110, 48],
+  "supercell_rms": [0.18945739143213536, 0.278227008148232],
+  "supercell_matrix": [[0, 1, 1], [1, 0, 1], [-1, -1, 1]],
+  "supercell_translation": [-0.32719651, -0.33944587, -0.33324195],
+  "supercell_mapping_matlab": [1, 2, 3, 9, 12, 11, 4, 8, 7, 5, 6, 10],
+  "anonymous_max_distances": [0, 0.00107250640163363],
+  "rms_vs_minimax": [0.282842712474619, 0.4]
+}

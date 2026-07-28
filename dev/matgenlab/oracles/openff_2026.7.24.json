@@ -1,0 +1,60 @@
+{
+  "source": "pymatgen-core 2026.7.24",
+  "inferred": {
+    "CCO.xyz": {
+      "n_atoms": 9,
+      "n_bonds": 8
+    },
+    "FEC-r.xyz": {
+      "n_atoms": 10,
+      "n_bonds": 10
+    },
+    "FEC-s.xyz": {
+      "n_atoms": 10,
+      "n_bonds": 10
+    },
+    "PF6.xyz": {
+      "n_atoms": 7,
+      "n_bonds": 6
+    }
+  },
+  "atom_maps_zero_based": {
+    "CCO.xyz": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+    "FEC-r.xyz": [0, 1, 2, 3, 4, 6, 7, 9, 8, 5],
+    "FEC-s.xyz": [0, 1, 2, 3, 4, 6, 7, 9, 8, 5],
+    "PF6.xyz": [1, 0, 2, 3, 4, 5, 6]
+  },
+  "pf6_roundtrip": {
+    "n_atoms": 7,
+    "n_bonds": 6,
+    "total_charge": -1
+  },
+  "cco_conformer": {
+    "n_conformers": 1,
+    "atom_map_zero_based": [0, 1, 2, 3, 4, 5, 6, 7, 8]
+  },
+  "cco_partial_charges": [
+    -0.2894,
+    0.0095,
+    -0.5882,
+    0.0915,
+    0.0915,
+    0.0915,
+    0.0939,
+    0.0939,
+    0.4058
+  ],
+  "li_partial_charges": [1.0],
+  "fixture_sha256": {
+    "CCO.npy": "347330a6cc8230a205f6d5f9819838b48ba1825322e90b6010b68e396d3cef9a",
+    "CCO.xyz": "a2bc7d4525a2b64e12d44d3831d24001488ad5ba8bca4666d15cc273c92adcbb",
+    "FEC-r.xyz": "fe28f5afc873507ef3d62c72795ebe2b584284ce662f89b9a62fa4e2e51f8894",
+    "FEC-s.xyz": "eaae73da8951d1aee838ca4e09515566cbe4f521f8d4fab9bce8ec6af9d23918",
+    "FEC.npy": "81e894aaabcc302f394eba54cec130ea2a730dfd727deff06a81904c5ff9a03f",
+    "FEC_bad.npy": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "Li.npy": "fc44e6cab97678b988677b1e24dc073c80b029ccf6566c7bc1bd9ec1061a6106",
+    "Li.xyz": "3444cf3ebd52f063695438cf091f53503b19dcfee1b16ea933a0f2dc47a8f05b",
+    "PF6.npy": "30346f01ccfb4e45ef4b3eee35ee9b5c26db18ca24ca03f8103fb6218e75d91f",
+    "PF6.xyz": "53703d84d9551e6eda161f641f2c70412a21206525dc3092216dc4b184aeab2f"
+  }
+}

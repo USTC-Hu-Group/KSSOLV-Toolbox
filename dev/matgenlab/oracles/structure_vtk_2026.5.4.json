@@ -1,0 +1,77 @@
+{
+  "metadata": {
+    "distribution": "pymatgen",
+    "tag": "v2026.5.4",
+    "commit": "8495e941504cd5123701635b6572942c78d9589c",
+    "module": "pymatgen.vis.structure_vtk",
+    "api_count": 38,
+    "graphics_backend": "MATLAB graphics"
+  },
+  "upstream_without_vtk": {
+    "StructureVis": {
+      "type": "RuntimeError",
+      "message": "Visualization requires the installation of VTK with Python bindings."
+    },
+    "MultiStructuresVis": {
+      "type": "RuntimeError",
+      "message": "Visualization requires the installation of VTK with Python bindings."
+    }
+  },
+  "vesta_colors_255": {
+    "Na": [249, 220, 60],
+    "Cl": [49, 252, 2],
+    "Fe": [181, 113, 0],
+    "O": [254, 3, 0]
+  },
+  "site_geometry": {
+    "Na_plus_ionic_radius": 1.16,
+    "Na_plus_visual_radius": 0.20232,
+    "Cl_minus_ionic_radius": 1.67,
+    "Cl_minus_visual_radius": 0.20334
+  },
+  "partial_sphere": {
+    "theta_resolution": 18,
+    "phi_resolution": 18,
+    "grid_size": [19, 19],
+    "center": [1, 2, 3],
+    "radius": 2,
+    "start": 0,
+    "end": 180,
+    "equator_samples": [[3, 2, 3], [1, 4, 3], [-1, 2, 3]]
+  },
+  "cubic_nacl_scene": {
+    "formula": "Na1 Cl1",
+    "num_sites": 2,
+    "camera_position": [14, 2, 2],
+    "camera_target": [2, 2, 2],
+    "camera_up": [0, 0, 4],
+    "kind_counts": {
+      "partial_sphere": 2,
+      "site": 2,
+      "text": 4,
+      "line": 15,
+      "help": 1
+    },
+    "scene_count": 24
+  },
+  "faces": {
+    "triangle_count_for_triangle": 1,
+    "triangle_count_for_quad": 4,
+    "invalid_face_error": "Number of points for a face should be >= 3"
+  },
+  "animated_movie_options": {
+    "time_between_frames": 0.1,
+    "looping_type": "restart",
+    "number_of_loops": 1,
+    "time_between_loops": 1.0,
+    "unknown_option_error": "Wrong option for animated movie",
+    "bad_looping_type_error": "\"looping_type\" should be \"restart\" or \"palindrome\""
+  },
+  "official_fixture": {
+    "filename": "LiFePO4.cif",
+    "sha256": "b42244a2350f503eee314998a14c155e047d9cba0949f15edd29d509bfabe36f",
+    "formula": "Li4 Fe4 P4 O16",
+    "reduced_formula": "LiFePO4",
+    "num_sites": 28
+  }
+}

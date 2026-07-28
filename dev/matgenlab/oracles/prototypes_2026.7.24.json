@@ -1,0 +1,51 @@
+{
+  "baseline_date": "2026-07-24",
+  "pymatgen_version": "2026.5.4",
+  "pymatgen_commit": "8495e941504cd5123701635b6572942c78d9589c",
+  "source_test": "tests/analysis/test_prototypes.py",
+  "simple_labels": [
+    "AB_cF8_225_a_b:Cl-Na",
+    "AB_cP2_221_a_b:Cl-Cs",
+    "AB_cF8_216_a_c:O-Zn",
+    "AB_hP4_186_b_b:O-Zn",
+    "A3BC_cP5_221_c_a_b:O-Sr-Ti",
+    "AB3_tP4_115_a_cg:Al-Fe"
+  ],
+  "edge_invalid": "Invalid WP multiplicities - A2B3C_hP6_191_c_2g_a:Pa-Tc-U, expected U(PaTc3)2 to be UPa2Tc3",
+  "edge_recovered": "A2B3C_hP6_191_c_g_a:Pa-Tc-U",
+  "prototype_cases": [
+    {
+      "label": "ABC6D2_mC40_15_e_e_3f_f:Ca-Fe-O-Si",
+      "prototype": "ABC2D6_mC40_15_e_e_f_3f"
+    },
+    {
+      "label": "ABC6D2_mC40_15_e_a_3f_f:Ca-Fe-O-Si",
+      "prototype": "ABC2D6_mC40_15_a_e_f_3f"
+    },
+    {
+      "label": "A_tI8_141_ea:Ca",
+      "prototype": "A_tI8_141_ae"
+    },
+    {
+      "label": "A4BC20D2_oC108_41_2b_a_10b_b:B-Ca-H-N",
+      "prototype": "AB2C4D20_oC108_41_a_b_2b_10b"
+    }
+  ],
+  "assignment_cases": [
+    {
+      "aflow": "AB2C3D4_tP10_115_a_g_bg_cdg",
+      "composition": "Ce2Al3GaPd4",
+      "labels": [
+        "A3B2CD4_tP10_115_ag_g_b_cdg:Al-Ce-Ga-Pd"
+      ]
+    },
+    {
+      "aflow": "ABC3_oP20_62_a_c_cd",
+      "composition": "YbNiO3",
+      "labels": [
+        "AB3C_oP20_62_c_cd_a:Ni-O-Yb",
+        "AB3C_oP20_62_a_cd_c:Ni-O-Yb"
+      ]
+    }
+  ]
+}

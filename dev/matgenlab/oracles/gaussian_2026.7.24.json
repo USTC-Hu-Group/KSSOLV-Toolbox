@@ -1,0 +1,406 @@
+{
+  "provenance": {
+    "distribution": "pymatgen-core",
+    "tag": "v2026.7.24",
+    "commit": "c71faa7a95df9bbcd20cb3d14ff112d0f72d8e39",
+    "module": "pymatgen.io.gaussian"
+  },
+  "route_cases": [
+    {
+      "input": "#P HF/6-31G(d) SCF=Tight SP",
+      "functional": "HF",
+      "basis_set": "6-31G(d)",
+      "parameters": {
+        "SCF": "Tight",
+        "SP": null
+      },
+      "dieze_tag": "#P"
+    },
+    {
+      "input": "#n B3LYP/6-31+G** integral=(grid=UltraFine) opt=(Z-Matrix,maxcycles=80,tight) test",
+      "functional": "B3LYP",
+      "basis_set": "6-31+G**",
+      "parameters": {
+        "integral": {
+          "grid": "UltraFine"
+        },
+        "opt": {
+          "Z-Matrix": null,
+          "maxcycles": "80",
+          "tight": null
+        },
+        "test": null
+      },
+      "dieze_tag": "#n"
+    },
+    {
+      "input": "# chkbasis geom=allcheck guess=(only,read) pop=naturalorbital",
+      "functional": null,
+      "basis_set": null,
+      "parameters": {
+        "chkbasis": null,
+        "geom": "allcheck",
+        "guess": {
+          "only": null,
+          "read": null
+        },
+        "pop": "naturalorbital"
+      },
+      "dieze_tag": "#N"
+    }
+  ],
+  "methane_input": {
+    "zmatrix": "C\nH 1 B1\nH 1 B2 2 A2\nH 1 B3 2 A3 3 D3\nH 1 B4 2 A4 4 D4\n\nB1=1.089000\nB2=1.089000\nA2=109.471221\nB3=1.089000\nA3=109.471213\nD3=120.000017\nB4=1.089000\nA4=109.471213\nD4=119.999966",
+    "cartesian": "C 0.000000 0.000000 0.000000\nH 0.000000 0.000000 1.089000\nH 1.026719 0.000000 -0.363000\nH -0.513360 -0.889165 -0.363000\nH -0.513360 0.889165 -0.363000",
+    "text_zmatrix": "#P HF/6-31G(d) SCF=Tight SP\n\nH4 C1\n\n0 1\nC\nH 1 B1\nH 1 B2 2 A2\nH 1 B3 2 A3 3 D3\nH 1 B4 2 A4 4 D4\n\nB1=1.089000\nB2=1.089000\nA2=109.471221\nB3=1.089000\nA3=109.471213\nD3=120.000017\nB4=1.089000\nA4=109.471213\nD4=119.999966\n\nEPS=12\n\n",
+    "text_cartesian": "#P HF/6-31G(d) SCF=Tight SP\n\nH4 C1\n\n0 1\nC 0.000000 0.000000 0.000000\nH 0.000000 0.000000 1.089000\nH 1.026719 0.000000 -0.363000\nH -0.513360 -0.889165 -0.363000\nH -0.513360 0.889165 -0.363000\n\nEPS=12\n\n"
+  },
+  "l_cysteine": {
+    "formula": "H7 C3 S1 N1 O2",
+    "functional": "B3LYP",
+    "basis_set": "6-31+G**",
+    "route_parameters": {
+      "test": null,
+      "integral": {
+        "grid": "UltraFine"
+      },
+      "opt": {
+        "maxcycles": "80",
+        "tight": null,
+        "Z-Matrix": null
+      }
+    },
+    "dieze_tag": "#n",
+    "title": "L-cysteine neutral",
+    "charge": 0,
+    "spin_multiplicity": 1
+  },
+  "methane_output": {
+    "properly_terminated": true,
+    "energies": [
+      -39.976405849,
+      -39.9768749251,
+      -39.9768775602
+    ],
+    "structure_count": 4,
+    "formulae": [
+      "H4 C1",
+      "H4 C1",
+      "H4 C1",
+      "H4 C1"
+    ],
+    "final_coords": [
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.625213,
+        0.625213,
+        0.625213
+      ],
+      [
+        -0.625213,
+        -0.625213,
+        0.625213
+      ],
+      [
+        -0.625213,
+        0.625213,
+        -0.625213
+      ],
+      [
+        0.625213,
+        -0.625213,
+        -0.625213
+      ]
+    ],
+    "functional": "hf",
+    "basis_set": "3-21G",
+    "num_basis_func": 17,
+    "force_samples": [
+      0.009791094,
+      -0.003263698,
+      -3.2e-08
+    ],
+    "eigen_last": 1.95586,
+    "resume": "1\\1\\GINC-SHYUE-LAPTOP\\FOpt\\RHF\\3-21G\\C1H4\\SHYUE\\27-Feb-2008\\0\\\\#p hf/3-21G opt\\\\Title Card Required\\\\0,1\\C,0.,0.,0.\\H,0.,0.,1.0829014152\\H,1.0209692454,0.,-0.3609671384\\H,-0.5104846227,-0.884185303,-0.3609671384\\H,-0.5104846227,0.884185303,-0.3609671384\\\\Version=IA32L-G03RevD.01\\State=1-A1\\HF=-39.9768776\\RMSD=3.210e-09\\RMSF=5.014e-08\\Thermal=0.\\Dipole=0.,0.,0.\\PG=TD [O(C1),4C3(H1)]\\\\@"
+  },
+  "frequencies": {
+    "group_lengths": [
+      6,
+      4
+    ],
+    "first": {
+      "frequency": 1203.194,
+      "r_mass": 1.3614,
+      "f_constant": 1.1612,
+      "IR_intensity": 6.6232,
+      "symmetry": "A\"",
+      "mode": [
+        0.0,
+        0.0,
+        0.17,
+        0.0,
+        0.0,
+        -0.7,
+        0.0,
+        0.0,
+        -0.7,
+        0.0,
+        0.0,
+        -0.04
+      ]
+    },
+    "mode_2": {
+      "frequency": 1274.0172,
+      "r_mass": 1.3344,
+      "f_constant": 1.2761,
+      "IR_intensity": 9.38,
+      "symmetry": "A'",
+      "mode": [
+        0.15,
+        0.0,
+        0.0,
+        -0.26,
+        0.65,
+        0.0,
+        -0.26,
+        -0.65,
+        0.0,
+        -0.08,
+        0.0,
+        0.0
+      ]
+    },
+    "mode_last": {
+      "frequency": 2283.1344,
+      "r_mass": 12.8774,
+      "f_constant": 39.5494,
+      "IR_intensity": 460.1961,
+      "symmetry": "SGU",
+      "mode": [
+        0.0,
+        0.0,
+        0.88,
+        0.0,
+        0.0,
+        -0.33,
+        0.0,
+        0.0,
+        -0.33
+      ]
+    },
+    "eigen_fourth": -1.18394
+  },
+  "h2o_vib": {
+    "frequency_first": {
+      "frequency": 1662.8033,
+      "r_mass": 1.0834,
+      "f_constant": 1.7649,
+      "IR_intensity": 97.3057,
+      "symmetry": "A'",
+      "mode": [
+        0.0,
+        0.07,
+        0.0,
+        -0.42,
+        -0.56,
+        0.0,
+        0.42,
+        -0.56,
+        0.0
+      ]
+    },
+    "frequency_second": {
+      "frequency": 3736.2607,
+      "r_mass": 1.0445,
+      "f_constant": 8.5907,
+      "IR_intensity": 6.0426,
+      "symmetry": "A'",
+      "mode": [
+        0.0,
+        0.05,
+        0.0,
+        0.59,
+        -0.39,
+        0.0,
+        -0.59,
+        -0.39,
+        0.0
+      ]
+    },
+    "hessian_first": 0.356872,
+    "hessian_last_row": [
+      -0.0143692,
+      0.0780136,
+      -0.0362637,
+      -0.0176193,
+      0.0277304,
+      -0.00583237,
+      0.0319885,
+      -0.105744,
+      0.042096
+    ],
+    "bond_order_01": 0.7582,
+    "bond_order_12": 0.0002
+  },
+  "h2o_mo": {
+    "down_eigenvalues": [
+      -20.55343,
+      -1.35264,
+      -0.72655,
+      -0.54824,
+      -0.49831,
+      0.20705,
+      0.30297,
+      1.10569,
+      1.16144,
+      1.16717,
+      1.2046,
+      1.38903,
+      1.67608
+    ],
+    "eigenvector_col6": [
+      -0.08771,
+      0.1084,
+      0.0,
+      0.0,
+      -0.21625,
+      1.21165,
+      0.0,
+      0.0,
+      -0.44481,
+      -0.06348,
+      -1.00532,
+      -0.06348,
+      -1.00532
+    ],
+    "atom_basis_labels": [
+      [
+        "1S",
+        "2S",
+        "2PX",
+        "2PY",
+        "2PZ",
+        "3S",
+        "3PX",
+        "3PY",
+        "3PZ"
+      ],
+      [
+        "1S",
+        "2S"
+      ],
+      [
+        "1S",
+        "2S"
+      ]
+    ],
+    "mo_6_atom_1": {
+      "1S": -0.08771,
+      "2S": 0.1084,
+      "2PX": 0.0,
+      "2PY": 0.0,
+      "2PZ": -0.21625,
+      "3S": 1.21165,
+      "3PX": 0.0,
+      "3PY": 0.0,
+      "3PZ": -0.44481
+    }
+  },
+  "scan": {
+    "energies": [
+      -547.05077,
+      -547.86712,
+      -548.29237,
+      -548.49474,
+      -548.57146,
+      -548.57912,
+      -548.55048,
+      -548.50429,
+      -548.45102,
+      -548.39653,
+      -548.3439,
+      -548.29464,
+      -548.24935,
+      -548.20822,
+      -548.17114,
+      -548.13792,
+      -548.10833,
+      -548.08209,
+      -548.05895,
+      -548.03866,
+      -548.02102
+    ],
+    "coords": {
+      "DSO": [
+        1.0,
+        1.1,
+        1.2,
+        1.3,
+        1.4,
+        1.5,
+        1.6,
+        1.7,
+        1.8,
+        1.9,
+        2.0,
+        2.1,
+        2.2,
+        2.3,
+        2.4,
+        2.5,
+        2.6,
+        2.7,
+        2.8,
+        2.9,
+        3.0
+      ]
+    }
+  },
+  "td": {
+    "transitions": [
+      [
+        3.9281,
+        315.64,
+        0.0054
+      ],
+      [
+        4.2831,
+        289.47,
+        0.0
+      ],
+      [
+        6.4162,
+        193.24,
+        0.0457
+      ],
+      [
+        7.949,
+        155.97,
+        0.0013
+      ]
+    ],
+    "spectrum": {
+      "energy_count": 453,
+      "energy_samples": [
+        3.6781,
+        5.938549999999999,
+        8.199
+      ],
+      "lambda_samples": [
+        337.0876225040109,
+        208.77857125594676,
+        151.21868329454844
+      ],
+      "xas_samples": [
+        4.408755606579254e-07,
+        1.5265244155255854e-20,
+        1.061367090472783e-07
+      ],
+      "xas_max": 1.0
+    }
+  }
+}

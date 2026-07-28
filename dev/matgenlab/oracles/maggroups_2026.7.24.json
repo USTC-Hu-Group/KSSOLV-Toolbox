@@ -1,0 +1,994 @@
+{
+  "upstream": "pymatgen-core 2026.7.24",
+  "database": {
+    "count": 1651,
+    "identifier_sha256": "aae4ff942fafb1ba2a6225767f95d5b81007ed73164a8f3bbf0c3be1afe7f83b",
+    "samples": [
+      [
+        1,
+        1,
+        1,
+        "P1",
+        1,
+        1,
+        1,
+        "P1"
+      ],
+      [
+        3,
+        33,
+        148,
+        "Pn'a'2_1",
+        33,
+        5,
+        230,
+        "Pn'a'2_1"
+      ],
+      [
+        1,
+        34,
+        156,
+        "Pnn2",
+        34,
+        1,
+        231,
+        "Pnn2"
+      ],
+      [
+        3,
+        64,
+        471,
+        "Cm'ca",
+        64,
+        3,
+        530,
+        "Cm'ca"
+      ],
+      [
+        3,
+        230,
+        148,
+        "Ia-3d'",
+        230,
+        4,
+        1650,
+        "Ia-3d'"
+      ],
+      [
+        3,
+        230,
+        149,
+        "Ia'-3'd'",
+        230,
+        5,
+        1651,
+        "Ia'-3'd'"
+      ]
+    ]
+  },
+  "identity": {
+    "bns_label": "I_cmmm",
+    "og_label": "I_cmmm",
+    "crystal_systems": [
+      {
+        "label": [
+          1,
+          1
+        ],
+        "system": "triclinic"
+      },
+      {
+        "label": [
+          2,
+          4
+        ],
+        "system": "triclinic"
+      },
+      {
+        "label": [
+          16,
+          1
+        ],
+        "system": "orthorhombic"
+      },
+      {
+        "label": [
+          75,
+          1
+        ],
+        "system": "tetragonal"
+      },
+      {
+        "label": [
+          143,
+          1
+        ],
+        "system": "trigonal"
+      },
+      {
+        "label": [
+          168,
+          109
+        ],
+        "system": "hexagonal"
+      },
+      {
+        "label": [
+          195,
+          1
+        ],
+        "system": "cubic"
+      }
+    ]
+  },
+  "symbols": [
+    {
+      "label": [
+        70,
+        530
+      ],
+      "symbol": "Fd'd'd"
+    },
+    {
+      "label": [
+        62,
+        448
+      ],
+      "symbol": "Pn'ma'"
+    },
+    {
+      "label": [
+        20,
+        37
+      ],
+      "symbol": "C_A222_1"
+    }
+  ],
+  "operations": [
+    {
+      "id": "62.448",
+      "values": [
+        {
+          "rotation": [
+            [
+              1.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              1.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              1.0
+            ]
+          ],
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "time_reversal": 1
+        },
+        {
+          "rotation": [
+            [
+              -1.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              1.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              -1.0
+            ]
+          ],
+          "translation": [
+            0.0,
+            0.5,
+            0.0
+          ],
+          "time_reversal": 1
+        },
+        {
+          "rotation": [
+            [
+              -1.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              -1.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              -1.0
+            ]
+          ],
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "time_reversal": 1
+        },
+        {
+          "rotation": [
+            [
+              1.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              -1.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              1.0
+            ]
+          ],
+          "translation": [
+            0.0,
+            0.5,
+            0.0
+          ],
+          "time_reversal": 1
+        },
+        {
+          "rotation": [
+            [
+              1.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              -1.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              -1.0
+            ]
+          ],
+          "translation": [
+            0.5,
+            0.5,
+            0.5
+          ],
+          "time_reversal": -1
+        },
+        {
+          "rotation": [
+            [
+              -1.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              -1.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              1.0
+            ]
+          ],
+          "translation": [
+            0.5,
+            0.0,
+            0.5
+          ],
+          "time_reversal": -1
+        },
+        {
+          "rotation": [
+            [
+              -1.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              1.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              1.0
+            ]
+          ],
+          "translation": [
+            0.5,
+            0.5,
+            0.5
+          ],
+          "time_reversal": -1
+        },
+        {
+          "rotation": [
+            [
+              1.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              1.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              -1.0
+            ]
+          ],
+          "translation": [
+            0.5,
+            0.0,
+            0.5
+          ],
+          "time_reversal": -1
+        }
+      ]
+    },
+    {
+      "id": "20.37",
+      "values": [
+        {
+          "rotation": [
+            [
+              1.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              1.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              1.0
+            ]
+          ],
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "time_reversal": 1
+        },
+        {
+          "rotation": [
+            [
+              1.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              -1.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              -1.0
+            ]
+          ],
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "time_reversal": 1
+        },
+        {
+          "rotation": [
+            [
+              -1.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              1.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              -1.0
+            ]
+          ],
+          "translation": [
+            0.0,
+            0.0,
+            0.5
+          ],
+          "time_reversal": 1
+        },
+        {
+          "rotation": [
+            [
+              -1.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              -1.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              1.0
+            ]
+          ],
+          "translation": [
+            0.0,
+            0.0,
+            0.5
+          ],
+          "time_reversal": 1
+        },
+        {
+          "rotation": [
+            [
+              1.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              1.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              1.0
+            ]
+          ],
+          "translation": [
+            0.0,
+            0.5,
+            0.5
+          ],
+          "time_reversal": -1
+        },
+        {
+          "rotation": [
+            [
+              1.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              -1.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              -1.0
+            ]
+          ],
+          "translation": [
+            0.5,
+            0.0,
+            0.5
+          ],
+          "time_reversal": -1
+        },
+        {
+          "rotation": [
+            [
+              -1.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              1.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              -1.0
+            ]
+          ],
+          "translation": [
+            0.5,
+            0.0,
+            0.0
+          ],
+          "time_reversal": -1
+        },
+        {
+          "rotation": [
+            [
+              -1.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              -1.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              1.0
+            ]
+          ],
+          "translation": [
+            0.5,
+            0.0,
+            0.0
+          ],
+          "time_reversal": -1
+        },
+        {
+          "rotation": [
+            [
+              1.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              1.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              1.0
+            ]
+          ],
+          "translation": [
+            0.5,
+            0.5,
+            0.0
+          ],
+          "time_reversal": 1
+        },
+        {
+          "rotation": [
+            [
+              1.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              -1.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              -1.0
+            ]
+          ],
+          "translation": [
+            0.5,
+            0.5,
+            0.0
+          ],
+          "time_reversal": 1
+        },
+        {
+          "rotation": [
+            [
+              -1.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              1.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              -1.0
+            ]
+          ],
+          "translation": [
+            0.5,
+            0.5,
+            0.5
+          ],
+          "time_reversal": 1
+        },
+        {
+          "rotation": [
+            [
+              -1.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              -1.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              1.0
+            ]
+          ],
+          "translation": [
+            0.5,
+            0.5,
+            0.5
+          ],
+          "time_reversal": 1
+        },
+        {
+          "rotation": [
+            [
+              1.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              1.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              1.0
+            ]
+          ],
+          "translation": [
+            0.5,
+            0.0,
+            0.5
+          ],
+          "time_reversal": -1
+        },
+        {
+          "rotation": [
+            [
+              1.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              -1.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              -1.0
+            ]
+          ],
+          "translation": [
+            0.0,
+            0.5,
+            0.5
+          ],
+          "time_reversal": -1
+        },
+        {
+          "rotation": [
+            [
+              -1.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              1.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              -1.0
+            ]
+          ],
+          "translation": [
+            0.0,
+            0.5,
+            0.0
+          ],
+          "time_reversal": -1
+        },
+        {
+          "rotation": [
+            [
+              -1.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              -1.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              1.0
+            ]
+          ],
+          "translation": [
+            0.0,
+            0.5,
+            0.0
+          ],
+          "time_reversal": -1
+        }
+      ]
+    },
+    {
+      "id": "2.7_transformed",
+      "values": [
+        {
+          "rotation": [
+            [
+              1.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              1.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              1.0
+            ]
+          ],
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "time_reversal": 1
+        },
+        {
+          "rotation": [
+            [
+              -1.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              -1.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              -1.0
+            ]
+          ],
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "time_reversal": 1
+        },
+        {
+          "rotation": [
+            [
+              1.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              1.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              1.0
+            ]
+          ],
+          "translation": [
+            0.5,
+            0.0,
+            0.0
+          ],
+          "time_reversal": -1
+        },
+        {
+          "rotation": [
+            [
+              -1.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              -1.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              -1.0
+            ]
+          ],
+          "translation": [
+            0.5,
+            0.0,
+            0.0
+          ],
+          "time_reversal": -1
+        }
+      ]
+    }
+  ],
+  "orbit": {
+    "points": [
+      [
+        0.11,
+        0.22,
+        0.33
+      ],
+      [
+        0.89,
+        0.72,
+        0.6699999999999999
+      ],
+      [
+        0.89,
+        0.78,
+        0.6699999999999999
+      ],
+      [
+        0.11,
+        0.28,
+        0.33
+      ],
+      [
+        0.61,
+        0.28,
+        0.17
+      ],
+      [
+        0.39,
+        0.78,
+        0.83
+      ],
+      [
+        0.39,
+        0.72,
+        0.83
+      ],
+      [
+        0.61,
+        0.22,
+        0.17
+      ]
+    ],
+    "magmoms": [
+      [
+        1.0,
+        2.0,
+        3.0
+      ],
+      [
+        -1.0,
+        2.0,
+        -3.0
+      ],
+      [
+        1.0,
+        2.0,
+        3.0
+      ],
+      [
+        -1.0,
+        2.0,
+        -3.0
+      ],
+      [
+        -1.0,
+        2.0,
+        3.0
+      ],
+      [
+        1.0,
+        2.0,
+        -3.0
+      ],
+      [
+        -1.0,
+        2.0,
+        3.0
+      ],
+      [
+        1.0,
+        2.0,
+        -3.0
+      ]
+    ]
+  },
+  "compatibility": [
+    {
+      "label": "Fm-3m",
+      "values": {
+        "cubic": true,
+        "hexagonal": false,
+        "rhombohedral": false,
+        "tetragonal": false,
+        "orthorhombic": false
+      }
+    },
+    {
+      "label": "Pnma",
+      "values": {
+        "cubic": true,
+        "hexagonal": false,
+        "rhombohedral": false,
+        "tetragonal": true,
+        "orthorhombic": true
+      }
+    },
+    {
+      "label": "P2/c",
+      "values": {
+        "cubic": true,
+        "hexagonal": false,
+        "rhombohedral": false,
+        "tetragonal": true,
+        "orthorhombic": true
+      }
+    },
+    {
+      "label": "P-1",
+      "values": {
+        "cubic": true,
+        "hexagonal": true,
+        "rhombohedral": true,
+        "tetragonal": true,
+        "orthorhombic": true
+      }
+    }
+  ],
+  "data_str": "BNS: 4.11 P_b2_1\t\tOG: 3.7.14 P_2b2'\nOG-BNS Transform: (a,2b,c;0,0,0)\nOperators (BNS): (1|0,0,0) (2y|0,1/2,0) (1|0,1/2,0)' (2y|0,0,0)'\nWyckoff Positions (BNS): \n4e  (x,y,z;mx,my,mz) (-x,y+1/2,-z;-mx,my,-mz) (x,y+1/2,z;-mx,-my,-mz)\n    (-x,y,-z;mx,-my,mz)\n2d  (1/2,y,1/2;mx,0,mz) (1/2,y+1/2,1/2;-mx,0,-mz)\n2c  (1/2,y,0;mx,0,mz) (1/2,y+1/2,0;-mx,0,-mz)\n2b  (0,y,1/2;mx,0,mz) (0,y+1/2,1/2;-mx,0,-mz)\n2a  (0,y,0;mx,0,mz) (0,y+1/2,0;-mx,0,-mz)\nOperators (OG): (1|0,0,0) (2y|0,1,0) (1|0,1,0)' (2y|0,0,0)'\nWyckoff Positions (OG): (1,0,0)+ (0,2,0)+ (0,0,1)+\n4e  (x,y,z;mx,my,mz) (-x,y+1,-z;-mx,my,-mz) (x,y+1,z;-mx,-my,-mz)\n    (-x,y,-z;mx,-my,mz)\n2d  (1/2,y,1/2;mx,0,mz) (-1/2,y+1,-1/2;-mx,0,-mz)\n2c  (1/2,y,0;mx,0,mz) (-1/2,y+1,0;-mx,0,-mz)\n2b  (0,y,1/2;mx,0,mz) (0,y+1,-1/2;-mx,0,-mz)\n2a  (0,y,0;mx,0,mz) (0,y+1,0;-mx,0,-mz)",
+  "str": "BNS: 4.11 P_b2_1\nOperators: (1|0,0,0) (2y|0,1/2,0) (1|0,1/2,0)' (2y|0,0,0)'\nWyckoff Positions: \n4e  (x,y,z;mx,my,mz) (-x,y+1/2,-z;-mx,my,-mz) (x,y+1/2,z;-mx,-my,-mz)\n    (-x,y,-z;mx,-my,mz)\n2d  (1/2,y,1/2;mx,0,mz) (1/2,y+1/2,1/2;-mx,0,-mz)\n2c  (1/2,y,0;mx,0,mz) (1/2,y+1/2,0;-mx,0,-mz)\n2b  (0,y,1/2;mx,0,mz) (0,y+1/2,1/2;-mx,0,-mz)\n2a  (0,y,0;mx,0,mz) (0,y+1/2,0;-mx,0,-mz)\nAlternative OG setting exists for this space group."
+}

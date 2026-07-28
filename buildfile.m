@@ -2,7 +2,7 @@ function plan = buildfile
 %BUILDFILE 根据任务函数构建编译计划并执行编译
 
 % 开发者：杨柳
-% 版权 2025 合肥瀚海量子科技有限公司
+% 版权 2025-2026 合肥瀚海量子科技有限公司
 
 import matlab.buildtool.tasks.CodeIssuesTask
 
@@ -23,12 +23,6 @@ plan("cleanPcode").Dependencies = "package";
 
 plan("stats").Inputs = "**/*.m";
 plan("stats").Dependencies = "init";
-
-plan("matgenlabTest").Inputs = [
-    "+kssolv/+analysis/+matgenlab/**/*.m"
-    "dev/matgenlab/**/*.m"
-    ];
-plan("matgenlabTest").Dependencies = "init";
 end
 
 function initTask(~)
@@ -50,7 +44,9 @@ function packageTask(~)
 toolboxFolder = fileparts(mfilename('fullpath'));
 outputFileName = sprintf('KSSOLV_Toolbox_V%s.mltbx', KSSOLV_Toolbox.Version);
 
-options = matlab.addons.toolbox.ToolboxOptions(toolboxFolder, KSSOLV_Toolbox.Identifier);
+options = matlab.addons.toolbox.ToolboxOptions( ...
+    toolboxFolder, KSSOLV_Toolbox.Identifier, ...
+    ToolboxMatlabPath = toolboxFolder);
 options.AuthorName = KSSOLV_Toolbox.Author;
 options.AuthorEmail = KSSOLV_Toolbox.AuthorEmail;
 options.AuthorCompany = KSSOLV_Toolbox.AuthorCompany;
@@ -63,7 +59,7 @@ options.ToolboxVersion = KSSOLV_Toolbox.Version;
 options.ToolboxImageFile = fullfile(KSSOLV_Toolbox.UIResourcesDirectory, 'icons', 'companyLOGO.png');
 options.AppGalleryFiles = "kssolv.m";
 options.SupportedPlatforms.Win64 = true;
-options.SupportedPlatforms.Maci64 = true;
+options.SupportedPlatforms.Mac = true;
 options.SupportedPlatforms.Glnxa64 = true;
 options.SupportedPlatforms.MatlabOnline = true;
 options.MinimumMatlabRelease = KSSOLV_Toolbox.MinimumMATLABVersion;
@@ -81,6 +77,7 @@ filteredConditions = ~contains(options.ToolboxFiles, 'buildfile.m') & ...
     ~contains(options.ToolboxFiles, 'buildInstaller.m') & ...
     ~contains(options.ToolboxFiles, '+test/') & ...
     ~contains(options.ToolboxFiles, 'derived') & ...
+    ~contains(options.ToolboxFiles, 'dev') & ...
     ~contains(options.ToolboxFiles, 'docs') & ...
     ~contains(options.ToolboxFiles, 'frontend') & ...
     ~contains(options.ToolboxFiles, 'Release') & ...
@@ -130,12 +127,4 @@ end
 fprintf('Total number of .m files: %d\n', numFiles);
 fprintf('Total lines of code: %d\n', totalLines);
 fprintf('Total non-empty, non-comment lines of code: %d\n', codeLines);
-end
-
-function matgenlabTestTask(~)
-% Run all Matgenlab tests, including optional pymatgen oracle tests.
-addpath(fullfile(pwd, "dev", "matgenlab"));
-cleanup = onCleanup(@() rmpath(fullfile(pwd, "dev", "matgenlab")));
-run_matlab_tests();
-clear cleanup
 end

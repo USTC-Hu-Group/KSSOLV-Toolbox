@@ -1,0 +1,25 @@
+{
+  "cases": {
+    "half_occupied_si": {
+      "index_species": [
+        "Si",
+        "X0+"
+      ],
+      "input": "Si0.5\nbulk\n4.000000 0.000000 0.000000\n0.000000 4.000000 0.000000\n0.000000 0.000000 4.000000\n2\n1\n0.000000 0.000000 0.000000 0/1\n1 1\n0.001\nfull\n5 5 10\n5 5 10\n",
+      "ordered_sites": 0
+    },
+    "quarter_li_with_ordered_o": {
+      "index_species": [
+        "Li",
+        "X0+"
+      ],
+      "input": "Li0.25 O1\nbulk\n4.000000 0.000000 0.000000\n0.000000 4.000000 0.000000\n0.000000 0.000000 4.000000\n2\n1\n0.000000 0.000000 0.000000 0/1\n1 1\n0.001\nfull\n1 3 10\n6 8 10\n",
+      "ordered_sites": 1
+    }
+  },
+  "enum_error_message": "Unable to enumerate structure.",
+  "module": "pymatgen.command_line.enumlib_caller",
+  "run_tot_count": 7,
+  "run_tot_stdout": "header\n  enum RunTot\n  1  2  3  7\n",
+  "source": "pymatgen-core 2026.7.24"
+}

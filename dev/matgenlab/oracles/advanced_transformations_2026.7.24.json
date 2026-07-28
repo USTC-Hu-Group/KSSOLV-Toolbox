@@ -1,0 +1,118 @@
+{
+  "metadata": {
+    "distribution": "pymatgen-core",
+    "tag": "v2026.7.24",
+    "commit": "c71faa7a95df9bbcd20cb3d14ff112d0f72d8e39",
+    "module": "pymatgen.transformations.advanced_transformations",
+    "api_count": 47
+  },
+  "constraints": {
+    "default": false,
+    "species_true": true,
+    "species_false": false,
+    "site_true": true
+  },
+  "constraint_errors": {
+    "range": {"type": "ValueError", "message": "Order parameter must lie between 0 and 1"},
+    "missing_property_name": {"type": "ValueError", "message": "Specify the name of the site constraint."},
+    "missing_property_values": {"type": "ValueError", "message": "Please specify some site constraints."}
+  },
+  "find_codopant": {
+    "Fe2_to_1": "Cu+",
+    "Fe2_to_3": "In3+",
+    "none": {
+      "type": "ValueError",
+      "message": "No species found with oxidation state 99 and a known ionic radius (target: Fe2+, allowed_elements: None)."
+    }
+  },
+  "charge_balance": {
+    "formula": "Li4 O2",
+    "reduced_formula": "Li2O",
+    "num_sites": 8,
+    "charge": 8.881784197001252e-16,
+    "lattice": [
+      [3.8401979337, 0.0, 0.0],
+      [1.9200989668, 3.3257101909, 0.0],
+      [0.0, -2.2171384943, 3.1355090603]
+    ],
+    "frac_coords": [
+      [0.0, 0.0, 0.0],
+      [0.375, 0.375, 0.375],
+      [0.5, 0.5, 0.5],
+      [0.875, 0.875, 0.875],
+      [0.125, 0.125, 0.125],
+      [0.25, 0.25, 0.25],
+      [0.625, 0.625, 0.625],
+      [0.75, 0.75, 0.75]
+    ],
+    "species": [
+      "Li+:0.667", "Li+:0.667", "Li+:0.667", "Li+:0.667",
+      "Li+:0.667", "Li+:0.667", "O2-", "O2-"
+    ]
+  },
+  "super_transformation": {
+    "count": 2,
+    "formulas": ["Na6 O2", "K6 O2"]
+  },
+  "multiple_substitution": {
+    "count": 2,
+    "formulas": ["Na1 Li1 O2", "K1 Li1 O2"]
+  },
+  "mag_ordering_trivial_error": {
+    "type": "RuntimeError",
+    "message": "This shouldn't happen, found neighbors=[]"
+  },
+  "determine_min_cell": 1.0,
+  "disorder_ordered": {
+    "formula": "Ba1 Ni1 O3",
+    "reduced_formula": "BaNiO3",
+    "num_sites": 5,
+    "species": [
+      "Ba", "Ni:0.25, O:0.75", "Ni:0.25, O:0.75",
+      "Ni:0.25, O:0.75", "Ni:0.25, O:0.75"
+    ]
+  },
+  "slab_fcc111": {
+    "formula": "Fe6",
+    "num_sites": 6,
+    "lattice": [
+      [1.5, 0.0, -1.5],
+      [0.0, 1.5, -1.5],
+      [0.0, 0.0, 36.0]
+    ],
+    "frac_coords": [
+      [0.0, 0.0, 0.0],
+      [0.0, 0.0, 0.0833333333],
+      [0.0, 0.0, 0.1666666667],
+      [0.0, 0.0, 0.25],
+      [0.0, 0.0, 0.3333333333],
+      [0.0, 0.0, 0.4166666667]
+    ]
+  },
+  "cubic_diagonal": {
+    "transformation_matrix": [[2, 0, 0], [0, 2, 0], [0, 0, 2]],
+    "formula": "Fe8",
+    "num_sites": 8,
+    "lattice": [[8.0, 0.0, 0.0], [0.0, 8.0, 0.0], [0.0, 0.0, 8.0]]
+  },
+  "adsorbate": {"formula": "Pt4 C1 O1", "reduced_formula": "Pt4CO", "num_sites": 6},
+  "surface_substitution": {"formula": "Pt3 Au1", "reduced_formula": "Pt3Au", "num_sites": 4},
+  "optional_dependency_errors": {
+    "enumlib": {
+      "type": "RuntimeError",
+      "message": "EnumlibAdaptor requires the executables 'enum.x' or 'multienum.x' and 'makestr.x' or 'makeStr.py' to be in the path."
+    },
+    "mcsqs": {
+      "type": "RuntimeError",
+      "message": "run_mcsqs requires first installing AT-AT"
+    },
+    "icet": {
+      "type": "ImportError",
+      "message": "IcetSQS requires the icet package. Use `pip install icet`"
+    },
+    "hiphive": {
+      "type": "RuntimeError",
+      "message": "hiphive is required for MonteCarloRattleTransformation"
+    }
+  }
+}

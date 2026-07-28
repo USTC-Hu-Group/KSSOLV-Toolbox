@@ -1,0 +1,68 @@
+{
+  "fixture_tree": {
+    "POTCAR.spec": "Fe\n\n O \n",
+    "nested/POTCAR.spec": "Li\nF\n",
+    "plain.txt": "plain\n"
+  },
+  "functional_choices": [
+    "LDA",
+    "LDA_52",
+    "LDA_52_W_HASH",
+    "LDA_54",
+    "LDA_54_W_HASH",
+    "LDA_64",
+    "LDA_US",
+    "PBE",
+    "PBE_52",
+    "PBE_52_W_HASH",
+    "PBE_54",
+    "PBE_54_W_HASH",
+    "PBE_64",
+    "PW91",
+    "PW91_US",
+    "Perdew_Zunger81"
+  ],
+  "gen_potcar": {
+    "construction": {
+      "functional": "PBE",
+      "symbols": [
+        "Fe",
+        "O"
+      ]
+    },
+    "output_name": "POTCAR"
+  },
+  "generate_symbols": {
+    "construction": {
+      "functional": "PBE_54",
+      "symbols": [
+        "Na",
+        "Cl"
+      ]
+    },
+    "output_name": "POTCAR",
+    "stdout": ""
+  },
+  "invalid_stdout": "An error has occurred: Invalid functional 'NOT_A_FUNCTIONAL'. Choose from: ['LDA', 'LDA_52', 'LDA_52_W_HASH', 'LDA_54', 'LDA_54_W_HASH', 'LDA_64', 'LDA_US', 'PBE', 'PBE_52', 'PBE_52_W_HASH', 'PBE_54', 'PBE_54_W_HASH', 'PBE_64', 'PW91', 'PW91_US', 'Perdew_Zunger81']\n",
+  "noop_stdout": "No valid options selected.\n",
+  "proc_dir_visits": [
+    [
+      ".",
+      "POTCAR.spec"
+    ],
+    [
+      ".",
+      "plain.txt"
+    ],
+    [
+      "nested",
+      "POTCAR.spec"
+    ]
+  ],
+  "recursive_functionals": [
+    "PBE",
+    "PBE"
+  ],
+  "source": "pymatgen",
+  "version": "2026.5.4"
+}

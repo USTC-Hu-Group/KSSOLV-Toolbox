@@ -1,0 +1,12 @@
+{
+  "source": "pymatgen 2026.5.4",
+  "pc_frag1_depth0_total": 12,
+  "pc_depth2_total": 20,
+  "pc_depth2_levels": {
+    "0": 8,
+    "1": 12
+  },
+  "pc_depth0_total": 295,
+  "pc_with_previous_new": 283,
+  "pc_with_previous_total": 295
+}

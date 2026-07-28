@@ -30,3 +30,5 @@ Release
 
 *.ks
 .env
+
+dev

@@ -1,0 +1,33 @@
+{
+  "source": "pymatgen",
+  "version": "2026.5.4",
+  "cp2k": {
+    "element_file_count": 118,
+    "potential_hash": "2bd01f9b5d061ab836e9cd709d429635",
+    "basis_hash": "c69604a2f0a0ddf71e4960738a1be774",
+    "potential_filename": "GTH_POTENTIALS",
+    "basis_filename": "BASIS_TEST",
+    "potential_name": "GTH-PBE-q1",
+    "basis_name": "DZVP-MOLOPT-GTH"
+  },
+  "config_text": "EXISTING: new\nFLAG: true\nFALSE_VAL: false\nNONE_VAL:\nNUMBER: '3.5'\n",
+  "config_backup_text": "EXISTING: old\nFLAG: true\n",
+  "potcar_mapping": {
+    "potpaw_PBE_54": "POT_GGA_PAW_PBE_54",
+    "potpaw_PBE.64": "POT_PAW_PBE_64",
+    "potUSPP_GGA": "POT_GGA_US_PW91",
+    "Osmium": "Os"
+  },
+  "enum_commands": [
+    "make@enumlib/symlib/src",
+    "make@enumlib/src",
+    "make enum.x@enumlib/src"
+  ],
+  "bader_url": "https://theory.cm.utexas.edu/henkelman/code/bader/download/bader.tar.gz",
+  "dispatch_priority": [
+    "potcar_dirs",
+    "install",
+    "var_spec",
+    "cp2k_data_dirs"
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "sources": [
+    {
+      "id": "pymatgen",
+      "repository": "https://github.com/materialsproject/pymatgen.git",
+      "tag": "v2026.5.4",
+      "commit": "8495e941504cd5123701635b6572942c78d9589c",
+      "commit_date": "2026-05-05T05:53:24+08:00",
+      "license": "MIT",
+      "source_roots": [
+        "src/pymatgen"
+      ],
+      "test_roots": [
+        "tests"
+      ],
+      "fixture_roots": [
+        "test-files"
+      ]
+    },
+    {
+      "id": "pymatgen-core",
+      "repository": "https://github.com/materialsproject/pymatgen-core.git",
+      "tag": "v2026.7.24",
+      "commit": "c71faa7a95df9bbcd20cb3d14ff112d0f72d8e39",
+      "commit_date": "2026-07-24T11:17:22+08:00",
+      "license": "MIT",
+      "source_roots": [
+        "src/pymatgen"
+      ],
+      "test_roots": [
+        "tests"
+      ],
+      "fixture_roots": [
+        "test-files"
+      ]
+    }
+  ]
+}

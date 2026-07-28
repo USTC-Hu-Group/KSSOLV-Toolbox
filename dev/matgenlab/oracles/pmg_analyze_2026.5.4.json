@@ -1,0 +1,38 @@
+{
+  "cached": {
+    "status": 0,
+    "stdout": "Directory           Formula      Energy    E/Atom    % vol chg\n------------------  ---------  --------  --------  -----------\nrun/vasprun.xml.gz  Li1H1      -6.82078  -3.41039            0\n\nUsing previously assimilated data from vasp_data.gz. Use -r to force re-analysis.\n"
+  },
+  "energy": {
+    "energy": -6.82078391,
+    "energy_per_atom": -3.410391955,
+    "formula": "Li1H1",
+    "status": 0,
+    "stdout": "Directory           Formula      Energy    E/Atom    % vol chg\n------------------  ---------  --------  --------  -----------\nrun/vasprun.xml.gz  Li1H1      -6.82078  -3.41039            0\n\nAnalysis results saved to vasp_data.gz for faster subsequent loading.\n",
+    "volume_change_percent": 0.0
+  },
+  "magnetization_all": {
+    "status": 0,
+    "stdout": "Filename      0    1\n----------  ---  ---\nrun/OUTCAR   -0    0\n",
+    "values": [
+      -0.0,
+      0.0
+    ]
+  },
+  "magnetization_selected": {
+    "status": 0,
+    "stdout": "Filename      0    1\n----------  ---  ---\nrun/OUTCAR   -0    0\n",
+    "values": [
+      -0.0,
+      0.0
+    ]
+  },
+  "quick": {
+    "energy": -7.123456789,
+    "energy_per_atom": -7.123456789,
+    "formula": "C1",
+    "status": 0,
+    "stdout": "Directory    Formula      Energy    E/Atom  % vol chg\n-----------  ---------  --------  --------  -----------\nquick        C1         -7.12346  -7.12346  NA\n\nAnalysis results saved to vasp_data.gz for faster subsequent loading.\n"
+  },
+  "upstream": "pymatgen==2026.5.4"
+}

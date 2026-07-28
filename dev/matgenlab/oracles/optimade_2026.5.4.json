@@ -1,0 +1,231 @@
+{
+  "filters": [
+    "(elements HAS ALL \"Ga\", \"N\") AND (nsites>=1 AND nsites<=100) AND (nelements=2) AND (chemical_formula_anonymous='A2B') AND (chemical_formula_hill='GaN')",
+    "(elements HAS ALL \"C\", \"H\", \"O\") AND (nsites>=1 AND nsites<=100) AND (nelements>=3 AND nelements<=4) AND (chemical_formula_anonymous='A4B3C') AND (chemical_formula_hill='C4H3O')"
+  ],
+  "mandatory_response_fields": [
+    "cartesian_site_positions",
+    "lattice_vectors",
+    "species",
+    "species_at_sites"
+  ],
+  "parsed": {
+    "disordered-1": {
+      "cart_coords": [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          2.0,
+          2.0,
+          2.0
+        ]
+      ],
+      "history": [
+        {
+          "description": {
+            "id": "disordered-1"
+          },
+          "name": "fixture",
+          "url": "https://fixture.test/v1/structures?filter=x"
+        }
+      ],
+      "optimade_data": {
+        "demo_quality": "frozen",
+        "nelements": 2,
+        "species_at_sites": [
+          "Na-vacancy",
+          "Cl"
+        ]
+      },
+      "site_species": [
+        "Na0.75 X_Vacancy0.25",
+        "Cl1"
+      ]
+    },
+    "ordered-2": {
+      "cart_coords": [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          2.5,
+          2.5,
+          2.5
+        ],
+        [
+          1.0,
+          1.0,
+          1.0
+        ]
+      ],
+      "history": [
+        {
+          "description": {
+            "id": "ordered-2"
+          },
+          "name": "fixture",
+          "url": "https://fixture.test/v1/structures?filter=x"
+        }
+      ],
+      "optimade_data": {
+        "nsites": 3,
+        "species_at_sites": [
+          "Na",
+          "Cl",
+          "Na"
+        ]
+      },
+      "site_species": [
+        "Na1",
+        "Cl1",
+        "Na1"
+      ]
+    }
+  },
+  "provider_repr": "Provider(name='Fixture', base_url='https://fixture.test/', description='Offline', homepage='https://fixture.test/home', prefix='fx')",
+  "pymatgen_version": "2026.5.4",
+  "resource": {
+    "data": [
+      {
+        "attributes": {
+          "cartesian_site_positions": [
+            [
+              0,
+              0,
+              0
+            ],
+            [
+              2,
+              2,
+              2
+            ]
+          ],
+          "demo_quality": "frozen",
+          "lattice_vectors": [
+            [
+              4,
+              0,
+              0
+            ],
+            [
+              0,
+              4,
+              0
+            ],
+            [
+              0,
+              0,
+              4
+            ]
+          ],
+          "nelements": 2,
+          "species": [
+            {
+              "chemical_symbols": [
+                "Na",
+                "vacancy"
+              ],
+              "concentration": [
+                0.75,
+                0.25
+              ],
+              "name": "Na-vacancy"
+            },
+            {
+              "chemical_symbols": [
+                "Cl"
+              ],
+              "concentration": [
+                1
+              ],
+              "name": "Cl"
+            }
+          ],
+          "species_at_sites": [
+            "Na-vacancy",
+            "Cl"
+          ]
+        },
+        "id": "disordered-1",
+        "type": "structures"
+      },
+      {
+        "attributes": {
+          "cartesian_site_positions": [
+            [
+              0,
+              0,
+              0
+            ],
+            [
+              2.5,
+              2.5,
+              2.5
+            ],
+            [
+              1,
+              1,
+              1
+            ]
+          ],
+          "lattice_vectors": [
+            [
+              5,
+              0,
+              0
+            ],
+            [
+              0,
+              5,
+              0
+            ],
+            [
+              0,
+              0,
+              5
+            ]
+          ],
+          "nsites": 3,
+          "species": [
+            {
+              "chemical_symbols": [
+                "Na"
+              ],
+              "concentration": [
+                1
+              ],
+              "name": "Na"
+            },
+            {
+              "chemical_symbols": [
+                "Cl"
+              ],
+              "concentration": [
+                1
+              ],
+              "name": "Cl"
+            }
+          ],
+          "species_at_sites": [
+            "Na",
+            "Cl",
+            "Na"
+          ]
+        },
+        "id": "ordered-2",
+        "type": "structures"
+      }
+    ],
+    "links": {
+      "next": null
+    },
+    "meta": {
+      "data_returned": 2
+    }
+  }
+}

@@ -1,0 +1,864 @@
+{
+  "counts": {
+    "external": 26,
+    "implemented": 5404,
+    "unsupported-upstream": 31
+  },
+  "inventory": "dev/matgenlab/inventory/api.csv",
+  "modules": {
+    "pymatgen.alchemy.filters": {
+      "implemented": 19
+    },
+    "pymatgen.alchemy.materials": {
+      "implemented": 17
+    },
+    "pymatgen.alchemy.transmuters": {
+      "implemented": 16
+    },
+    "pymatgen.analysis.bond_dissociation": {
+      "implemented": 5
+    },
+    "pymatgen.analysis.chemenv.connectivity.connected_components": {
+      "implemented": 22
+    },
+    "pymatgen.analysis.chemenv.connectivity.connectivity_finder": {
+      "implemented": 3
+    },
+    "pymatgen.analysis.chemenv.connectivity.environment_nodes": {
+      "implemented": 12
+    },
+    "pymatgen.analysis.chemenv.connectivity.structure_connectivity": {
+      "implemented": 14
+    },
+    "pymatgen.analysis.chemenv.coordination_environments.chemenv_strategies": {
+      "implemented": 136
+    },
+    "pymatgen.analysis.chemenv.coordination_environments.coordination_geometries": {
+      "implemented": 49
+    },
+    "pymatgen.analysis.chemenv.coordination_environments.coordination_geometry_finder": {
+      "implemented": 36
+    },
+    "pymatgen.analysis.chemenv.coordination_environments.structure_environments": {
+      "implemented": 40
+    },
+    "pymatgen.analysis.chemenv.coordination_environments.voronoi": {
+      "implemented": 16
+    },
+    "pymatgen.analysis.chemenv.utils.chemenv_config": {
+      "implemented": 7
+    },
+    "pymatgen.analysis.chemenv.utils.chemenv_errors": {
+      "implemented": 5
+    },
+    "pymatgen.analysis.chemenv.utils.coordination_geometry_utils": {
+      "implemented": 51
+    },
+    "pymatgen.analysis.chemenv.utils.defs_utils": {
+      "implemented": 2
+    },
+    "pymatgen.analysis.chemenv.utils.func_utils": {
+      "implemented": 25
+    },
+    "pymatgen.analysis.chemenv.utils.graph_utils": {
+      "implemented": 12
+    },
+    "pymatgen.analysis.chemenv.utils.math_utils": {
+      "implemented": 17
+    },
+    "pymatgen.analysis.chemenv.utils.scripts_utils": {
+      "implemented": 3
+    },
+    "pymatgen.analysis.chempot_diagram": {
+      "implemented": 13
+    },
+    "pymatgen.analysis.compatibility": {
+      "implemented": 71
+    },
+    "pymatgen.analysis.compatibility.computed_entries": {
+      "implemented": 6
+    },
+    "pymatgen.analysis.compatibility.correction_calculator": {
+      "implemented": 6
+    },
+    "pymatgen.analysis.compatibility.entry_tools": {
+      "implemented": 13
+    },
+    "pymatgen.analysis.compatibility.exp_entries": {
+      "implemented": 3
+    },
+    "pymatgen.analysis.compatibility.mixing_scheme": {
+      "implemented": 5
+    },
+    "pymatgen.analysis.cost": {
+      "implemented": 10
+    },
+    "pymatgen.analysis.diffraction.core": {
+      "implemented": 7
+    },
+    "pymatgen.analysis.diffraction.neutron": {
+      "implemented": 2
+    },
+    "pymatgen.analysis.diffraction.tem": {
+      "implemented": 21
+    },
+    "pymatgen.analysis.diffraction.xrd": {
+      "implemented": 2
+    },
+    "pymatgen.analysis.dimensionality": {
+      "implemented": 8
+    },
+    "pymatgen.analysis.disorder": {
+      "implemented": 1
+    },
+    "pymatgen.analysis.elasticity": {
+      "unsupported-upstream": 1
+    },
+    "pymatgen.analysis.eos": {
+      "implemented": 25
+    },
+    "pymatgen.analysis.excitation": {
+      "implemented": 1
+    },
+    "pymatgen.analysis.ferroelectricity.polarization": {
+      "implemented": 19
+    },
+    "pymatgen.analysis.fragmenter": {
+      "implemented": 2
+    },
+    "pymatgen.analysis.functional_groups": {
+      "implemented": 7
+    },
+    "pymatgen.analysis.hhi": {
+      "implemented": 5
+    },
+    "pymatgen.analysis.interface_reactions": {
+      "implemented": 11
+    },
+    "pymatgen.analysis.interfaces": {
+      "implemented": 5,
+      "unsupported-upstream": 1
+    },
+    "pymatgen.analysis.interfaces.coherent_interfaces": {
+      "implemented": 5
+    },
+    "pymatgen.analysis.interfaces.substrate_analyzer": {
+      "implemented": 6
+    },
+    "pymatgen.analysis.interfaces.zsl": {
+      "implemented": 15
+    },
+    "pymatgen.analysis.lobster_env": {
+      "implemented": 18
+    },
+    "pymatgen.analysis.magnetism": {
+      "implemented": 5,
+      "unsupported-upstream": 1
+    },
+    "pymatgen.analysis.magnetism.analyzer": {
+      "implemented": 20
+    },
+    "pymatgen.analysis.magnetism.heisenberg": {
+      "implemented": 11
+    },
+    "pymatgen.analysis.magnetism.jahnteller": {
+      "implemented": 8
+    },
+    "pymatgen.analysis.nmr": {
+      "implemented": 13
+    },
+    "pymatgen.analysis.optics": {
+      "implemented": 2
+    },
+    "pymatgen.analysis.phase_diagram": {
+      "implemented": 89
+    },
+    "pymatgen.analysis.piezo": {
+      "implemented": 2
+    },
+    "pymatgen.analysis.piezo_sensitivity": {
+      "implemented": 15
+    },
+    "pymatgen.analysis.pourbaix_diagram": {
+      "implemented": 45
+    },
+    "pymatgen.analysis.prototypes": {
+      "external": 1,
+      "implemented": 40,
+      "unsupported-upstream": 4
+    },
+    "pymatgen.analysis.quasiharmonic": {
+      "implemented": 11
+    },
+    "pymatgen.analysis.quasirrho": {
+      "implemented": 4
+    },
+    "pymatgen.analysis.reaction_calculator": {
+      "implemented": 30
+    },
+    "pymatgen.analysis.solar.slme": {
+      "implemented": 6
+    },
+    "pymatgen.analysis.structure_prediction": {
+      "unsupported-upstream": 1
+    },
+    "pymatgen.analysis.surface_analysis": {
+      "implemented": 41
+    },
+    "pymatgen.analysis.thermochemistry": {
+      "implemented": 3
+    },
+    "pymatgen.analysis.topological.spillage": {
+      "implemented": 4
+    },
+    "pymatgen.analysis.transition_state": {
+      "implemented": 8
+    },
+    "pymatgen.analysis.wulff": {
+      "implemented": 20
+    },
+    "pymatgen.analysis.xas.spectrum": {
+      "implemented": 3
+    },
+    "pymatgen.analysis.xps": {
+      "implemented": 2
+    },
+    "pymatgen.apps.battery.analyzer": {
+      "implemented": 7
+    },
+    "pymatgen.apps.battery.battery_abc": {
+      "implemented": 24
+    },
+    "pymatgen.apps.battery.conversion_battery": {
+      "implemented": 9
+    },
+    "pymatgen.apps.battery.insertion_battery": {
+      "implemented": 17
+    },
+    "pymatgen.apps.battery.plotter": {
+      "implemented": 7
+    },
+    "pymatgen.apps.borg.hive": {
+      "implemented": 17
+    },
+    "pymatgen.apps.borg.queen": {
+      "implemented": 7
+    },
+    "pymatgen.cli.feff_plot_cross_section": {
+      "implemented": 1
+    },
+    "pymatgen.cli.feff_plot_dos": {
+      "implemented": 1
+    },
+    "pymatgen.cli.get_environment": {
+      "implemented": 1
+    },
+    "pymatgen.cli.pmg": {
+      "implemented": 3
+    },
+    "pymatgen.cli.pmg_analyze": {
+      "implemented": 3
+    },
+    "pymatgen.cli.pmg_config": {
+      "implemented": 7
+    },
+    "pymatgen.cli.pmg_plot": {
+      "implemented": 4
+    },
+    "pymatgen.cli.pmg_potcar": {
+      "implemented": 3
+    },
+    "pymatgen.cli.pmg_structure": {
+      "implemented": 5
+    },
+    "pymatgen.command_line.bader_caller": {
+      "implemented": 11
+    },
+    "pymatgen.command_line.chargemol_caller": {
+      "implemented": 7
+    },
+    "pymatgen.command_line.critic2_caller": {
+      "implemented": 13
+    },
+    "pymatgen.command_line.enumlib_caller": {
+      "implemented": 3
+    },
+    "pymatgen.command_line.gulp_caller": {
+      "implemented": 20
+    },
+    "pymatgen.command_line.mcsqs_caller": {
+      "implemented": 2
+    },
+    "pymatgen.core": {
+      "implemented": 19,
+      "unsupported-upstream": 6
+    },
+    "pymatgen.core.adsorption": {
+      "implemented": 21
+    },
+    "pymatgen.core.bond_valence": {
+      "implemented": 7
+    },
+    "pymatgen.core.bonds": {
+      "implemented": 7
+    },
+    "pymatgen.core.composition": {
+      "implemented": 51
+    },
+    "pymatgen.core.constants": {
+      "implemented": 1
+    },
+    "pymatgen.core.elasticity": {
+      "implemented": 16,
+      "unsupported-upstream": 1
+    },
+    "pymatgen.core.elasticity.elastic": {
+      "implemented": 59
+    },
+    "pymatgen.core.elasticity.strain": {
+      "implemented": 13
+    },
+    "pymatgen.core.elasticity.stress": {
+      "implemented": 7
+    },
+    "pymatgen.core.energy_models": {
+      "implemented": 15
+    },
+    "pymatgen.core.entries": {
+      "implemented": 61
+    },
+    "pymatgen.core.ewald": {
+      "implemented": 25
+    },
+    "pymatgen.core.graphs": {
+      "implemented": 60
+    },
+    "pymatgen.core.interface": {
+      "implemented": 51
+    },
+    "pymatgen.core.ion": {
+      "implemented": 15
+    },
+    "pymatgen.core.lattice": {
+      "implemented": 63
+    },
+    "pymatgen.core.libxcfunc": {
+      "implemented": 16
+    },
+    "pymatgen.core.local_env": {
+      "implemented": 123
+    },
+    "pymatgen.core.molecular_orbitals": {
+      "implemented": 4
+    },
+    "pymatgen.core.molecule_matcher": {
+      "external": 7,
+      "implemented": 31
+    },
+    "pymatgen.core.molecule_structure_comparator": {
+      "implemented": 6
+    },
+    "pymatgen.core.operations": {
+      "implemented": 28
+    },
+    "pymatgen.core.periodic_table": {
+      "implemented": 83
+    },
+    "pymatgen.core.sites": {
+      "implemented": 44
+    },
+    "pymatgen.core.spectrum": {
+      "implemented": 6
+    },
+    "pymatgen.core.structure": {
+      "external": 13,
+      "implemented": 149
+    },
+    "pymatgen.core.structure_analyzer": {
+      "implemented": 21
+    },
+    "pymatgen.core.structure_matcher": {
+      "implemented": 39
+    },
+    "pymatgen.core.structure_prediction.dopant_predictor": {
+      "implemented": 2
+    },
+    "pymatgen.core.structure_prediction.substitution_probability": {
+      "implemented": 12
+    },
+    "pymatgen.core.structure_prediction.substitutor": {
+      "implemented": 7
+    },
+    "pymatgen.core.structure_prediction.volume_predictor": {
+      "implemented": 6
+    },
+    "pymatgen.core.surface": {
+      "implemented": 35
+    },
+    "pymatgen.core.tensors": {
+      "implemented": 57
+    },
+    "pymatgen.core.trajectory": {
+      "implemented": 13
+    },
+    "pymatgen.core.units": {
+      "implemented": 20
+    },
+    "pymatgen.core.xcfunc": {
+      "implemented": 10
+    },
+    "pymatgen.electronic_structure.bandstructure": {
+      "implemented": 39
+    },
+    "pymatgen.electronic_structure.boltztrap": {
+      "implemented": 42
+    },
+    "pymatgen.electronic_structure.boltztrap2": {
+      "implemented": 30
+    },
+    "pymatgen.electronic_structure.cohp": {
+      "implemented": 38
+    },
+    "pymatgen.electronic_structure.core": {
+      "implemented": 17
+    },
+    "pymatgen.electronic_structure.dos": {
+      "implemented": 52
+    },
+    "pymatgen.electronic_structure.plotter": {
+      "implemented": 61
+    },
+    "pymatgen.entries": {
+      "implemented": 1,
+      "unsupported-upstream": 1
+    },
+    "pymatgen.entries.mixing_scheme": {
+      "implemented": 5
+    },
+    "pymatgen.ext.cod": {
+      "implemented": 4
+    },
+    "pymatgen.ext.matproj": {
+      "implemented": 16
+    },
+    "pymatgen.ext.optimade": {
+      "implemented": 8
+    },
+    "pymatgen.io.abinit": {
+      "implemented": 24,
+      "unsupported-upstream": 1
+    },
+    "pymatgen.io.abinit.abiobjects": {
+      "implemented": 82
+    },
+    "pymatgen.io.abinit.abitimer": {
+      "implemented": 39
+    },
+    "pymatgen.io.abinit.inputs": {
+      "implemented": 54
+    },
+    "pymatgen.io.abinit.netcdf": {
+      "implemented": 23
+    },
+    "pymatgen.io.abinit.pseudos": {
+      "external": 1,
+      "implemented": 110
+    },
+    "pymatgen.io.abinit.variable": {
+      "implemented": 10
+    },
+    "pymatgen.io.adf": {
+      "implemented": 25
+    },
+    "pymatgen.io.ase": {
+      "implemented": 14
+    },
+    "pymatgen.io.atat": {
+      "implemented": 3
+    },
+    "pymatgen.io.babel": {
+      "implemented": 15
+    },
+    "pymatgen.io.cif": {
+      "implemented": 21
+    },
+    "pymatgen.io.common": {
+      "implemented": 17
+    },
+    "pymatgen.io.core": {
+      "implemented": 12
+    },
+    "pymatgen.io.cp2k": {
+      "unsupported-upstream": 1
+    },
+    "pymatgen.io.cp2k.inputs": {
+      "implemented": 106
+    },
+    "pymatgen.io.cp2k.outputs": {
+      "implemented": 53,
+      "unsupported-upstream": 3
+    },
+    "pymatgen.io.cp2k.sets": {
+      "implemented": 42
+    },
+    "pymatgen.io.cp2k.utils": {
+      "implemented": 6
+    },
+    "pymatgen.io.cssr": {
+      "implemented": 4
+    },
+    "pymatgen.io.exciting": {
+      "implemented": 1,
+      "unsupported-upstream": 1
+    },
+    "pymatgen.io.exciting.inputs": {
+      "implemented": 8
+    },
+    "pymatgen.io.feff": {
+      "implemented": 12,
+      "unsupported-upstream": 1
+    },
+    "pymatgen.io.feff.inputs": {
+      "implemented": 31
+    },
+    "pymatgen.io.feff.outputs": {
+      "implemented": 25
+    },
+    "pymatgen.io.feff.sets": {
+      "implemented": 18
+    },
+    "pymatgen.io.fiesta": {
+      "implemented": 28
+    },
+    "pymatgen.io.gaussian": {
+      "implemented": 22
+    },
+    "pymatgen.io.icet": {
+      "implemented": 5
+    },
+    "pymatgen.io.jarvis": {
+      "implemented": 3
+    },
+    "pymatgen.io.jdftx._output_utils": {
+      "implemented": 13
+    },
+    "pymatgen.io.jdftx.generic_tags": {
+      "implemented": 59
+    },
+    "pymatgen.io.jdftx.inputs": {
+      "implemented": 33
+    },
+    "pymatgen.io.jdftx.jdftxinfile_master_format": {
+      "implemented": 3
+    },
+    "pymatgen.io.jdftx.jdftxoutfileslice": {
+      "implemented": 7
+    },
+    "pymatgen.io.jdftx.jelstep": {
+      "implemented": 6
+    },
+    "pymatgen.io.jdftx.jminsettings": {
+      "implemented": 5
+    },
+    "pymatgen.io.jdftx.joutstructure": {
+      "implemented": 17
+    },
+    "pymatgen.io.jdftx.joutstructures": {
+      "implemented": 3
+    },
+    "pymatgen.io.jdftx.outputs": {
+      "implemented": 8
+    },
+    "pymatgen.io.jdftx.sets": {
+      "implemented": 4
+    },
+    "pymatgen.io.lammps.data": {
+      "implemented": 34,
+      "unsupported-upstream": 2
+    },
+    "pymatgen.io.lammps.generators": {
+      "implemented": 16
+    },
+    "pymatgen.io.lammps.inputs": {
+      "implemented": 24
+    },
+    "pymatgen.io.lammps.outputs": {
+      "implemented": 6
+    },
+    "pymatgen.io.lammps.sets": {
+      "implemented": 2,
+      "unsupported-upstream": 1
+    },
+    "pymatgen.io.lammps.utils": {
+      "external": 4,
+      "implemented": 4
+    },
+    "pymatgen.io.lmto": {
+      "implemented": 8
+    },
+    "pymatgen.io.lobster": {
+      "implemented": 16,
+      "unsupported-upstream": 1
+    },
+    "pymatgen.io.lobster.future": {
+      "implemented": 29
+    },
+    "pymatgen.io.lobster.future.core": {
+      "implemented": 17
+    },
+    "pymatgen.io.lobster.future.inputs": {
+      "implemented": 13
+    },
+    "pymatgen.io.lobster.future.lobsterenv": {
+      "implemented": 1
+    },
+    "pymatgen.io.lobster.future.outputs": {
+      "implemented": 30
+    },
+    "pymatgen.io.lobster.future.outputs.bands": {
+      "implemented": 15
+    },
+    "pymatgen.io.lobster.future.outputs.coxxcar": {
+      "implemented": 18
+    },
+    "pymatgen.io.lobster.future.outputs.doscar": {
+      "implemented": 7
+    },
+    "pymatgen.io.lobster.future.outputs.icoxxlist": {
+      "implemented": 16
+    },
+    "pymatgen.io.lobster.future.outputs.lobsterout": {
+      "implemented": 4
+    },
+    "pymatgen.io.lobster.future.outputs.misc": {
+      "implemented": 32
+    },
+    "pymatgen.io.lobster.future.outputs.populations": {
+      "implemented": 8
+    },
+    "pymatgen.io.lobster.future.types": {
+      "implemented": 5
+    },
+    "pymatgen.io.lobster.future.utils": {
+      "implemented": 4
+    },
+    "pymatgen.io.lobster.future.versioning": {
+      "implemented": 1
+    },
+    "pymatgen.io.lobster.inputs": {
+      "implemented": 13
+    },
+    "pymatgen.io.lobster.lobsterenv": {
+      "implemented": 1
+    },
+    "pymatgen.io.lobster.outputs": {
+      "implemented": 48
+    },
+    "pymatgen.io.lobster.sets": {
+      "implemented": 3
+    },
+    "pymatgen.io.multiwfn": {
+      "implemented": 8
+    },
+    "pymatgen.io.nwchem": {
+      "implemented": 17
+    },
+    "pymatgen.io.openff": {
+      "implemented": 7
+    },
+    "pymatgen.io.optimade": {
+      "implemented": 3
+    },
+    "pymatgen.io.packmol": {
+      "implemented": 5
+    },
+    "pymatgen.io.phonopy": {
+      "implemented": 16
+    },
+    "pymatgen.io.prismatic": {
+      "implemented": 2
+    },
+    "pymatgen.io.pwmat": {
+      "implemented": 5,
+      "unsupported-upstream": 1
+    },
+    "pymatgen.io.pwmat.inputs": {
+      "implemented": 41
+    },
+    "pymatgen.io.pwmat.outputs": {
+      "implemented": 20
+    },
+    "pymatgen.io.pwscf": {
+      "implemented": 13
+    },
+    "pymatgen.io.qchem.inputs": {
+      "implemented": 38
+    },
+    "pymatgen.io.qchem.outputs": {
+      "implemented": 15
+    },
+    "pymatgen.io.qchem.sets": {
+      "implemented": 8
+    },
+    "pymatgen.io.qchem.utils": {
+      "implemented": 7
+    },
+    "pymatgen.io.registry": {
+      "implemented": 11
+    },
+    "pymatgen.io.res": {
+      "implemented": 47
+    },
+    "pymatgen.io.shengbte": {
+      "implemented": 7
+    },
+    "pymatgen.io.template": {
+      "implemented": 2
+    },
+    "pymatgen.io.vasp": {
+      "implemented": 21,
+      "unsupported-upstream": 1
+    },
+    "pymatgen.io.vasp.help": {
+      "implemented": 5
+    },
+    "pymatgen.io.vasp.inputs": {
+      "implemented": 101
+    },
+    "pymatgen.io.vasp.optics": {
+      "implemented": 14
+    },
+    "pymatgen.io.vasp.outputs": {
+      "implemented": 126
+    },
+    "pymatgen.io.vasp.sets": {
+      "implemented": 96
+    },
+    "pymatgen.io.wannier90": {
+      "implemented": 5
+    },
+    "pymatgen.io.xcrysden": {
+      "implemented": 23
+    },
+    "pymatgen.io.xr": {
+      "implemented": 4
+    },
+    "pymatgen.io.xtb.inputs": {
+      "implemented": 3
+    },
+    "pymatgen.io.xtb.outputs": {
+      "implemented": 1
+    },
+    "pymatgen.io.xyz": {
+      "implemented": 7
+    },
+    "pymatgen.io.zeopp": {
+      "implemented": 9
+    },
+    "pymatgen.phonon": {
+      "implemented": 15,
+      "unsupported-upstream": 1
+    },
+    "pymatgen.phonon.bandstructure": {
+      "implemented": 25
+    },
+    "pymatgen.phonon.dos": {
+      "implemented": 23
+    },
+    "pymatgen.phonon.gruneisen": {
+      "implemented": 13
+    },
+    "pymatgen.phonon.ir_spectra": {
+      "implemented": 10
+    },
+    "pymatgen.phonon.plotter": {
+      "implemented": 36
+    },
+    "pymatgen.phonon.thermal_displacements": {
+      "implemented": 16
+    },
+    "pymatgen.symmetry.analyzer": {
+      "implemented": 36
+    },
+    "pymatgen.symmetry.bandstructure": {
+      "implemented": 6
+    },
+    "pymatgen.symmetry.groups": {
+      "implemented": 24
+    },
+    "pymatgen.symmetry.kpath": {
+      "implemented": 38
+    },
+    "pymatgen.symmetry.maggroups": {
+      "implemented": 8
+    },
+    "pymatgen.symmetry.settings": {
+      "implemented": 11
+    },
+    "pymatgen.symmetry.site_symmetries": {
+      "implemented": 2
+    },
+    "pymatgen.symmetry.structure": {
+      "implemented": 6
+    },
+    "pymatgen.transformations.advanced_transformations": {
+      "implemented": 47
+    },
+    "pymatgen.transformations.site_transformations": {
+      "implemented": 19
+    },
+    "pymatgen.transformations.standard_transformations": {
+      "implemented": 43
+    },
+    "pymatgen.transformations.transformation_abc": {
+      "implemented": 5
+    },
+    "pymatgen.util": {
+      "unsupported-upstream": 1
+    },
+    "pymatgen.util.coord": {
+      "implemented": 22
+    },
+    "pymatgen.util.due": {
+      "implemented": 2
+    },
+    "pymatgen.util.graph_hashing": {
+      "implemented": 2
+    },
+    "pymatgen.util.io_utils": {
+      "implemented": 2
+    },
+    "pymatgen.util.joblib": {
+      "implemented": 2
+    },
+    "pymatgen.util.misc": {
+      "implemented": 1
+    },
+    "pymatgen.util.num": {
+      "implemented": 2
+    },
+    "pymatgen.util.plotting": {
+      "implemented": 10
+    },
+    "pymatgen.util.provenance": {
+      "implemented": 13
+    },
+    "pymatgen.util.string": {
+      "implemented": 17
+    },
+    "pymatgen.util.testing": {
+      "implemented": 6
+    },
+    "pymatgen.vis.plotters": {
+      "implemented": 6
+    },
+    "pymatgen.vis.structure_chemview": {
+      "implemented": 1
+    },
+    "pymatgen.vis.structure_vtk": {
+      "implemented": 38
+    }
+  },
+  "release_complete": 5461,
+  "total": 5461
+}

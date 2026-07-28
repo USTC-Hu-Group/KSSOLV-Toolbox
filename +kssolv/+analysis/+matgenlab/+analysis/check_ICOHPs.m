@@ -1,0 +1,36 @@
+function check_ICOHPs(lengthsFromIcohps, selectedIcohps, translations, ...
+        lengthThreshold, energyThreshold)
+%CHECK_ICOHPS Warn about ambiguous opposite-image LOBSTER interactions.
+if nargin < 4 || isempty(lengthThreshold), lengthThreshold = 0.01; end
+if nargin < 5 || isempty(energyThreshold), energyThreshold = 0.1; end
+lengthsFromIcohps = reshape(double(lengthsFromIcohps), 1, []);
+selectedIcohps = reshape(double(selectedIcohps), 1, []);
+translations = normalizeTranslations(translations);
+for first = 1:numel(lengthsFromIcohps)
+    for second = first + 1:numel(lengthsFromIcohps)
+        if abs(lengthsFromIcohps(first) - lengthsFromIcohps(second)) < ...
+                lengthThreshold && ...
+                abs(selectedIcohps(first) - selectedIcohps(second)) > ...
+                energyThreshold && any(translations(first, :) ~= 0) && ...
+                isequal(translations(first, :), -translations(second, :))
+            warning("KSSOLV:Matgenlab:LobsterNeighbors:AmbiguousICOHP", ...
+                ['Lengths %g and %g are very close and translation exactly ' ...
+                'opposite, but corresponding ICOHPs %g and %g are not. ' ...
+                'Our neighbor detection might fail.'], ...
+                lengthsFromIcohps(first), lengthsFromIcohps(second), ...
+                selectedIcohps(first), selectedIcohps(second));
+        end
+    end
+end
+end
+
+function values = normalizeTranslations(input)
+if isempty(input)
+    values = zeros(0, 3);
+elseif iscell(input)
+    values = cell2mat(cellfun(@(x) reshape(double(x), 1, 3), input, ...
+        "UniformOutput", false).');
+else
+    values = reshape(double(input), [], 3);
+end
+end

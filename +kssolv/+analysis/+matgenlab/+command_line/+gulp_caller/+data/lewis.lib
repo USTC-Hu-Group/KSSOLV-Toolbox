@@ -1,0 +1,42 @@
+#
+# Lewis-Catlow oxide potential parameters, J. Phys. C 18 (1985).
+#
+species
+Ca_2+ core  2.00000
+Sc_2+ core  2.00000
+Ti_2+ core  2.00000
+Fe_2+ core  2.00000
+Ni_2+ core  2.00000
+Zn_2+ core  2.00000
+Zr_4+ core  4.00000
+Hf_4+ core  4.00000
+Ce_4+ core  4.00000
+Sc_3+ core  3.00000
+Mn_3+ core  3.00000
+Y_3+  core  3.00000
+La_3+ core  3.00000
+Nd_3+ core  3.00000
+Eu_3+ core  3.00000
+Gd_3+ core  3.00000
+O     core  0.86902
+O     shel -2.86902
+buckingham
+Ca_2+ core O shel 1227.7 0.33720 0.00000 0.0 10.0
+Sc_2+ core O shel  838.6 0.33720 0.00000 0.0 10.0
+Ti_2+ core O shel  633.3 0.33720 0.00000 0.0 10.0
+Fe_2+ core O shel  725.7 0.33720 0.00000 0.0 10.0
+Ni_2+ core O shel  641.2 0.33720 0.00000 0.0 10.0
+Zn_2+ core O shel  700.3 0.33720 0.00000 0.0 10.0
+Zr_4+ core O shel 1453.8 0.35000 0.00000 0.0 10.0
+Hf_4+ core O shel 1454.6 0.35000 0.00000 0.0 10.0
+Ce_4+ core O shel 1017.4 0.39490 0.00000 0.0 10.0
+Sc_3+ core O shel 1299.4 0.33120 0.00000 0.0 10.0
+Mn_3+ core O shel 1257.9 0.32140 0.00000 0.0 10.0
+Y_3+  core O shel 1345.1 0.34910 0.00000 0.0 10.0
+La_3+ core O shel 1439.7 0.36510 0.00000 0.0 10.0
+Nd_3+ core O shel 1379.9 0.36010 0.00000 0.0 10.0
+Eu_3+ core O shel 1358.0 0.35560 0.00000 0.0 10.0
+Gd_3+ core O shel 1336.8 0.35510 0.00000 0.0 10.0
+O shel O shel 22764.0 0.14900 27.87900 0.0 12.0
+spring
+O 74.92

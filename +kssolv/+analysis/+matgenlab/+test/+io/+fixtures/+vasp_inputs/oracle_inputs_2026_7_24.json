@@ -1,0 +1,2058 @@
+{
+  "incar": {
+    "as_dict": {
+      "@class": "Incar",
+      "@module": "pymatgen.io.vasp.inputs",
+      "ALGO": "Damped",
+      "EDIFF": 0.0001,
+      "ENCUT": 500.0,
+      "ENCUTFOCK": 0.0,
+      "HFSCREEN": 0.207,
+      "IBRION": 2,
+      "ISIF": 3,
+      "ISMEAR": 0,
+      "ISPIN": 2,
+      "ISPIND": 2,
+      "LCHARG": true,
+      "LHFCALC": true,
+      "LMAXMIX": 4,
+      "LORBIT": 11,
+      "LPLANE": true,
+      "LREAL": "Auto",
+      "LSCALU": false,
+      "LWAVE": true,
+      "MAGMOM": [
+        6,
+        -6,
+        -6,
+        6,
+        0.6,
+        0.6,
+        0.6,
+        0.6,
+        0.6,
+        0.6,
+        0.6,
+        0.6,
+        0.6,
+        0.6,
+        0.6,
+        0.6,
+        0.6,
+        0.6,
+        0.6,
+        0.6,
+        0.6,
+        0.6,
+        0.6,
+        0.6
+      ],
+      "NKRED": 2,
+      "NPAR": 8,
+      "NSIM": 1,
+      "NSW": 99,
+      "NUPDOWN": 0.0,
+      "PREC": "Accurate",
+      "SIGMA": 0.05,
+      "SYSTEM": "id=[0] dblock_code=[97763-ICSD] formula=[Li Mn (P O4)] sg_name=[P n m a]",
+      "TIME": 0.4
+    },
+    "pretty": "ALGO       =  Damped\nEDIFF      =  0.0001\nENCUT      =  500.0\nENCUTFOCK  =  0.0\nHFSCREEN   =  0.207\nIBRION     =  2\nISIF       =  3\nISMEAR     =  0\nISPIN      =  2\nISPIND     =  2\nLCHARG     =  True\nLHFCALC    =  True\nLMAXMIX    =  4\nLORBIT     =  11\nLPLANE     =  True\nLREAL      =  Auto\nLSCALU     =  False\nLWAVE      =  True\nMAGMOM     =  1*6.0 2*-6.0 1*6.0 20*0.6\nNKRED      =  2\nNPAR       =  8\nNSIM       =  1\nNSW        =  99\nNUPDOWN    =  0.0\nPREC       =  Accurate\nSIGMA      =  0.05\nSYSTEM     =  id=[0] dblock_code=[97763-ICSD] formula=[Li Mn (P O4)] sg_name=[P n m a]\nTIME       =  0.4",
+    "proc": {
+      "ENCUT": 520.0,
+      "LASPH": true,
+      "LATTICE_CONSTRAINTS": [
+        true,
+        false,
+        true
+      ],
+      "LREAL": "Auto",
+      "MAGMOM": [
+        5.0,
+        5.0,
+        -1.0
+      ],
+      "ML_MODE": "run"
+    },
+    "sorted": "ALGO = Damped\nEDIFF = 0.0001\nENCUT = 500.0\nENCUTFOCK = 0.0\nHFSCREEN = 0.207\nIBRION = 2\nISIF = 3\nISMEAR = 0\nISPIN = 2\nISPIND = 2\nLCHARG = True\nLHFCALC = True\nLMAXMIX = 4\nLORBIT = 11\nLPLANE = True\nLREAL = Auto\nLSCALU = False\nLWAVE = True\nMAGMOM = 1*6.0 2*-6.0 1*6.0 20*0.6\nNKRED = 2\nNPAR = 8\nNSIM = 1\nNSW = 99\nNUPDOWN = 0.0\nPREC = Accurate\nSIGMA = 0.05\nSYSTEM = id=[0] dblock_code=[97763-ICSD] formula=[Li Mn (P O4)] sg_name=[P n m a]\nTIME = 0.4\n"
+  },
+  "kpoint_constructors": {
+    "automatic": {
+      "as_dict": {
+        "@class": "Kpoints",
+        "@module": "pymatgen.io.vasp.inputs",
+        "comment": "Fully automatic kpoint scheme",
+        "coord_type": null,
+        "generation_style": "Automatic",
+        "kpoints": [
+          [
+            25
+          ]
+        ],
+        "kpts_weights": null,
+        "labels": null,
+        "nkpoints": 0,
+        "tet_connections": null,
+        "tet_number": 0,
+        "tet_weight": 0,
+        "usershift": [
+          0,
+          0,
+          0
+        ]
+      },
+      "string": "Fully automatic kpoint scheme\n0\nAutomatic\n25\n"
+    },
+    "default": {
+      "as_dict": {
+        "@class": "Kpoints",
+        "@module": "pymatgen.io.vasp.inputs",
+        "comment": "Default gamma",
+        "coord_type": null,
+        "generation_style": "Gamma",
+        "kpoints": [
+          [
+            1,
+            1,
+            1
+          ]
+        ],
+        "kpts_weights": null,
+        "labels": null,
+        "nkpoints": 0,
+        "tet_connections": null,
+        "tet_number": 0,
+        "tet_weight": 0,
+        "usershift": [
+          0,
+          0,
+          0
+        ]
+      },
+      "string": "Default gamma\n0\nGamma\n1 1 1\n"
+    },
+    "density": {
+      "as_dict": {
+        "@class": "Kpoints",
+        "@module": "pymatgen.io.vasp.inputs",
+        "comment": "pymatgen with grid density = 1000 / number of atoms",
+        "coord_type": null,
+        "generation_style": "Gamma",
+        "kpoints": [
+          [
+            2,
+            3,
+            4
+          ]
+        ],
+        "kpts_weights": null,
+        "labels": null,
+        "nkpoints": 0,
+        "tet_connections": null,
+        "tet_number": 0,
+        "tet_weight": 0,
+        "usershift": [
+          0,
+          0,
+          0
+        ]
+      },
+      "string": "pymatgen with grid density = 1000 / number of atoms\n0\nGamma\n2 3 4\n"
+    },
+    "density_lengths": {
+      "as_dict": {
+        "@class": "Kpoints",
+        "@module": "pymatgen.io.vasp.inputs",
+        "comment": "k-point density of (20, 30, 40)/[a, b, c]",
+        "coord_type": null,
+        "generation_style": "Gamma",
+        "kpoints": [
+          [
+            2,
+            5,
+            9
+          ]
+        ],
+        "kpts_weights": null,
+        "labels": null,
+        "nkpoints": 0,
+        "tet_connections": null,
+        "tet_number": 0,
+        "tet_weight": 0,
+        "usershift": [
+          0,
+          0,
+          0
+        ]
+      },
+      "string": "k-point density of (20, 30, 40)/[a, b, c]\n0\nGamma\n2 5 9\n"
+    },
+    "density_vol": {
+      "as_dict": {
+        "@class": "Kpoints",
+        "@module": "pymatgen.io.vasp.inputs",
+        "comment": "pymatgen with grid density = 1267 / number of atoms",
+        "coord_type": null,
+        "generation_style": "Gamma",
+        "kpoints": [
+          [
+            2,
+            4,
+            5
+          ]
+        ],
+        "kpts_weights": null,
+        "labels": null,
+        "nkpoints": 0,
+        "tet_connections": null,
+        "tet_number": 0,
+        "tet_weight": 0,
+        "usershift": [
+          0,
+          0,
+          0
+        ]
+      },
+      "string": "pymatgen with grid density = 1267 / number of atoms\n0\nGamma\n2 4 5\n"
+    },
+    "gamma": {
+      "as_dict": {
+        "@class": "Kpoints",
+        "@module": "pymatgen.io.vasp.inputs",
+        "comment": "Automatic kpoint scheme",
+        "coord_type": null,
+        "generation_style": "Gamma",
+        "kpoints": [
+          [
+            3,
+            5,
+            7
+          ]
+        ],
+        "kpts_weights": null,
+        "labels": null,
+        "nkpoints": 0,
+        "tet_connections": null,
+        "tet_number": 0,
+        "tet_weight": 0,
+        "usershift": [
+          0.5,
+          0,
+          0
+        ]
+      },
+      "string": "Automatic kpoint scheme\n0\nGamma\n3 5 7\n0.5 0 0\n"
+    },
+    "gamma_density": {
+      "as_dict": {
+        "@class": "Kpoints",
+        "@module": "pymatgen.io.vasp.inputs",
+        "comment": "pymatgen with grid density = 1000 / number of atoms",
+        "coord_type": null,
+        "generation_style": "Gamma",
+        "kpoints": [
+          [
+            2,
+            4,
+            6
+          ]
+        ],
+        "kpts_weights": null,
+        "labels": null,
+        "nkpoints": 0,
+        "tet_connections": null,
+        "tet_number": 0,
+        "tet_weight": 0,
+        "usershift": [
+          0,
+          0,
+          0
+        ]
+      },
+      "string": "pymatgen with grid density = 1000 / number of atoms\n0\nGamma\n2 4 6\n"
+    },
+    "linemode": {
+      "as_dict": {
+        "@class": "Kpoints",
+        "@module": "pymatgen.io.vasp.inputs",
+        "comment": "Line_mode KPOINTS file",
+        "coord_type": "Reciprocal",
+        "generation_style": "Line_mode",
+        "kpoints": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0.5,
+            0,
+            0
+          ],
+          [
+            0.5,
+            0,
+            0
+          ],
+          [
+            0.5,
+            0.5,
+            0.5
+          ]
+        ],
+        "kpts_weights": null,
+        "labels": [
+          "G",
+          "X",
+          "X",
+          "L"
+        ],
+        "nkpoints": 20,
+        "tet_connections": null,
+        "tet_number": 0,
+        "tet_weight": 0,
+        "usershift": [
+          0,
+          0,
+          0
+        ]
+      },
+      "string": "Line_mode KPOINTS file\n20\nLine_mode\nReciprocal\n0 0 0 ! G\n0.5 0 0 ! X\n\n0.5 0 0 ! X\n0.5 0.5 0.5 ! L\n\n"
+    },
+    "monkhorst": {
+      "as_dict": {
+        "@class": "Kpoints",
+        "@module": "pymatgen.io.vasp.inputs",
+        "comment": "Automatic kpoint scheme",
+        "coord_type": null,
+        "generation_style": "Monkhorst",
+        "kpoints": [
+          [
+            4,
+            6,
+            8
+          ]
+        ],
+        "kpts_weights": null,
+        "labels": null,
+        "nkpoints": 0,
+        "tet_connections": null,
+        "tet_number": 0,
+        "tet_weight": 0,
+        "usershift": [
+          0,
+          0,
+          0
+        ]
+      },
+      "string": "Automatic kpoint scheme\n0\nMonkhorst\n4 6 8\n"
+    },
+    "positional": {
+      "as_dict": {
+        "@class": "Kpoints",
+        "@module": "pymatgen.io.vasp.inputs",
+        "comment": "positional",
+        "coord_type": null,
+        "generation_style": "Monkhorst",
+        "kpoints": [
+          [
+            4,
+            6,
+            8
+          ]
+        ],
+        "kpts_weights": null,
+        "labels": null,
+        "nkpoints": 0,
+        "tet_connections": null,
+        "tet_number": 0,
+        "tet_weight": 0,
+        "usershift": [
+          0.5,
+          0.5,
+          0.5
+        ]
+      },
+      "string": "positional\n0\nMonkhorst\n4 6 8\n0.5 0.5 0.5\n"
+    }
+  },
+  "kpoints": {
+    "KPOINTS": {
+      "as_dict": {
+        "@class": "Kpoints",
+        "@module": "pymatgen.io.vasp.inputs",
+        "comment": "Auto-generated kpoints file: VaspIO.writeKPOINTS(XX,XX,500)",
+        "coord_type": null,
+        "generation_style": "Monkhorst",
+        "kpoints": [
+          [
+            2,
+            4,
+            6
+          ]
+        ],
+        "kpts_weights": null,
+        "labels": null,
+        "nkpoints": 0,
+        "tet_connections": null,
+        "tet_number": 0,
+        "tet_weight": 0,
+        "usershift": [
+          0,
+          0,
+          0
+        ]
+      },
+      "string": "Auto-generated kpoints file: VaspIO.writeKPOINTS(XX,XX,500)\n0\nMonkhorst\n2 4 6\n"
+    },
+    "KPOINTS_auto": {
+      "as_dict": {
+        "@class": "Kpoints",
+        "@module": "pymatgen.io.vasp.inputs",
+        "comment": "Automatic mesh",
+        "coord_type": null,
+        "generation_style": "Automatic",
+        "kpoints": [
+          [
+            10
+          ]
+        ],
+        "kpts_weights": null,
+        "labels": null,
+        "nkpoints": 0,
+        "tet_connections": null,
+        "tet_number": 0,
+        "tet_weight": 0,
+        "usershift": [
+          0,
+          0,
+          0
+        ]
+      },
+      "string": "Automatic mesh\n0\nAutomatic\n10\n"
+    },
+    "KPOINTS_band": {
+      "as_dict": {
+        "@class": "Kpoints",
+        "@module": "pymatgen.io.vasp.inputs",
+        "comment": "ORC (orthorhombic) G-X-S-Y-G-Z-U-R-T-Z Y-T U-X S-R",
+        "coord_type": "Reciprocal",
+        "generation_style": "Line_mode",
+        "kpoints": [
+          [
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.5,
+            0.0,
+            0.0
+          ],
+          [
+            0.5,
+            0.0,
+            0.0
+          ],
+          [
+            0.5,
+            0.5,
+            0.0
+          ],
+          [
+            0.5,
+            0.5,
+            0.0
+          ],
+          [
+            0.0,
+            0.5,
+            0.0
+          ],
+          [
+            0.0,
+            0.5,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.5
+          ],
+          [
+            0.0,
+            0.0,
+            0.5
+          ],
+          [
+            0.5,
+            0.0,
+            0.5
+          ],
+          [
+            0.5,
+            0.0,
+            0.5
+          ],
+          [
+            0.5,
+            0.5,
+            0.5
+          ],
+          [
+            0.5,
+            0.5,
+            0.5
+          ],
+          [
+            0.0,
+            0.5,
+            0.5
+          ],
+          [
+            0.0,
+            0.5,
+            0.5
+          ],
+          [
+            0.0,
+            0.0,
+            0.5
+          ],
+          [
+            0.0,
+            0.5,
+            0.0
+          ],
+          [
+            0.0,
+            0.5,
+            0.5
+          ],
+          [
+            0.5,
+            0.0,
+            0.5
+          ],
+          [
+            0.5,
+            0.0,
+            0.0
+          ],
+          [
+            0.5,
+            0.5,
+            0.0
+          ],
+          [
+            0.5,
+            0.5,
+            0.5
+          ]
+        ],
+        "kpts_weights": null,
+        "labels": [
+          "\u0393",
+          "X",
+          "X",
+          "S",
+          "S",
+          "Y",
+          "Y",
+          "\u0393",
+          "\u0393",
+          "Z",
+          "Z",
+          "U",
+          "U",
+          "R",
+          "R",
+          "T",
+          "T",
+          "Z",
+          "Y",
+          "T",
+          "U",
+          "X",
+          "S",
+          "R"
+        ],
+        "nkpoints": 16,
+        "tet_connections": null,
+        "tet_number": 0,
+        "tet_weight": 0,
+        "usershift": [
+          0,
+          0,
+          0
+        ]
+      },
+      "string": "ORC (orthorhombic) G-X-S-Y-G-Z-U-R-T-Z Y-T U-X S-R\n16\nLine_mode\nReciprocal\n0.0 0.0 0.0 ! \u0393\n0.5 0.0 0.0 ! X\n\n0.5 0.0 0.0 ! X\n0.5 0.5 0.0 ! S\n\n0.5 0.5 0.0 ! S\n0.0 0.5 0.0 ! Y\n\n0.0 0.5 0.0 ! Y\n0.0 0.0 0.0 ! \u0393\n\n0.0 0.0 0.0 ! \u0393\n0.0 0.0 0.5 ! Z\n\n0.0 0.0 0.5 ! Z\n0.5 0.0 0.5 ! U\n\n0.5 0.0 0.5 ! U\n0.5 0.5 0.5 ! R\n\n0.5 0.5 0.5 ! R\n0.0 0.5 0.5 ! T\n\n0.0 0.5 0.5 ! T\n0.0 0.0 0.5 ! Z\n\n0.0 0.5 0.0 ! Y\n0.0 0.5 0.5 ! T\n\n0.5 0.0 0.5 ! U\n0.5 0.0 0.0 ! X\n\n0.5 0.5 0.0 ! S\n0.5 0.5 0.5 ! R\n\n"
+    },
+    "KPOINTS_cartesian": {
+      "as_dict": {
+        "@class": "Kpoints",
+        "@module": "pymatgen.io.vasp.inputs",
+        "comment": "Automatic generation",
+        "coord_type": null,
+        "generation_style": "Cartesian",
+        "kpoints": [
+          [
+            0.25,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.25,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.25
+          ]
+        ],
+        "kpts_weights": null,
+        "labels": null,
+        "nkpoints": 0,
+        "tet_connections": null,
+        "tet_number": 0,
+        "tet_weight": 0,
+        "usershift": [
+          0.5,
+          0.5,
+          0.5
+        ]
+      },
+      "string": "Automatic generation\n0\nCartesian\n0.25 0.0 0.0\n0.0 0.25 0.0\n0.0 0.0 0.25\n0.5 0.5 0.5\n"
+    },
+    "KPOINTS_explicit": {
+      "as_dict": {
+        "@class": "Kpoints",
+        "@module": "pymatgen.io.vasp.inputs",
+        "comment": "Example file",
+        "coord_type": null,
+        "generation_style": "Cartesian",
+        "kpoints": [
+          [
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.5
+          ],
+          [
+            0.0,
+            0.5,
+            0.5
+          ],
+          [
+            0.5,
+            0.5,
+            0.5
+          ]
+        ],
+        "kpts_weights": [
+          1.0,
+          1.0,
+          2.0,
+          4.0
+        ],
+        "labels": [
+          null,
+          null,
+          null,
+          null
+        ],
+        "nkpoints": 4,
+        "tet_connections": null,
+        "tet_number": 0,
+        "tet_weight": 0,
+        "usershift": [
+          0,
+          0,
+          0
+        ]
+      },
+      "string": "Example file\n4\nCartesian\n0.0 0.0 0.0 1 None\n0.0 0.0 0.5 1 None\n0.0 0.5 0.5 2 None\n0.5 0.5 0.5 4 None\n"
+    },
+    "KPOINTS_explicit_tet": {
+      "as_dict": {
+        "@class": "Kpoints",
+        "@module": "pymatgen.io.vasp.inputs",
+        "comment": "Example file",
+        "coord_type": null,
+        "generation_style": "Cartesian",
+        "kpoints": [
+          [
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.5
+          ],
+          [
+            0.0,
+            0.5,
+            0.5
+          ],
+          [
+            0.5,
+            0.5,
+            0.5
+          ]
+        ],
+        "kpts_weights": [
+          1.0,
+          1.0,
+          2.0,
+          4.0
+        ],
+        "labels": [
+          null,
+          null,
+          null,
+          null
+        ],
+        "nkpoints": 4,
+        "tet_connections": [
+          [
+            6,
+            [
+              1,
+              2,
+              3,
+              4
+            ]
+          ]
+        ],
+        "tet_number": 1,
+        "tet_weight": 0.183333333333333,
+        "usershift": [
+          0,
+          0,
+          0
+        ]
+      },
+      "string": "Example file\n4\nCartesian\n0.0 0.0 0.0 1 None\n0.0 0.0 0.5 1 None\n0.0 0.5 0.5 2 None\n0.5 0.5 0.5 4 None\nTetrahedron\n1 0.183333\n6 1 2 3 4\n"
+    },
+    "KPOINTS_gamma": {
+      "as_dict": {
+        "@class": "Kpoints",
+        "@module": "pymatgen.io.vasp.inputs",
+        "comment": "Gamma centered mesh",
+        "coord_type": null,
+        "generation_style": "Gamma",
+        "kpoints": [
+          [
+            4,
+            4,
+            4
+          ]
+        ],
+        "kpts_weights": null,
+        "labels": null,
+        "nkpoints": 0,
+        "tet_connections": null,
+        "tet_number": 0,
+        "tet_weight": 0,
+        "usershift": [
+          0,
+          0,
+          0
+        ]
+      },
+      "string": "Gamma centered mesh\n0\nGamma\n4 4 4\n"
+    }
+  },
+  "poscar": {
+    "as_dict": {
+      "@class": "Poscar",
+      "@module": "pymatgen.io.vasp.inputs",
+      "comment": "Fe4P4O16",
+      "predictor_corrector": null,
+      "selective_dynamics": null,
+      "structure": {
+        "@class": "Structure",
+        "@module": "pymatgen.core.structure",
+        "charge": 0.0,
+        "lattice": {
+          "a": 10.411766869949426,
+          "alpha": 90.0,
+          "b": 6.067171879970529,
+          "beta": 90.0,
+          "c": 4.759489539976881,
+          "gamma": 90.0,
+          "matrix": [
+            [
+              10.411766869949426,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              6.067171879970529,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              4.759489539976881
+            ]
+          ],
+          "pbc": [
+            true,
+            true,
+            true
+          ],
+          "volume": 300.6568551200002
+        },
+        "properties": {},
+        "sites": [
+          {
+            "abc": [
+              0.21872822,
+              0.75,
+              0.47486711
+            ],
+            "label": "Fe",
+            "properties": {},
+            "species": [
+              {
+                "element": "Fe",
+                "occu": 1
+              }
+            ],
+            "xyz": [
+              2.2773472345190093,
+              4.550378909977897,
+              2.260125042924051
+            ]
+          },
+          {
+            "abc": [
+              0.28127178,
+              0.25,
+              0.97486711
+            ],
+            "label": "Fe",
+            "properties": {},
+            "species": [
+              {
+                "element": "Fe",
+                "occu": 1
+              }
+            ],
+            "xyz": [
+              2.928536200455704,
+              1.5167929699926324,
+              4.639869812912492
+            ]
+          },
+          {
+            "abc": [
+              0.71872822,
+              0.75,
+              0.02513289
+            ],
+            "label": "Fe",
+            "properties": {},
+            "species": [
+              {
+                "element": "Fe",
+                "occu": 1
+              }
+            ],
+            "xyz": [
+              7.483230669493723,
+              4.550378909977897,
+              0.11961972706438957
+            ]
+          },
+          {
+            "abc": [
+              0.78127178,
+              0.25,
+              0.52513289
+            ],
+            "label": "Fe",
+            "properties": {},
+            "species": [
+              {
+                "element": "Fe",
+                "occu": 1
+              }
+            ],
+            "xyz": [
+              8.134419635430417,
+              1.5167929699926324,
+              2.49936449705283
+            ]
+          },
+          {
+            "abc": [
+              0.09461309,
+              0.25,
+              0.41824327
+            ],
+            "label": "P",
+            "properties": {},
+            "species": [
+              {
+                "element": "P",
+                "occu": 1
+              }
+            ],
+            "xyz": [
+              0.9850894359255433,
+              1.5167929699926324,
+              1.9906244687307266
+            ]
+          },
+          {
+            "abc": [
+              0.40538691,
+              0.75,
+              0.91824327
+            ],
+            "label": "P",
+            "properties": {},
+            "species": [
+              {
+                "element": "P",
+                "occu": 1
+              }
+            ],
+            "xyz": [
+              4.22079399904917,
+              4.550378909977897,
+              4.370369238719167
+            ]
+          },
+          {
+            "abc": [
+              0.59461309,
+              0.25,
+              0.08175673
+            ],
+            "label": "P",
+            "properties": {},
+            "species": [
+              {
+                "element": "P",
+                "occu": 1
+              }
+            ],
+            "xyz": [
+              6.190972870900256,
+              1.5167929699926324,
+              0.3891203012577141
+            ]
+          },
+          {
+            "abc": [
+              0.90538691,
+              0.75,
+              0.58175673
+            ],
+            "label": "P",
+            "properties": {},
+            "species": [
+              {
+                "element": "P",
+                "occu": 1
+              }
+            ],
+            "xyz": [
+              9.426677434023883,
+              4.550378909977897,
+              2.768865071246155
+            ]
+          },
+          {
+            "abc": [
+              0.04337231,
+              0.75,
+              0.70713767
+            ],
+            "label": "O",
+            "properties": {},
+            "species": [
+              {
+                "element": "O",
+                "occu": 1
+              }
+            ],
+            "xyz": [
+              0.4515823803311762,
+              4.550378909977897,
+              3.365614343688624
+            ]
+          },
+          {
+            "abc": [
+              0.09664244,
+              0.25,
+              0.74132035
+            ],
+            "label": "O",
+            "properties": {},
+            "species": [
+              {
+                "element": "O",
+                "occu": 1
+              }
+            ],
+            "xyz": [
+              1.0062185550230751,
+              1.5167929699926324,
+              3.5283064515970004
+            ]
+          },
+          {
+            "abc": [
+              0.16570974,
+              0.04607233,
+              0.28538394
+            ],
+            "label": "O",
+            "properties": {},
+            "species": [
+              {
+                "element": "O",
+                "occu": 1
+              }
+            ],
+            "xyz": [
+              1.7253311809599332,
+              0.2795287450207226,
+              1.35828187730739
+            ]
+          },
+          {
+            "abc": [
+              0.16570974,
+              0.45392767,
+              0.28538394
+            ],
+            "label": "O",
+            "properties": {},
+            "species": [
+              {
+                "element": "O",
+                "occu": 1
+              }
+            ],
+            "xyz": [
+              1.7253311809599332,
+              2.7540571949645423,
+              1.35828187730739
+            ]
+          },
+          {
+            "abc": [
+              0.33429026,
+              0.54607233,
+              0.78538394
+            ],
+            "label": "O",
+            "properties": {},
+            "species": [
+              {
+                "element": "O",
+                "occu": 1
+              }
+            ],
+            "xyz": [
+              3.48055225401478,
+              3.313114685005987,
+              3.7380266472958303
+            ]
+          },
+          {
+            "abc": [
+              0.33429026,
+              0.95392767,
+              0.78538394
+            ],
+            "label": "O",
+            "properties": {},
+            "species": [
+              {
+                "element": "O",
+                "occu": 1
+              }
+            ],
+            "xyz": [
+              3.48055225401478,
+              5.787643134949807,
+              3.7380266472958303
+            ]
+          },
+          {
+            "abc": [
+              0.40335756,
+              0.75,
+              0.24132035
+            ],
+            "label": "O",
+            "properties": {},
+            "species": [
+              {
+                "element": "O",
+                "occu": 1
+              }
+            ],
+            "xyz": [
+              4.199664879951638,
+              4.550378909977897,
+              1.14856168160856
+            ]
+          },
+          {
+            "abc": [
+              0.45662769,
+              0.25,
+              0.20713767
+            ],
+            "label": "O",
+            "properties": {},
+            "species": [
+              {
+                "element": "O",
+                "occu": 1
+              }
+            ],
+            "xyz": [
+              4.754301054643537,
+              1.5167929699926324,
+              0.985869573700183
+            ]
+          },
+          {
+            "abc": [
+              0.54337231,
+              0.75,
+              0.79286233
+            ],
+            "label": "O",
+            "properties": {},
+            "species": [
+              {
+                "element": "O",
+                "occu": 1
+              }
+            ],
+            "xyz": [
+              5.657465815305889,
+              4.550378909977897,
+              3.773619966276698
+            ]
+          },
+          {
+            "abc": [
+              0.59664244,
+              0.25,
+              0.75867965
+            ],
+            "label": "O",
+            "properties": {},
+            "species": [
+              {
+                "element": "O",
+                "occu": 1
+              }
+            ],
+            "xyz": [
+              6.212101989997788,
+              1.5167929699926324,
+              3.6109278583683215
+            ]
+          },
+          {
+            "abc": [
+              0.66570974,
+              0.04607233,
+              0.21461606
+            ],
+            "label": "O",
+            "properties": {},
+            "species": [
+              {
+                "element": "O",
+                "occu": 1
+              }
+            ],
+            "xyz": [
+              6.931214615934647,
+              0.2795287450207226,
+              1.0214628926810507
+            ]
+          },
+          {
+            "abc": [
+              0.66570974,
+              0.45392767,
+              0.21461606
+            ],
+            "label": "O",
+            "properties": {},
+            "species": [
+              {
+                "element": "O",
+                "occu": 1
+              }
+            ],
+            "xyz": [
+              6.931214615934647,
+              2.7540571949645423,
+              1.0214628926810507
+            ]
+          },
+          {
+            "abc": [
+              0.83429026,
+              0.54607233,
+              0.71461606
+            ],
+            "label": "O",
+            "properties": {},
+            "species": [
+              {
+                "element": "O",
+                "occu": 1
+              }
+            ],
+            "xyz": [
+              8.686435688989492,
+              3.313114685005987,
+              3.4012076626694916
+            ]
+          },
+          {
+            "abc": [
+              0.83429026,
+              0.95392767,
+              0.71461606
+            ],
+            "label": "O",
+            "properties": {},
+            "species": [
+              {
+                "element": "O",
+                "occu": 1
+              }
+            ],
+            "xyz": [
+              8.686435688989492,
+              5.787643134949807,
+              3.4012076626694916
+            ]
+          },
+          {
+            "abc": [
+              0.90335756,
+              0.75,
+              0.25867965
+            ],
+            "label": "O",
+            "properties": {},
+            "species": [
+              {
+                "element": "O",
+                "occu": 1
+              }
+            ],
+            "xyz": [
+              9.405548314926351,
+              4.550378909977897,
+              1.2311830883798807
+            ]
+          },
+          {
+            "abc": [
+              0.95662769,
+              0.25,
+              0.29286233
+            ],
+            "label": "O",
+            "properties": {},
+            "species": [
+              {
+                "element": "O",
+                "occu": 1
+              }
+            ],
+            "xyz": [
+              9.96018448961825,
+              1.5167929699926324,
+              1.3938751962882576
+            ]
+          }
+        ]
+      },
+      "true_names": true,
+      "velocities": null
+    },
+    "cart12": "Fe4P4O16\n1.0\n  10.411766869949    0.000000000000    0.000000000000\n   0.000000000000    6.067171879971    0.000000000000\n   0.000000000000    0.000000000000    4.759489539977\nFe P O\n4 4 16\ncartesian\n   2.277347234519    4.550378909978    2.260125042924 Fe\n   2.928536200456    1.516792969993    4.639869812912 Fe\n   7.483230669494    4.550378909978    0.119619727064 Fe\n   8.134419635430    1.516792969993    2.499364497053 Fe\n   0.985089435926    1.516792969993    1.990624468731 P\n   4.220793999049    4.550378909978    4.370369238719 P\n   6.190972870900    1.516792969993    0.389120301258 P\n   9.426677434024    4.550378909978    2.768865071246 P\n   0.451582380331    4.550378909978    3.365614343689 O\n   1.006218555023    1.516792969993    3.528306451597 O\n   1.725331180960    0.279528745021    1.358281877307 O\n   1.725331180960    2.754057194965    1.358281877307 O\n   3.480552254015    3.313114685006    3.738026647296 O\n   3.480552254015    5.787643134950    3.738026647296 O\n   4.199664879952    4.550378909978    1.148561681609 O\n   4.754301054644    1.516792969993    0.985869573700 O\n   5.657465815306    4.550378909978    3.773619966277 O\n   6.212101989998    1.516792969993    3.610927858368 O\n   6.931214615935    0.279528745021    1.021462892681 O\n   6.931214615935    2.754057194965    1.021462892681 O\n   8.686435688989    3.313114685006    3.401207662669 O\n   8.686435688989    5.787643134950    3.401207662669 O\n   9.405548314926    4.550378909978    1.231183088380 O\n   9.960184489618    1.516792969993    1.393875196288 O\n",
+    "natoms": [
+      4,
+      4,
+      16
+    ],
+    "site_symbols": [
+      "Fe",
+      "P",
+      "O"
+    ],
+    "str12": "Fe4P4O16\n1.0\n  10.411766869949    0.000000000000    0.000000000000\n   0.000000000000    6.067171879971    0.000000000000\n   0.000000000000    0.000000000000    4.759489539977\nFe P O\n4 4 16\ndirect\n   0.218728220000    0.750000000000    0.474867110000 Fe\n   0.281271780000    0.250000000000    0.974867110000 Fe\n   0.718728220000    0.750000000000    0.025132890000 Fe\n   0.781271780000    0.250000000000    0.525132890000 Fe\n   0.094613090000    0.250000000000    0.418243270000 P\n   0.405386910000    0.750000000000    0.918243270000 P\n   0.594613090000    0.250000000000    0.081756730000 P\n   0.905386910000    0.750000000000    0.581756730000 P\n   0.043372310000    0.750000000000    0.707137670000 O\n   0.096642440000    0.250000000000    0.741320350000 O\n   0.165709740000    0.046072330000    0.285383940000 O\n   0.165709740000    0.453927670000    0.285383940000 O\n   0.334290260000    0.546072330000    0.785383940000 O\n   0.334290260000    0.953927670000    0.785383940000 O\n   0.403357560000    0.750000000000    0.241320350000 O\n   0.456627690000    0.250000000000    0.207137670000 O\n   0.543372310000    0.750000000000    0.792862330000 O\n   0.596642440000    0.250000000000    0.758679650000 O\n   0.665709740000    0.046072330000    0.214616060000 O\n   0.665709740000    0.453927670000    0.214616060000 O\n   0.834290260000    0.546072330000    0.714616060000 O\n   0.834290260000    0.953927670000    0.714616060000 O\n   0.903357560000    0.750000000000    0.258679650000 O\n   0.956627690000    0.250000000000    0.292862330000 O\n",
+    "str4": "Fe4P4O16\n1.0\n  10.4118    0.0000    0.0000\n   0.0000    6.0672    0.0000\n   0.0000    0.0000    4.7595\nFe P O\n4 4 16\ndirect\n   0.2187    0.7500    0.4749 Fe\n   0.2813    0.2500    0.9749 Fe\n   0.7187    0.7500    0.0251 Fe\n   0.7813    0.2500    0.5251 Fe\n   0.0946    0.2500    0.4182 P\n   0.4054    0.7500    0.9182 P\n   0.5946    0.2500    0.0818 P\n   0.9054    0.7500    0.5818 P\n   0.0434    0.7500    0.7071 O\n   0.0966    0.2500    0.7413 O\n   0.1657    0.0461    0.2854 O\n   0.1657    0.4539    0.2854 O\n   0.3343    0.5461    0.7854 O\n   0.3343    0.9539    0.7854 O\n   0.4034    0.7500    0.2413 O\n   0.4566    0.2500    0.2071 O\n   0.5434    0.7500    0.7929 O\n   0.5966    0.2500    0.7587 O\n   0.6657    0.0461    0.2146 O\n   0.6657    0.4539    0.2146 O\n   0.8343    0.5461    0.7146 O\n   0.8343    0.9539    0.7146 O\n   0.9034    0.7500    0.2587 O\n   0.9566    0.2500    0.2929 O\n"
+  },
+  "potcar_single": {
+    "atomic_no": 26,
+    "electron_configuration": [
+      [
+        3,
+        "d",
+        7.0
+      ],
+      [
+        4,
+        "s",
+        1.0
+      ]
+    ],
+    "element": "Fe",
+    "functional": "PBE",
+    "functional_class": "GGA",
+    "header": "PAW_PBE Fe 01Jan2000",
+    "is_valid": false,
+    "keywords": {
+      "ENMAX": 300.0,
+      "LEXCH": "PE",
+      "LPAW": true,
+      "LULTRA": false,
+      "OrbitalDescriptions": [
+        [
+          2,
+          -4.0,
+          23,
+          2.3,
+          null,
+          null
+        ]
+      ],
+      "Orbitals": [
+        [
+          3,
+          2,
+          2.5,
+          -4.0,
+          7.0
+        ],
+        [
+          4,
+          0,
+          0.5,
+          -3.0,
+          1.0
+        ]
+      ],
+      "POMASS": 55.0,
+      "TITEL": "PAW_PBE Fe 01Jan2000",
+      "VRHFIN": "Fe: 3d4s",
+      "ZVAL": 8.0,
+      "nentries": 2
+    },
+    "nelectrons": 8.0,
+    "potential_type": "PAW",
+    "spec": {
+      "hash": null,
+      "summary_stats": {
+        "keywords": {
+          "data": [
+            "localpart",
+            "endofdataset"
+          ],
+          "header": [
+            "enmax",
+            "lexch",
+            "lpaw",
+            "lultra",
+            "orbitaldescriptions",
+            "orbitals",
+            "pomass",
+            "titel",
+            "vrhfin",
+            "zval",
+            "nentries"
+          ]
+        },
+        "stats": {
+          "data": {
+            "ABSMEAN": 1.3333333333333333,
+            "MAX": 2.0,
+            "MEAN": 1.3333333333333333,
+            "MIN": 1.0,
+            "VAR": 2.0
+          },
+          "header": {
+            "ABSMEAN": 61.0,
+            "MAX": 300.0,
+            "MEAN": 61.0,
+            "MIN": 0.0,
+            "VAR": 15515.666666666666
+          }
+        }
+      },
+      "titel": "PAW_PBE Fe 01Jan2000"
+    },
+    "string": "PAW_PBE Fe 01Jan2000\nparameters from PSCTR are:\nVRHFIN = Fe: 3d4s;\nLEXCH = PE;\nTITEL = PAW_PBE Fe 01Jan2000;\nLULTRA = F;\nLPAW = T;\nPOMASS = 55.0;\nZVAL = 8;\nENMAX = 300.0;\nAtomic configuration\n2 entries\nn l j E occ.\n3 2 2.5 -4.0 7.0\n4 0 0.5 -3.0 1.0\nDescription\n2 -4.0 23 2.3\nError from kinetic energy argument (eV)\nEND of PSCTR-controll parameters\nLocal Part\n1.0 2.0 True\nEnd of Dataset\n\n",
+    "symbol": "Fe"
+  },
+  "source": {
+    "path": "test-files/io/vasp/inputs",
+    "repository": "materialsproject/pymatgen",
+    "version": "2026.7.24"
+  },
+  "vasp_input": {
+    "as_dict": {
+      "@class": "VaspInput",
+      "@module": "pymatgen.io.vasp.inputs",
+      "INCAR": {
+        "@class": "Incar",
+        "@module": "pymatgen.io.vasp.inputs",
+        "ALGO": "Damped",
+        "EDIFF": 0.0001,
+        "ENCUT": 500.0,
+        "ENCUTFOCK": 0.0,
+        "HFSCREEN": 0.207,
+        "IBRION": 2,
+        "ISIF": 3,
+        "ISMEAR": 0,
+        "ISPIN": 2,
+        "ISPIND": 2,
+        "LCHARG": true,
+        "LHFCALC": true,
+        "LMAXMIX": 4,
+        "LORBIT": 11,
+        "LPLANE": true,
+        "LREAL": "Auto",
+        "LSCALU": false,
+        "LWAVE": true,
+        "MAGMOM": [
+          6,
+          -6,
+          -6,
+          6,
+          0.6,
+          0.6,
+          0.6,
+          0.6,
+          0.6,
+          0.6,
+          0.6,
+          0.6,
+          0.6,
+          0.6,
+          0.6,
+          0.6,
+          0.6,
+          0.6,
+          0.6,
+          0.6,
+          0.6,
+          0.6,
+          0.6,
+          0.6
+        ],
+        "NKRED": 2,
+        "NPAR": 8,
+        "NSIM": 1,
+        "NSW": 99,
+        "NUPDOWN": 0.0,
+        "PREC": "Accurate",
+        "SIGMA": 0.05,
+        "SYSTEM": "id=[0] dblock_code=[97763-ICSD] formula=[Li Mn (P O4)] sg_name=[P n m a]",
+        "TIME": 0.4
+      },
+      "KPOINTS": {
+        "@class": "Kpoints",
+        "@module": "pymatgen.io.vasp.inputs",
+        "comment": "Automatic kpoint scheme",
+        "coord_type": null,
+        "generation_style": "Gamma",
+        "kpoints": [
+          [
+            3,
+            5,
+            7
+          ]
+        ],
+        "kpts_weights": null,
+        "labels": null,
+        "nkpoints": 0,
+        "tet_connections": null,
+        "tet_number": 0,
+        "tet_weight": 0,
+        "usershift": [
+          0.5,
+          0,
+          0
+        ]
+      },
+      "POSCAR": {
+        "@class": "Poscar",
+        "@module": "pymatgen.io.vasp.inputs",
+        "comment": "Fe4P4O16",
+        "predictor_corrector": null,
+        "selective_dynamics": null,
+        "structure": {
+          "@class": "Structure",
+          "@module": "pymatgen.core.structure",
+          "charge": 0.0,
+          "lattice": {
+            "a": 10.411766869949426,
+            "alpha": 90.0,
+            "b": 6.067171879970529,
+            "beta": 90.0,
+            "c": 4.759489539976881,
+            "gamma": 90.0,
+            "matrix": [
+              [
+                10.411766869949426,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                6.067171879970529,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                4.759489539976881
+              ]
+            ],
+            "pbc": [
+              true,
+              true,
+              true
+            ],
+            "volume": 300.6568551200002
+          },
+          "properties": {},
+          "sites": [
+            {
+              "abc": [
+                0.21872822,
+                0.75,
+                0.47486711
+              ],
+              "label": "Fe",
+              "properties": {},
+              "species": [
+                {
+                  "element": "Fe",
+                  "occu": 1
+                }
+              ],
+              "xyz": [
+                2.2773472345190093,
+                4.550378909977897,
+                2.260125042924051
+              ]
+            },
+            {
+              "abc": [
+                0.28127178,
+                0.25,
+                0.97486711
+              ],
+              "label": "Fe",
+              "properties": {},
+              "species": [
+                {
+                  "element": "Fe",
+                  "occu": 1
+                }
+              ],
+              "xyz": [
+                2.928536200455704,
+                1.5167929699926324,
+                4.639869812912492
+              ]
+            },
+            {
+              "abc": [
+                0.71872822,
+                0.75,
+                0.02513289
+              ],
+              "label": "Fe",
+              "properties": {},
+              "species": [
+                {
+                  "element": "Fe",
+                  "occu": 1
+                }
+              ],
+              "xyz": [
+                7.483230669493723,
+                4.550378909977897,
+                0.11961972706438957
+              ]
+            },
+            {
+              "abc": [
+                0.78127178,
+                0.25,
+                0.52513289
+              ],
+              "label": "Fe",
+              "properties": {},
+              "species": [
+                {
+                  "element": "Fe",
+                  "occu": 1
+                }
+              ],
+              "xyz": [
+                8.134419635430417,
+                1.5167929699926324,
+                2.49936449705283
+              ]
+            },
+            {
+              "abc": [
+                0.09461309,
+                0.25,
+                0.41824327
+              ],
+              "label": "P",
+              "properties": {},
+              "species": [
+                {
+                  "element": "P",
+                  "occu": 1
+                }
+              ],
+              "xyz": [
+                0.9850894359255433,
+                1.5167929699926324,
+                1.9906244687307266
+              ]
+            },
+            {
+              "abc": [
+                0.40538691,
+                0.75,
+                0.91824327
+              ],
+              "label": "P",
+              "properties": {},
+              "species": [
+                {
+                  "element": "P",
+                  "occu": 1
+                }
+              ],
+              "xyz": [
+                4.22079399904917,
+                4.550378909977897,
+                4.370369238719167
+              ]
+            },
+            {
+              "abc": [
+                0.59461309,
+                0.25,
+                0.08175673
+              ],
+              "label": "P",
+              "properties": {},
+              "species": [
+                {
+                  "element": "P",
+                  "occu": 1
+                }
+              ],
+              "xyz": [
+                6.190972870900256,
+                1.5167929699926324,
+                0.3891203012577141
+              ]
+            },
+            {
+              "abc": [
+                0.90538691,
+                0.75,
+                0.58175673
+              ],
+              "label": "P",
+              "properties": {},
+              "species": [
+                {
+                  "element": "P",
+                  "occu": 1
+                }
+              ],
+              "xyz": [
+                9.426677434023883,
+                4.550378909977897,
+                2.768865071246155
+              ]
+            },
+            {
+              "abc": [
+                0.04337231,
+                0.75,
+                0.70713767
+              ],
+              "label": "O",
+              "properties": {},
+              "species": [
+                {
+                  "element": "O",
+                  "occu": 1
+                }
+              ],
+              "xyz": [
+                0.4515823803311762,
+                4.550378909977897,
+                3.365614343688624
+              ]
+            },
+            {
+              "abc": [
+                0.09664244,
+                0.25,
+                0.74132035
+              ],
+              "label": "O",
+              "properties": {},
+              "species": [
+                {
+                  "element": "O",
+                  "occu": 1
+                }
+              ],
+              "xyz": [
+                1.0062185550230751,
+                1.5167929699926324,
+                3.5283064515970004
+              ]
+            },
+            {
+              "abc": [
+                0.16570974,
+                0.04607233,
+                0.28538394
+              ],
+              "label": "O",
+              "properties": {},
+              "species": [
+                {
+                  "element": "O",
+                  "occu": 1
+                }
+              ],
+              "xyz": [
+                1.7253311809599332,
+                0.2795287450207226,
+                1.35828187730739
+              ]
+            },
+            {
+              "abc": [
+                0.16570974,
+                0.45392767,
+                0.28538394
+              ],
+              "label": "O",
+              "properties": {},
+              "species": [
+                {
+                  "element": "O",
+                  "occu": 1
+                }
+              ],
+              "xyz": [
+                1.7253311809599332,
+                2.7540571949645423,
+                1.35828187730739
+              ]
+            },
+            {
+              "abc": [
+                0.33429026,
+                0.54607233,
+                0.78538394
+              ],
+              "label": "O",
+              "properties": {},
+              "species": [
+                {
+                  "element": "O",
+                  "occu": 1
+                }
+              ],
+              "xyz": [
+                3.48055225401478,
+                3.313114685005987,
+                3.7380266472958303
+              ]
+            },
+            {
+              "abc": [
+                0.33429026,
+                0.95392767,
+                0.78538394
+              ],
+              "label": "O",
+              "properties": {},
+              "species": [
+                {
+                  "element": "O",
+                  "occu": 1
+                }
+              ],
+              "xyz": [
+                3.48055225401478,
+                5.787643134949807,
+                3.7380266472958303
+              ]
+            },
+            {
+              "abc": [
+                0.40335756,
+                0.75,
+                0.24132035
+              ],
+              "label": "O",
+              "properties": {},
+              "species": [
+                {
+                  "element": "O",
+                  "occu": 1
+                }
+              ],
+              "xyz": [
+                4.199664879951638,
+                4.550378909977897,
+                1.14856168160856
+              ]
+            },
+            {
+              "abc": [
+                0.45662769,
+                0.25,
+                0.20713767
+              ],
+              "label": "O",
+              "properties": {},
+              "species": [
+                {
+                  "element": "O",
+                  "occu": 1
+                }
+              ],
+              "xyz": [
+                4.754301054643537,
+                1.5167929699926324,
+                0.985869573700183
+              ]
+            },
+            {
+              "abc": [
+                0.54337231,
+                0.75,
+                0.79286233
+              ],
+              "label": "O",
+              "properties": {},
+              "species": [
+                {
+                  "element": "O",
+                  "occu": 1
+                }
+              ],
+              "xyz": [
+                5.657465815305889,
+                4.550378909977897,
+                3.773619966276698
+              ]
+            },
+            {
+              "abc": [
+                0.59664244,
+                0.25,
+                0.75867965
+              ],
+              "label": "O",
+              "properties": {},
+              "species": [
+                {
+                  "element": "O",
+                  "occu": 1
+                }
+              ],
+              "xyz": [
+                6.212101989997788,
+                1.5167929699926324,
+                3.6109278583683215
+              ]
+            },
+            {
+              "abc": [
+                0.66570974,
+                0.04607233,
+                0.21461606
+              ],
+              "label": "O",
+              "properties": {},
+              "species": [
+                {
+                  "element": "O",
+                  "occu": 1
+                }
+              ],
+              "xyz": [
+                6.931214615934647,
+                0.2795287450207226,
+                1.0214628926810507
+              ]
+            },
+            {
+              "abc": [
+                0.66570974,
+                0.45392767,
+                0.21461606
+              ],
+              "label": "O",
+              "properties": {},
+              "species": [
+                {
+                  "element": "O",
+                  "occu": 1
+                }
+              ],
+              "xyz": [
+                6.931214615934647,
+                2.7540571949645423,
+                1.0214628926810507
+              ]
+            },
+            {
+              "abc": [
+                0.83429026,
+                0.54607233,
+                0.71461606
+              ],
+              "label": "O",
+              "properties": {},
+              "species": [
+                {
+                  "element": "O",
+                  "occu": 1
+                }
+              ],
+              "xyz": [
+                8.686435688989492,
+                3.313114685005987,
+                3.4012076626694916
+              ]
+            },
+            {
+              "abc": [
+                0.83429026,
+                0.95392767,
+                0.71461606
+              ],
+              "label": "O",
+              "properties": {},
+              "species": [
+                {
+                  "element": "O",
+                  "occu": 1
+                }
+              ],
+              "xyz": [
+                8.686435688989492,
+                5.787643134949807,
+                3.4012076626694916
+              ]
+            },
+            {
+              "abc": [
+                0.90335756,
+                0.75,
+                0.25867965
+              ],
+              "label": "O",
+              "properties": {},
+              "species": [
+                {
+                  "element": "O",
+                  "occu": 1
+                }
+              ],
+              "xyz": [
+                9.405548314926351,
+                4.550378909977897,
+                1.2311830883798807
+              ]
+            },
+            {
+              "abc": [
+                0.95662769,
+                0.25,
+                0.29286233
+              ],
+              "label": "O",
+              "properties": {},
+              "species": [
+                {
+                  "element": "O",
+                  "occu": 1
+                }
+              ],
+              "xyz": [
+                9.96018448961825,
+                1.5167929699926324,
+                1.3938751962882576
+              ]
+            }
+          ]
+        },
+        "true_names": true,
+        "velocities": null
+      },
+      "POTCAR.spec": "Fe"
+    },
+    "keys": [
+      "INCAR",
+      "KPOINTS",
+      "POSCAR",
+      "POTCAR.spec"
+    ]
+  }
+}

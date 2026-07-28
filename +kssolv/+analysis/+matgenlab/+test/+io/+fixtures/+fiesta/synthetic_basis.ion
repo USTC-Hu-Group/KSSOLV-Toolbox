@@ -1,0 +1,10 @@
+<preamble>
+first
+ second 
+</preamble>
+2 2 # lmax nnlo
+0 1 2 # orbital
+1.0 0.5
+2.0 -0.2
+1 1 1 # orbital
+3.0 0.7

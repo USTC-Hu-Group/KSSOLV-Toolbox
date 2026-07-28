@@ -1,0 +1,9 @@
+function value = seebeck_eff_mass_from_seebeck_carr( ...
+        seebeck, concentration, temperature, lambda)
+%SEEBECK_EFF_MASS_FROM_SEEBECK_CARR Infer SPB effective mass.
+if nargin < 4 || isempty(lambda), lambda = 0.5; end
+eta = kssolv.analysis.matgenlab.electronic_structure. ...
+    eta_from_seebeck(seebeck, lambda);
+value = kssolv.analysis.matgenlab.electronic_structure. ...
+    seebeck_eff_mass_from_carr(eta, concentration, temperature, lambda);
+end

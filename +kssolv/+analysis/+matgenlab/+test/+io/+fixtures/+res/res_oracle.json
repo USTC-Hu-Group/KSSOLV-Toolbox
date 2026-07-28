@@ -1,0 +1,58 @@
+{
+  "source": "pymatgen 2026.5.4 / pymatgen-core 2026.7.24",
+  "generated_with": "frozen Python oracle; tests never execute Python",
+  "coc": {
+    "seed": "coc-115925-9326-14",
+    "pressure": 15.0252,
+    "volume": 57.051984,
+    "energy": -3904.27411,
+    "integrated_spin_density": 0.0,
+    "integrated_absolute_spin_density": 0.0,
+    "spacegroup_label": "R3",
+    "appearances": 1,
+    "site_count": 7,
+    "lengths": [5.07144, 5.07144, 3.89024],
+    "angles": [49.32125, 49.32125, 60.0],
+    "species": ["C", "C", "C", "C", "Co", "Co", "Co"],
+    "first_frac_coords": [0.9645707322483, 0.5333382153627, 0.2782224889463],
+    "last_frac_coords": [0.3791915539376, 0.7796284201775, 0.8993983748411],
+    "rem_count": 16,
+    "run_date": "2021-07-16",
+    "run_path": "/path/to/airss/run",
+    "castep_version": "19.11",
+    "functional": "Perdew Burke Ernzerhof",
+    "relativity": "Koelling-Harmon",
+    "dispersion": "off",
+    "cut_grid_gmax": [326.5366, 1.75, 16.201],
+    "fsbc": "automatic",
+    "mp_grid": [6, 6, 8],
+    "mp_offset": [0.0, 0.0, 0.0],
+    "nkpts": 144,
+    "spacing": 0.05,
+    "airss_version": "0.9.1",
+    "airss_date": "2018-07-06",
+    "sfac_species": ["C", "Co"],
+    "sfac_specie_nums": [1, 1, 1, 1, 2, 2, 2],
+    "pspots": {
+      "Co": "3|2.2|2.0|1.0|8|9|10|40:41:32(qc=5)",
+      "C": "2|1.4|8|9|10|20:21(qc=5)"
+    }
+  },
+  "spins": {
+    "seed": "LiMn2O4-Imma-conv",
+    "pressure": -0.0043,
+    "volume": 287.448784,
+    "energy": -31112.9793,
+    "spacegroup_label": "Imma",
+    "site_count": 28,
+    "lengths": [5.71878, 5.76216, 8.72311],
+    "angles": [90.0, 90.0, 90.0],
+    "sfac_species": ["Li", "O", "Mn"],
+    "magmoms": [
+      -0.01, -0.01, -0.01, -0.01,
+      -0.04, -0.04, -0.04, -0.04, -0.04, -0.04, -0.04, -0.04,
+      -0.17, -0.17, -0.17, -0.17, -0.17, -0.17, -0.17, -0.17,
+      4.12, 4.12, 4.12, 4.12, 3.31, 3.31, 3.31, 3.31
+    ]
+  }
+}

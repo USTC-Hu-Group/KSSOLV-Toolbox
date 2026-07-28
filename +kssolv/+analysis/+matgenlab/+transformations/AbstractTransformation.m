@@ -1,0 +1,103 @@
+classdef (Abstract) AbstractTransformation < ...
+        kssolv.analysis.matgenlab.util.MSONable
+    %ABSTRACTTRANSFORMATION Base class for structure transformations.
+    %
+    % Site indices in Matgenlab transformation constructors are MATLAB
+    % one-based indices. This is the sole intentional indexing adaptation
+    % from pymatgen's zero-based Python API.
+
+    properties (Dependent, SetAccess = private)
+        inverse
+        is_one_to_many
+        use_multiprocessing
+    end
+
+    methods (Abstract)
+        result = apply_transformation(obj, structure, varargin)
+    end
+
+    methods
+        function value = get.inverse(obj)
+            value = obj.inverseTransformation();
+        end
+        function value = get.is_one_to_many(obj)
+            value = obj.oneToMany();
+        end
+        function value = get.use_multiprocessing(obj)
+            value = obj.multiprocessingEnabled();
+        end
+
+        function value = asDict(obj)
+            metadata = metaclass(obj);
+            className = string(metadata.Name);
+            className = extractAfter(className, ...
+                "kssolv.analysis.matgenlab.transformations.");
+            value = struct( ...
+                "x_module", obj.moduleName(), ...
+                "x_class", className, ...
+                "x_version",[]);
+            properties_ = metadata.PropertyList;
+            for index = 1:numel(properties_)
+                property = properties_(index);
+                if property.Dependent || property.Constant || ...
+                        property.Hidden || ...
+                        ~strcmp(string(property.GetAccess), "public")
+                    continue
+                end
+                name = string(property.Name);
+                value.(name) = obj.(name);
+            end
+        end
+
+        function value = as_dict(obj), value = obj.asDict(); end
+        function value = char(obj)
+            value = char(kssolv.analysis.matgenlab.util.encode(obj.asDict()));
+        end
+        function value = string(obj), value = string(char(obj)); end
+    end
+
+    methods (Access = protected)
+        function value = inverseTransformation(~), value = []; end
+        function value = oneToMany(~), value = false; end
+        function value = multiprocessingEnabled(~), value = false; end
+
+        function value = moduleName(obj)
+            name = string(class(obj));
+            name = extractAfter(name, ...
+                "kssolv.analysis.matgenlab.transformations.");
+            standard = [ ...
+                "RotationTransformation", ...
+                "OxidationStateDecorationTransformation", ...
+                "AutoOxiStateDecorationTransformation", ...
+                "OxidationStateRemovalTransformation", ...
+                "SupercellTransformation", ...
+                "SubstitutionTransformation", ...
+                "RemoveSpeciesTransformation", ...
+                "PartialRemoveSpecieTransformation", ...
+                "OrderDisorderedStructureTransformation", ...
+                "PrimitiveCellTransformation", ...
+                "ConventionalCellTransformation", ...
+                "PerturbStructureTransformation", ...
+                "DeformStructureTransformation", ...
+                "DiscretizeOccupanciesTransformation", ...
+                "ChargedCellTransformation", ...
+                "ScaleToRelaxedTransformation"];
+            site = [ ...
+                "InsertSitesTransformation", ...
+                "ReplaceSiteSpeciesTransformation", ...
+                "RemoveSitesTransformation", ...
+                "TranslateSitesTransformation", ...
+                "PartialRemoveSitesTransformation", ...
+                "AddSitePropertyTransformation", ...
+                "RadialSiteDistortionTransformation"];
+            if ismember(name, standard)
+                suffix = "standard_transformations";
+            elseif ismember(name, site)
+                suffix = "site_transformations";
+            else
+                suffix = "advanced_transformations";
+            end
+            value = "pymatgen.transformations." + suffix;
+        end
+    end
+end

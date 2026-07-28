@@ -1,0 +1,45 @@
+{
+  "upstream_tag": "v2026.5.4",
+  "upstream_commit": "8495e941504cd5123701635b6572942c78d9589c",
+  "mp2020": {
+    "fe2o3_correction": -6.573,
+    "gga_fe2o3_correction": -2.061,
+    "fe2coo4_correction": -8.898,
+    "fe2coo4_values": [-2.748, -4.512, -1.638],
+    "fe2coo4_uncertainties": [0.008, 0.0202, 0.006]
+  },
+  "legacy": {
+    "correction": -7.57287,
+    "explanation_names": [
+      "MPRelaxSet Potcar Correction",
+      "MP Gas Correction",
+      "MP Anion Correction",
+      "MP Advanced Correction"
+    ],
+    "explanation_values": [0, 0, -2.10687, -5.466]
+  },
+  "smooth": {
+    "metals": ["Co", "Cr", "Fe", "Mn", "Mo", "Ni", "V", "W"],
+    "u_values": [3.32, 3.7, 5.3, 3.9, 4.38, 6.2, 3.25, 6.2],
+    "corrections": [-2.004, -2.458, -1.925, -1.602, -4.895, -2.586, -2.271, -5.875]
+  },
+  "aqueous": {
+    "o2_correction": -0.633462,
+    "hydrate_correction": 7.9166,
+    "nonhydrate_correction": 0
+  },
+  "cleanup": {
+    "single_overlap_returned": true,
+    "batch_overlap_count": 0,
+    "clean_default": -6
+  },
+  "needs_u": {
+    "Fe2O3": ["Fe", "O"],
+    "FeS": [],
+    "FeF3": ["F", "Fe"],
+    "LiH": [],
+    "LiFePO4": ["Fe", "O"],
+    "LiFePS4": []
+  },
+  "mit_hash_correction": -5.45525
+}

@@ -23,6 +23,12 @@ plan("cleanPcode").Dependencies = "package";
 
 plan("stats").Inputs = "**/*.m";
 plan("stats").Dependencies = "init";
+
+plan("matgenlabTest").Inputs = [
+    "+kssolv/+analysis/+matgenlab/**/*.m"
+    "dev/matgenlab/**/*.m"
+    ];
+plan("matgenlabTest").Dependencies = "init";
 end
 
 function initTask(~)
@@ -124,4 +130,12 @@ end
 fprintf('Total number of .m files: %d\n', numFiles);
 fprintf('Total lines of code: %d\n', totalLines);
 fprintf('Total non-empty, non-comment lines of code: %d\n', codeLines);
+end
+
+function matgenlabTestTask(~)
+% Run all Matgenlab tests, including optional pymatgen oracle tests.
+addpath(fullfile(pwd, "dev", "matgenlab"));
+cleanup = onCleanup(@() rmpath(fullfile(pwd, "dev", "matgenlab")));
+run_matlab_tests();
+clear cleanup
 end

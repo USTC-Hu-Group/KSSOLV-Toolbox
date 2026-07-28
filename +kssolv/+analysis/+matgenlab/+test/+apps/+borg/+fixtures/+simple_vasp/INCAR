@@ -1,0 +1,3 @@
+SYSTEM = native borg fixture
+ENCUT = 520
+LDAU = .FALSE.

@@ -1,0 +1,216 @@
+classdef OpenFFInventoryTest < matlab.unittest.TestCase
+    properties
+        fixtureFolder
+        oracle
+    end
+
+    methods (TestMethodSetup)
+        function prepare(testCase)
+            testCase.fixtureFolder = fullfile(pwd, "+kssolv", ...
+                "+analysis", "+matgenlab", "+test", "+io", ...
+                "+fixtures", "+openff");
+            testCase.oracle = jsondecode(fileread(fullfile(pwd, "dev", ...
+                "matgenlab", "oracles", "openff_2026.7.24.json")));
+        end
+    end
+
+    methods (Test)
+        function inferredOfficialMoleculesMatchOracle(testCase)
+            names = ["CCO.xyz", "FEC-r.xyz", "FEC-s.xyz", "PF6.xyz"];
+            for name = names
+                geometry = testCase.readGeometry(name);
+                inferred = kssolv.analysis.matgenlab.io.openff. ...
+                    infer_openff_mol(geometry);
+                expected = testCase.oracle.inferred.( ...
+                    matlab.lang.makeValidName(name));
+                testCase.verifyEqual(inferred.n_atoms, expected.n_atoms);
+                testCase.verifyEqual(inferred.n_bonds, expected.n_bonds);
+                testCase.verifyEqual(inferred.conformers{1}, ...
+                    geometry.cart_coords, AbsTol = 1e-12);
+            end
+        end
+
+        function moleculeGraphRoundTripPreservesOpenFFData(testCase)
+            molecule = kssolv.analysis.matgenlab.io.openff. ...
+                OpenFFMolecule.from_smiles("F[P-](F)(F)(F)(F)F");
+            molecule.set_partial_charges( ...
+                [1.34, repmat(-0.39, 1, 6)]);
+            molecule.generate_conformers(1);
+            graph = kssolv.analysis.matgenlab.io.openff. ...
+                mol_graph_from_openff_mol(molecule);
+            restored = kssolv.analysis.matgenlab.io.openff. ...
+                mol_graph_to_openff_mol(graph);
+            expected = testCase.oracle.pf6_roundtrip;
+            testCase.verifyEqual(restored.n_atoms, expected.n_atoms);
+            testCase.verifyEqual(restored.n_bonds, expected.n_bonds);
+            testCase.verifyEqual(restored.total_charge, ...
+                expected.total_charge);
+            testCase.verifyEqual(restored.partial_charges, ...
+                molecule.partial_charges, AbsTol = 1e-12);
+            testCase.verifyTrue(molecule == restored);
+        end
+
+        function atomMapsMatchFrozenTopology(testCase)
+            cases = {
+                "CCO.xyz", "CCO"
+                "FEC-r.xyz", "O=C1OC[C@@H](F)O1"
+                "FEC-s.xyz", "O=C1OC[C@H](F)O1"
+                "PF6.xyz", "F[P-](F)(F)(F)(F)F"};
+            for row = 1:size(cases, 1)
+                geometry = testCase.readGeometry(cases{row, 1});
+                inferred = kssolv.analysis.matgenlab.io.openff. ...
+                    infer_openff_mol(geometry);
+                target = kssolv.analysis.matgenlab.io.openff. ...
+                    OpenFFMolecule.from_smiles(cases{row, 2});
+                [isomorphic, atomMap] = ...
+                    kssolv.analysis.matgenlab.io.openff. ...
+                    get_atom_map(inferred, target);
+                testCase.verifyTrue(isomorphic);
+                testCase.verifyEqual(sort(atomMap), 1:target.n_atoms);
+                testCase.verifyMappingEdges(target, inferred, atomMap);
+                if row == 1 || row == 4
+                    expected = testCase.oracle.atom_maps_zero_based.( ...
+                        matlab.lang.makeValidName(cases{row, 1}));
+                    testCase.verifyEqual(atomMap, ...
+                        reshape(expected, 1, []) + 1);
+                end
+            end
+            methane = kssolv.analysis.matgenlab.io.openff. ...
+                OpenFFMolecule.from_smiles("C");
+            ethane = kssolv.analysis.matgenlab.io.openff. ...
+                OpenFFMolecule.from_smiles("CC");
+            [isomorphic, atomMap] = ...
+                kssolv.analysis.matgenlab.io.openff. ...
+                get_atom_map(methane, ethane);
+            testCase.verifyFalse(isomorphic);
+            testCase.verifyEmpty(atomMap);
+        end
+
+        function conformersFollowUpstreamMapping(testCase)
+            geometry = testCase.readGeometry("CCO.xyz");
+            molecule = kssolv.analysis.matgenlab.io.openff. ...
+                OpenFFMolecule.from_smiles("CCO");
+            [molecule, atomMap] = ...
+                kssolv.analysis.matgenlab.io.openff. ...
+                add_conformer(molecule, geometry);
+            testCase.verifyEqual(molecule.n_conformers, ...
+                testCase.oracle.cco_conformer.n_conformers);
+            testCase.verifyEqual(atomMap, ...
+                reshape(testCase.oracle.cco_conformer. ...
+                atom_map_zero_based, 1, []) + 1);
+            testCase.verifyEqual(molecule.conformers{1}, ...
+                geometry.cart_coords, AbsTol = 1e-12);
+            generated = kssolv.analysis.matgenlab.io.openff. ...
+                OpenFFMolecule.from_smiles("CCO");
+            [generated, identity] = ...
+                kssolv.analysis.matgenlab.io.openff. ...
+                add_conformer(generated, []);
+            testCase.verifyEqual(generated.n_conformers, 1);
+            testCase.verifyEqual(identity, 1:9);
+        end
+
+        function explicitAndSingleAtomChargesMatchOracle(testCase)
+            molecule = kssolv.analysis.matgenlab.io.openff. ...
+                OpenFFMolecule.from_smiles("CCO");
+            charges = reshape(testCase.oracle.cco_partial_charges, 1, []);
+            molecule = kssolv.analysis.matgenlab.io.openff. ...
+                assign_partial_charges(molecule, 1:9, "am1bcc", ...
+                charges);
+            testCase.verifyEqual(molecule.partial_charges, charges, ...
+                AbsTol = 1e-12);
+            lithium = kssolv.analysis.matgenlab.io.openff. ...
+                OpenFFMolecule.from_smiles("[Li+]");
+            lithium = kssolv.analysis.matgenlab.io.openff. ...
+                assign_partial_charges(lithium, 1, "am1bcc", []);
+            testCase.verifyEqual(lithium.partial_charges, ...
+                reshape(testCase.oracle.li_partial_charges, 1, []));
+        end
+
+        function createOpenFFMoleculeCoversValidationAndScaling(testCase)
+            charges = reshape(testCase.oracle.cco_partial_charges, 1, []);
+            path = fullfile(testCase.fixtureFolder, "CCO.xyz");
+            molecule = kssolv.analysis.matgenlab.io.openff. ...
+                create_openff_mol("CCO", path, 0.5, charges, "am1bcc");
+            testCase.verifyEqual([molecule.n_atoms, molecule.n_bonds, ...
+                molecule.n_conformers], [9, 8, 1]);
+            testCase.verifyEqual(molecule.partial_charges, 0.5 * charges, ...
+                AbsTol = 1e-12);
+            generated = kssolv.analysis.matgenlab.io.openff. ...
+                create_openff_mol("CCO");
+            testCase.verifyEqual([generated.n_atoms, generated.n_bonds, ...
+                generated.n_conformers], [9, 8, 1]);
+            testCase.verifyEqual(sum(generated.partial_charges), 0, ...
+                AbsTol = 1e-12);
+            testCase.verifyError(@() ...
+                kssolv.analysis.matgenlab.io.openff. ...
+                create_openff_mol("CCO", [], 1, [0, 0, 0]), ...
+                "KSSOLV:Matgenlab:OpenFF:GeometryRequired");
+            testCase.verifyError(@() ...
+                kssolv.analysis.matgenlab.io.openff. ...
+                create_openff_mol("CCO", path, 1, [0, 0]), ...
+                "KSSOLV:Matgenlab:OpenFF:ChargeLength");
+        end
+
+        function explicitBackendBoundaryIsStable(testCase)
+            backend = struct("create_openff_mol", @fakeCreate, ...
+                "mol_graph_from_openff_mol", @fakeFrom);
+            value = kssolv.analysis.matgenlab.io.openff. ...
+                create_openff_mol("CCO", [], 2, [], "custom", backend);
+            testCase.verifyEqual(value.tag, "created");
+            testCase.verifyEqual(value.smile, "CCO");
+            testCase.verifyEqual(value.scale, 2);
+            converted = kssolv.analysis.matgenlab.io.openff. ...
+                mol_graph_from_openff_mol(struct("external", true), ...
+                backend);
+            testCase.verifyEqual(converted, "converted");
+            testCase.verifyError(@() ...
+                kssolv.analysis.matgenlab.io.openff. ...
+                mol_graph_from_openff_mol(struct("external", true)), ...
+                "KSSOLV:Matgenlab:OpenFF:BackendRequired");
+            testCase.verifyError(@() ...
+                kssolv.analysis.matgenlab.io.openff. ...
+                mol_graph_from_openff_mol(struct("external", true), ...
+                struct()), ...
+                "KSSOLV:Matgenlab:OpenFF:BackendContract");
+        end
+    end
+
+    methods (Access = private)
+        function molecule = readGeometry(testCase, name)
+            molecule = kssolv.analysis.matgenlab.core.Molecule. ...
+                from_file(fullfile(testCase.fixtureFolder, name));
+            if name == "PF6.xyz"
+                molecule.set_charge_and_spin(-1);
+            end
+        end
+
+        function verifyMappingEdges(testCase, reference, candidate, map)
+            candidateAdjacency = adjacency(candidate);
+            for bond = reference.bonds
+                testCase.verifyNotEqual(candidateAdjacency( ...
+                    map(bond.atom1_index), map(bond.atom2_index)), 0);
+            end
+        end
+    end
+end
+
+function value = fakeCreate(smile, geometry, scale, charges, method)
+assert(isempty(geometry));
+assert(isempty(charges));
+assert(method == "custom");
+value = struct("tag", "created", "smile", string(smile), ...
+    "scale", scale);
+end
+
+function value = fakeFrom(external)
+assert(external.external);
+value = "converted";
+end
+
+function value = adjacency(molecule)
+value = zeros(molecule.n_atoms);
+for bond = molecule.bonds
+    value(bond.atom1_index, bond.atom2_index) = bond.bond_order;
+    value(bond.atom2_index, bond.atom1_index) = bond.bond_order;
+end
+end

@@ -1,0 +1,7 @@
+preamble
+FULL BSE eig.(eV), osc. strength and dipoles:
+exiton 1: 1.234( -0.005) | anything
+exiton 12: 4.500( 0.600) | anything
+FULL BSE main valence -> conduction transitions weight:
+total time:  12.50 seconds
+program returned normally

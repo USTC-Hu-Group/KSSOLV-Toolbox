@@ -1,0 +1,6 @@
+function value=vec_angle(vector1,vector2)
+%VEC_ANGLE Stable included angle between two vectors.
+value=atan2( ...
+    kssolv.analysis.matgenlab.analysis.interfaces. ...
+    fast_norm(cross(vector1,vector2)),dot(vector1,vector2));
+end

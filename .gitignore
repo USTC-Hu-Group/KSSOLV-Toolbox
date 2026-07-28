@@ -20,6 +20,7 @@ data/
 .buildtool/
 
 # Debug scipts
+dev/
 Untitled*
 
 # Build Output

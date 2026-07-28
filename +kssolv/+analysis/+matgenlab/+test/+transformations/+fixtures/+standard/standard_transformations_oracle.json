@@ -1,0 +1,46 @@
+{
+  "source": "pymatgen-core 2026.7.24",
+  "generated_with": "frozen Python oracle; MATLAB production and tests do not execute Python",
+  "rotation_matrix": [
+    [3.3257089661447097, 0.0, -1.9200989668499997],
+    [1.6628544830290535, 3.3257101909, -0.9600494833999998],
+    [1.5677545301499998, -2.2171384943, 2.7154305000160734]
+  ],
+  "deformed_lengths": [
+    3.8401979337,
+    3.843797495556599,
+    3.7502298121856175
+  ],
+  "super_formula": "Li16 O16",
+  "boundary_no_rotation": [[3, 0, 0], [0, 3, 0], [0, 0, 3]],
+  "boundary_rotation": [[2, 1, 1], [-1, 2, 1], [-1, -1, 2]],
+  "boundary_counts": [27, 14],
+  "substitution_formula": "Na2 Se1 S1",
+  "removed_formula": "O2",
+  "decorated_species": ["Li+", "Li+", "O2-", "O2-"],
+  "undecorated_species": ["Li", "Li", "O", "O"],
+  "order_count": 12,
+  "order_energy": -234.57814674767036,
+  "order_formula": "Si2 P1 O1",
+  "discrete_occupancies": {"Li": 0.2, "Na": 0.2, "K": 0.6},
+  "charge": 3,
+  "partial_count": 3,
+  "partial_coords": [[0.75, 0.75, 0.75], [0.5, 0.5, 0.5], [0.1, 0.1, 0.1]],
+  "auto_oxidation_states": {"Fe": 2, "Li": 1, "O": -2, "P": 5},
+  "primitive_formula": "Ti4 O8",
+  "primitive_count": 12,
+  "conventional_matrix": [
+    [0.0, 6.651418544711888, 0.0],
+    [3.8401989943773014, 0.0, 0.0],
+    [0.0, -2.217140331397783, -3.1355090602726485]
+  ],
+  "conventional_count": 8,
+  "scale_volume": [435.4737139996379, 435.47371399963777],
+  "scale_matrix": [
+    [2.946032952647235, 0.0, 0.14392312760811887],
+    [1.4695009234007572, 4.8907387202122985, 0.14392312754820313],
+    [0.0, 0.0, 30.22385681]
+  ],
+  "scale_count": 12,
+  "scale_species": "Au"
+}

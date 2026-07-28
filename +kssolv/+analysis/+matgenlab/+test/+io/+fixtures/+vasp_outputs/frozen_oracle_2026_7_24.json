@@ -1,0 +1,129 @@
+{
+  "upstream": "pymatgen-core 2026.7.24",
+  "vasprun_al": {
+    "final_energy": -3.74198121,
+    "run_type": "R2SCAN",
+    "converged_electronic": true,
+    "converged_ionic": true,
+    "converged": true,
+    "is_spin": true,
+    "is_hubbard": false,
+    "md_n_steps": 2,
+    "nionic_steps": 2,
+    "efermi": 7.93802192,
+    "band_properties": [0.0, 8.3117, 9.603, false],
+    "structure_count": 2,
+    "final_volume": 16.498409425273387,
+    "actual_kpoints": 84,
+    "trajectory_count": 2,
+    "trajectory_first_volume": 16.133376905599363
+  },
+  "vasprun_dielectric": {
+    "point_count": 1000,
+    "first_energy": 0.0,
+    "first_real": [13.3974, 13.3974, 13.3974, 0.0, 0.0, 0.0],
+    "first_imag": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    "first_absorption": 0.0
+  },
+  "outcar_al": {
+    "efermi": 8.0942,
+    "final_energy": -3.743359,
+    "nelect": 3.0,
+    "total_mag": 0.0000082,
+    "charge_count": 1,
+    "cores": 32
+  },
+  "oszicar": {
+    "ionic_steps": 60,
+    "electronic_steps": 60,
+    "final_energy": -526.63928,
+    "last_all_energies": [
+      -526.639275464,
+      -526.639275419,
+      -526.639275395,
+      -526.63928
+    ]
+  },
+  "dynmat": {
+    "nspecs": 2,
+    "natoms": 6,
+    "ndisps": 3,
+    "masses": [63.546, 196.966],
+    "frequencies": [
+      58.400517420323986,
+      58.37077148710001,
+      58.01005264613579
+    ]
+  },
+  "eigenval": {
+    "nelect": 16,
+    "nkpt": 315,
+    "nbands": 12,
+    "ispin": 1,
+    "band_properties": [6.415331, 7.558745, 1.143414, false]
+  },
+  "eigenval_ispin2": {
+    "nelect": 960,
+    "nkpt": 1,
+    "nbands": 840,
+    "ispin": 2,
+    "band_properties": [6.147722, 7.464735, 1.317013, true]
+  },
+  "procar": {
+    "nkpoints": 10,
+    "nbands": 10,
+    "nions": 3,
+    "nspins": 2,
+    "orbitals": ["s", "p", "d"],
+    "occupation_s_atom1": [0.3538125, 0.3538125]
+  },
+  "xdatcar": {
+    "structure_count": 100,
+    "site_symbols": ["Li"],
+    "natoms": [36],
+    "comment": "Li36",
+    "first_volume": 1261.7422758352036
+  },
+  "volumetric": {
+    "chgcar_dim": [32, 32, 32],
+    "chgcar_first": 0.44062142953,
+    "locpot_dim": [32, 32, 32],
+    "locpot_first": -46.16312251,
+    "elfcar_dim": [18, 18, 70],
+    "elfcar_total_first": 0.0011016,
+    "elfcar_diff_first": 0.0010965,
+    "elfcar_alpha_first": 30.112630499736365
+  },
+  "wswq": {
+    "nspin": 2,
+    "nkpoints": 20,
+    "nbands": 18,
+    "first_real": 0.99999999,
+    "first_imag": 0.0
+  },
+  "waveder": {
+    "nspin": 1,
+    "nkpoints": 56,
+    "nbands": 36,
+    "first_real_float64": -1.33639226092e-103,
+    "first_imag_float64": 0.0
+  },
+  "wavecar": {
+    "spin": 1,
+    "nk": 1,
+    "nb": 9,
+    "ng": [15, 15, 15],
+    "encut": 25.0,
+    "efermi": -5.723245303834668,
+    "wavefunc_first_real": -0.346778776675,
+    "wavefunc_first_imag": -0.14064069346624555,
+    "band6_mesh_max": 0.160768514212
+  },
+  "vaspout": {
+    "final_energy": -8.953035077096956,
+    "num_kpoints": 163,
+    "ionic_steps": 1,
+    "is_spin": false,
+    "is_hubbard": false
+  }
+}

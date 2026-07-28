@@ -1,0 +1,36 @@
+#
+# Bush oxide potential parameters, Bush et al. J. Mater. Chem. 4 (1994).
+#
+species
+Li core  1.000
+Na core  1.000
+K  core  1.000
+Mg core  1.580
+Mg shel  0.420
+Ca core  0.719
+Ca shel  1.281
+Fe core  1.971
+Fe shel  1.029
+Ti core  2.332
+Ti shel  1.668
+Al core  0.043
+Al shel  2.957
+O  core  0.513
+O  shel -2.513
+buckingham
+Li core O shel   426.480 0.3000  0.00 0.0 10.0
+Na core O shel  1271.504 0.3000  0.00 0.0 10.0
+K  core O shel  3587.570 0.3000  0.00 0.0 10.0
+Mg shel O shel  2457.243 0.2610  0.00 0.0 10.0
+Ca shel O shel  2272.741 0.2986  0.00 0.0 10.0
+Fe shel O shel  3219.335 0.2641  0.00 0.0 10.0
+Ti shel O shel  2088.107 0.2888  0.00 0.0 10.0
+Al shel O shel  2409.505 0.2649  0.00 0.0 10.0
+O  shel O shel    25.410 0.6937 32.32 0.0 12.0
+spring
+Mg 349.95
+Ca  34.05
+Fe 179.58
+Ti 253.60
+Al 403.98
+O   20.53

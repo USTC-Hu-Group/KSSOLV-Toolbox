@@ -1,0 +1,14 @@
+VERS      LMASA-47
+STRUC     ALAT=10.33439830
+          PLAT=1 0 0
+               0 1 0
+               0 0 1
+CLASS     ATOM=Si Z=14
+SITE      ATOM=Si POS=0.25 0.75 0.25
+          ATOM=Si POS=0 0 0.5
+          ATOM=Si POS=0.25 0.25 0.75
+          ATOM=Si POS=0 0.5 0
+          ATOM=Si POS=0.75 0.75 0.75
+          ATOM=Si POS=0.5 0 0
+          ATOM=Si POS=0.75 0.25 0.25
+          ATOM=Si POS=0.5 0.5 0.5

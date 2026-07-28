@@ -240,7 +240,7 @@ end
 function value=readStructureCIF(text,varargin)
 ignoreExtra(varargin);
 parser=kssolv.analysis.matgenlab.io.cif.CifParser.from_str(text);
-values=parser.parse_structures(on_error="raise");
+values=parser.parse_structures(primitive=false,on_error="raise");
 value=values{1};
 end
 function text=writeStructureCIF(value,varargin)

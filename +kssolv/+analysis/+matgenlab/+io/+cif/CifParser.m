@@ -128,7 +128,8 @@ classdef CifParser < handle
                         kssolv.analysis.matgenlab.core.SymmOp.from_xyz_str( ...
                         string(text)), values, "UniformOutput", false);
                     if isscalar(values)
-                        obj.addWarning("A 1-line symmetry op P1 CIF is detected!", true);
+                        obj.addWarning( ...
+                            "A 1-line symmetry op P1 CIF is detected!", false);
                     end
                     return
                 catch

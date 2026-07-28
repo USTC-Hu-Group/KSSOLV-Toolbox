@@ -118,6 +118,41 @@ Interaction tips:
 
 Multiple structures can be opened and viewed simultaneously.
 
+#### Programmatic Structure I/O
+
+Structure import and export are routed through the matgenlab I/O registry.
+Periodic inputs are converted to KSSOLV `Crystal` objects, while molecular
+inputs are converted to KSSOLV `Molecule` objects. matgenlab uses Angstrom and
+the KSSOLV objects use Bohr; the conversion is applied automatically.
+
+```matlab
+% Use one stateful I/O object when raw content and both representations
+% are needed.
+io = kssolv.services.fileparser.StructureIO("Si.cif");
+crystal = io.KSSOLVObject;
+matgenStructure = io.MatgenlabObject;
+
+% Or directly import CIF, POSCAR, or another registered format.
+crystal = kssolv.services.fileparser.StructureIO.read("Si.cif");
+molecule = kssolv.services.fileparser.StructureIO.read("water.xyz");
+
+% Export a KSSOLV Crystal/Molecule. The format can be inferred from the
+% filename or supplied explicitly as the third argument.
+kssolv.services.fileparser.StructureIO.write(crystal, "Si.vasp");
+kssolv.services.fileparser.StructureIO.write(molecule, "water.cif", "cif");
+
+% Direct conversion is available when working with matgenlab objects.
+convertedStructure = ...
+    kssolv.services.fileparser.StructureIO.toMatgenlab(crystal);
+crystalAgain = ...
+    kssolv.services.fileparser.StructureIO.fromMatgenlab(convertedStructure);
+```
+
+Use `kssolv.services.fileparser.StructureIO.supportedFormats()` to inspect the
+currently registered readable and writable formats. Formats backed by optional
+adaptors, such as Open Babel molecule formats, require their corresponding
+runtime dependency.
+
 ### 2.3 Creating a Computational Workflow
 
 1. Double-click **Workflow** in the Project Browser.

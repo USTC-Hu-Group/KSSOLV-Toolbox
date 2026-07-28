@@ -16,7 +16,14 @@ classdef Structure < kssolv.services.filemanager.AbstractItem
 
         function showMoleculeDisplay(this)
             % 使用 Data 数据中的文件路径以打开对应结构的渲染界面
-            kssolv.ui.components.figuredocument.MoleculeDisplay(this.data.rawFileContent, this.data.fileType, this.name).Display();
+            if ismethod(this.data, "getDisplayData")
+                [content, format] = this.data.getDisplayData();
+            else
+                content = this.data.rawFileContent;
+                format = this.data.fileType;
+            end
+            kssolv.ui.components.figuredocument.MoleculeDisplay( ...
+                content, format, this.name).Display();
         end
 
         function importedFileCount = importStructureFromFile(this)
@@ -29,7 +36,10 @@ classdef Structure < kssolv.services.filemanager.AbstractItem
                 % 参考资料：https://ww2.mathworks.cn/matlabcentral/answers/484281-why-am-i-unable-to-select-a-file-when-i-use-uigetfile-function-on-the-newest-mac-operation-system
                 [files, path] = uigetfile('*', message("KSSOLV:dialogs:ImportStructureFromFile"), 'MultiSelect', 'on');
             else
-                [files, path] = uigetfile({'*.cif', 'CIF Files (*.cif)'; ...
+                [files, path] = uigetfile({ ...
+                    '*.cif;*.mcif;*.vasp;*.poscar;*.cssr;*.json;*.yaml;*.yml;*.xyz;*.config;*.pwmat', ...
+                    'Structure Files'; ...
+                    '*.cif;*.mcif', 'CIF Files (*.cif, *.mcif)'; ...
                     '*.vasp;*.poscar', 'VASP Files (*.vasp, *.poscar)'; ...
                     '*.*', 'All Files (*.*)'}, ...
                     message("KSSOLV:dialogs:ImportStructureFromFile"), 'MultiSelect', 'on');
@@ -52,42 +62,31 @@ classdef Structure < kssolv.services.filemanager.AbstractItem
             % 遍历所有选中的文件
             for i = 1:length(files)
                 fullPath = fullfile(path, files{i});
-                [~, filename, ext] = fileparts(files{i});
-                ext = lower(ext);
+                [~, filename] = fileparts(files{i});
 
                 % 解析文件并创建结构节点
                 structure = kssolv.services.filemanager.Structure(filename);
 
-                % 根据文件扩展名进行解析
-                switch ext
-                    case '.cif'
-                        structure.data = kssolv.services.fileparser.CIFReader(fullPath);
+                try
+                    structure.data = ...
+                        kssolv.services.fileparser.StructureIO(fullPath);
+                catch exception
+                    warning("KSSOLV:FileManager:Structure:ImportFailed", ...
+                        "Unable to import '%s': %s", fullPath, ...
+                        exception.message);
+                    continue
+                end
 
-                        if ~isempty(structure.data)
-                            this.addChildrenItem(structure);
-                            importedFileCount = importedFileCount + 1;
-
-                            % 读取文件内容并展示结构
-                            cifFileContent = fileread(fullPath);
-                            displayObj = kssolv.ui.components.figuredocument.MoleculeDisplay(cifFileContent, "cif", structure.name);
-                            displayObj.Display();
-                        end
-
-                    case {'.vasp', '.poscar'}
-                        structure.data = kssolv.services.fileparser.POSCARReader(fullPath);
-
-                        if ~isempty(structure.data)
-                            this.addChildrenItem(structure);
-                            importedFileCount = importedFileCount + 1;
-
-                            % 读取文件内容并展示结构
-                            vaspFileContent = fileread(fullPath);
-                            displayObj = kssolv.ui.components.figuredocument.MoleculeDisplay(vaspFileContent, "vasp", structure.name);
-                            displayObj.Display();
-                        end
-
-                    otherwise
-                        warning('Unsupported file format: %s', ext);
+                if ~isempty(structure.data)
+                    this.addChildrenItem(structure);
+                    importedFileCount = importedFileCount + 1;
+                    [displayContent, displayFormat] = ...
+                        structure.data.getDisplayData();
+                    displayObj = ...
+                        kssolv.ui.components.figuredocument. ...
+                        MoleculeDisplay(displayContent, displayFormat, ...
+                        structure.name);
+                    displayObj.Display();
                 end
             end
         end
@@ -113,4 +112,3 @@ classdef Structure < kssolv.services.filemanager.AbstractItem
         end
     end
 end
-

@@ -1,0 +1,7 @@
+<cml xmlns="http://www.xml-cml.org/schema">
+  <molecule><atomArray>
+    <atom id="a1" elementType="O" x3="-0.3591" y3="-0.4635" z3="0"/>
+    <atom id="a2" elementType="H" x3="0.5981" y3="-0.4635" z3="0"/>
+    <atom id="a3" elementType="H" x3="-0.5981" y3="0.4635" z3="0"/>
+  </atomArray></molecule>
+</cml>

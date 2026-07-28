@@ -1,0 +1,20 @@
+<input xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://xml.exciting-code.org/excitinginput.xsd">
+  <title>Si8</title>
+  <structure speciespath="./">
+    <crystal scale="1.889754377313364">
+      <basevect>      5.46872807       0.00000000       0.00000000</basevect>
+      <basevect>      0.00000000       5.46872807       0.00000000</basevect>
+      <basevect>      0.00000000       0.00000000       5.46872807</basevect>
+    </crystal>
+    <species speciesfile="Si.xml">
+      <atom coord="      0.25000000       0.75000000       0.25000000" />
+      <atom coord="      0.00000000       0.00000000       0.50000000" />
+      <atom coord="      0.25000000       0.25000000       0.75000000" />
+      <atom coord="      0.00000000       0.50000000       0.00000000" />
+      <atom coord="      0.75000000       0.75000000       0.75000000" />
+      <atom coord="      0.50000000       0.00000000       0.00000000" />
+      <atom coord="      0.75000000       0.25000000       0.25000000" />
+      <atom coord="      0.50000000       0.50000000       0.50000000" />
+    </species>
+  </structure>
+</input>

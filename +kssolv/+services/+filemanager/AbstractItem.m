@@ -194,6 +194,10 @@ classdef AbstractItem < matlab.mixin.SetGet
             if strcmp(this.type, "Structure")
                 % 当前仅对 Structure 类型的 Item 编码 data 字段
                 objectStruct.data = this.data;
+                if isobject(this.data) && ...
+                        ismethod(this.data, "toInfoStruct")
+                    objectStruct.data = this.data.toInfoStruct();
+                end
             else
                 objectStruct.data = [];
             end
@@ -224,4 +228,3 @@ classdef AbstractItem < matlab.mixin.SetGet
         end
     end
 end
-

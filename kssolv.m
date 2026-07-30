@@ -9,6 +9,33 @@ arguments
     hostInBrowser (1, 1) logical = kssolv.settings.Environment.hostInBrowser()
 end
 
+% KSSOLV is a single-window application. Repeated calls used to leave the
+% previous AppContainer, uihtml pages, and listeners alive while overwriting
+% DataStorage, which eventually surfaced as HTMLSource JavaScript warnings.
+existingApp = kssolv.ui.util.DataStorage.getData("KSSOLVToolbox");
+if isa(existingApp, "kssolv.KSSOLVToolbox") && isvalid(existingApp)
+    existingContainer = existingApp.getAppContainer();
+    if ~isempty(existingContainer) && isvalid(existingContainer)
+        if ksFile == ""
+            existingContainer.Visible = true;
+            existingContainer.bringToFront();
+            app = existingApp;
+            return
+        end
+        delete(existingApp);
+    end
+else
+    % Clean up an AppContainer created before singleton lifecycle tracking
+    % was introduced, or left behind by an interrupted construction.
+    existingContainer = ...
+        kssolv.ui.util.DataStorage.getData("AppContainer");
+    if ~isempty(existingContainer) && isvalid(existingContainer)
+        delete(existingContainer);
+    end
+    kssolv.ui.util.DataStorage.removeData("AppContainer");
+    kssolv.ui.util.DataStorage.removeData("KSSOLVToolbox");
+end
+
 % 从环境变量加载 API Key
 settings = kssolv.settings.Settings.load();
 kssolv.settings.Environment.apply(settings);
@@ -38,7 +65,13 @@ end
 % 初始化图形用户界面
 app = kssolv.KSSOLVToolbox();
 app.HostInBrowser = hostInBrowser;
+kssolv.ui.util.DataStorage.setData("KSSOLVToolbox", app);
 
 % 展示图形用户界面
-app.show();
+try
+    app.show();
+catch exception
+    delete(app);
+    rethrow(exception);
+end
 end

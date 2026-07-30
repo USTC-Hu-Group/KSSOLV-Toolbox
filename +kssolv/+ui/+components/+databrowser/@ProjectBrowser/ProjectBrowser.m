@@ -95,6 +95,10 @@ classdef ProjectBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser
                     this.callbackRowDoubleClicked(src, event);
                 case 'RowRemoved'
                     this.callbackRowRemoved(src, event);
+                case 'ClientError'
+                    warning("KSSOLV:ProjectBrowser:HTMLClientError", ...
+                        "Project Browser JavaScript error: %s", ...
+                        string(event.HTMLEventData));
             end
         end
 
@@ -133,6 +137,22 @@ classdef ProjectBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser
                     else
                         % 直接显示工作流画布
                         item.showWorkflowDisplay();
+                    end
+                case 'kssolv.services.filemanager.Volume'
+                    if startsWith(item.parent.name, 'Project')
+                        importedFileCount = item.importVolumeFromFile();
+                        if importedFileCount > 0
+                            startIndex = numel(item.children) - ...
+                                importedFileCount + 1;
+                            for index = startIndex:numel(item.children)
+                                this.updateTreetable('ADD', item.name, ...
+                                    item.children{index}.encodeToJSON(1));
+                            end
+                            this.updateTreetable('PATCH', item.name, ...
+                                item.encodeToJSON(1));
+                        end
+                    else
+                        item.showVolumeDisplay();
                     end
                 otherwise
                     if strcmp(item.type, "Plot")
@@ -182,4 +202,3 @@ classdef ProjectBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser
         end
     end
 end
-

@@ -57,12 +57,15 @@ classdef EconNN < kssolv.analysis.matgenlab.core.NearNeighbors
             end
             function value=localRadius(site)
                 value=NaN;
-                if isa(site.specie,"kssolv.analysis.matgenlab.core.Species")
-                    value=site.specie.ionic_radius;
+                specie=site.specie;
+                element=specie;
+                if isa(specie,"kssolv.analysis.matgenlab.core.Species")
+                    value=specie.ionic_radius;
+                    element=specie.element;
                 end
-                if isempty(value)||isnan(value),value=site.specie.atomic_radius;end
+                if isempty(value)||isnan(value),value=element.atomic_radius;end
                 if isempty(value)||isnan(value)
-                    value=site.specie.element.atomic_radius_calculated;
+                    value=element.atomic_radius_calculated;
                 end
                 if isempty(value)||isnan(value),value=.7;end
             end

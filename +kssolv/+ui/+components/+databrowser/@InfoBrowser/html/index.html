@@ -3,6 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <title>Project Info UI</title>
+    <script>
+        window.__kssolvHtmlErrors = [];
+        window.__kssolvReportHtmlError = function (value) {
+            const message = value && (value.stack || value.message)
+                ? String(value.stack || value.message)
+                : String(value);
+            if (window.__kssolvHTMLComponent) {
+                window.__kssolvHTMLComponent.sendEventToMATLAB("ClientError", message);
+            } else {
+                window.__kssolvHtmlErrors.push(message);
+            }
+        };
+        window.__kssolvFlushHtmlErrors = function () {
+            const errors = window.__kssolvHtmlErrors.splice(0);
+            errors.forEach(window.__kssolvReportHtmlError);
+        };
+        window.addEventListener("error", function (event) {
+            const source = event.filename ? ` (${event.filename}:${event.lineno})` : "";
+            window.__kssolvReportHtmlError(
+                event.error || `${event.message || "Resource loading error"}${source}`,
+            );
+        });
+        window.addEventListener("unhandledrejection", function (event) {
+            window.__kssolvReportHtmlError(event.reason || "Unhandled promise rejection");
+        });
+    </script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -253,7 +279,10 @@
         const infoContent = document.getElementById('info-content');
         infoContent.innerHTML = '';
 
-        for (const [key, value] of Object.entries(testData)) {
+        const item = testData && typeof testData === 'object'
+            ? testData
+            : {};
+        for (const [key, value] of Object.entries(item)) {
             if (key === 'data') continue; // Skip the 'data' field
             addFieldContent(infoContent, key, Array.isArray(value) ? JSON.stringify(value) : value, key === 'label' || key === 'description');
         }
@@ -263,9 +292,12 @@
         const dataContent = document.getElementById('data-content');
         dataContent.innerHTML = '';
 
-        const rawData = testData.data;
-        if (Array.isArray(rawData) && rawData.length === 0) {
-            return
+        const rawData = testData && typeof testData === 'object'
+            ? testData.data
+            : null;
+        if (!rawData || typeof rawData !== 'object' ||
+                (Array.isArray(rawData) && rawData.length === 0)) {
+            return;
         }
 
         function formatNumber(value) {
@@ -273,6 +305,9 @@
         }
 
         function addMatrixTable(matrix, label) {
+            if (!Array.isArray(matrix) || matrix.length === 0) {
+                return;
+            }
             addFieldContent(dataContent, label, '');
             const table = document.createElement('table');
             table.style.width = '100%';
@@ -280,6 +315,9 @@
             dataContent.appendChild(table);
 
             matrix.forEach(row => {
+                if (!Array.isArray(row)) {
+                    return;
+                }
                 const tr = document.createElement('tr');
                 table.appendChild(tr);
                 row.forEach(cell => {
@@ -294,31 +332,79 @@
             });
         }
 
-        // Name
-        addFieldContent(dataContent, 'Name', rawData.KSSOLVSetupObject.name);
+        const setup = rawData.KSSOLVSetupObject;
+        if (setup && typeof setup === 'object') {
+            if (setup.name != null) {
+                addFieldContent(dataContent, 'Name', setup.name);
+            }
+            addMatrixTable(setup.C, 'C');
+            if (Array.isArray(setup.atomList)) {
+                addFieldContent(
+                    dataContent,
+                    'Atom List',
+                    setup.atomList.join(', '),
+                );
+            }
+            addMatrixTable(setup.xyzList, 'XYZ List');
 
-        // Matrix C
-        addMatrixTable(rawData.KSSOLVSetupObject.C, 'C');
+            if (rawData.rawFileContent != null) {
+                const rawContentLabel = document.createElement('div');
+                rawContentLabel.className = 'field-label';
+                rawContentLabel.textContent = 'RAW FILE CONTENT';
+                dataContent.appendChild(rawContentLabel);
 
-        // Atom List
-        addFieldContent(dataContent, 'Atom List', rawData.KSSOLVSetupObject.atomList.join(', '));
+                const rawContentDiv = document.createElement('div');
+                rawContentDiv.className =
+                    'field-content field-content-not-editable';
+                rawContentDiv.textContent = rawData.rawFileContent;
+                rawContentDiv.style.whiteSpace = 'pre-wrap';
+                rawContentDiv.style.fontFamily = 'monospace';
+                rawContentDiv.style.fontSize = '12px';
+                dataContent.appendChild(rawContentDiv);
+            }
+            return;
+        }
 
-        // XYZ List
-        addMatrixTable(rawData.KSSOLVSetupObject.xyzList, 'XYZ List');
-
-        // Raw File Content
-        const rawContentLabel = document.createElement('div');
-        rawContentLabel.className = 'field-label';
-        rawContentLabel.textContent = 'RAW FILE CONTENT';
-        dataContent.appendChild(rawContentLabel);
-
-        const rawContentDiv = document.createElement('div');
-        rawContentDiv.className = 'field-content field-content-not-editable';
-        rawContentDiv.textContent = rawData.rawFileContent;
-        rawContentDiv.style.whiteSpace = 'pre-wrap'; // Ensure that whitespace and newlines are respected
-        rawContentDiv.style.fontFamily = 'monospace'; // Use monospaced font
-        rawContentDiv.style.fontSize = '12px'; // Slightly smaller font size
-        dataContent.appendChild(rawContentDiv);
+        // VolumeIO exposes a lightweight manifest instead of a
+        // KSSOLVSetupObject. Render its useful fields without assuming
+        // structure-only data.
+        if (rawData.filePath != null) {
+            addFieldContent(dataContent, 'File Path', rawData.filePath);
+        }
+        if (rawData.fileType != null) {
+            addFieldContent(dataContent, 'Format', rawData.fileType);
+        }
+        const datasets = Array.isArray(rawData.datasets)
+            ? rawData.datasets
+            : [];
+        datasets.forEach((dataset, index) => {
+            if (!dataset || typeof dataset !== 'object') {
+                return;
+            }
+            const heading = datasets.length > 1
+                ? `Dataset ${index + 1}`
+                : 'Dataset';
+            const channelNames = Array.isArray(dataset.channels)
+                ? dataset.channels
+                    .map(channel => channel && (channel.label || channel.id))
+                    .filter(Boolean)
+                    .join(', ')
+                : '';
+            addFieldContent(dataContent, heading, channelNames);
+            if (dataset.grid && typeof dataset.grid === 'object') {
+                if (Array.isArray(dataset.grid.dimensions)) {
+                    addFieldContent(
+                        dataContent,
+                        'Grid',
+                        dataset.grid.dimensions.join(' × '),
+                    );
+                }
+                addMatrixTable(
+                    dataset.grid.voxelVectors,
+                    'Voxel Vectors',
+                );
+            }
+        });
     }
 
     /*
@@ -332,10 +418,19 @@
     // MATLAB execute this setup function
     function setup(htmlComponent) {
         MATLAB = htmlComponent;
+        window.__kssolvHTMLComponent = htmlComponent;
+        window.__kssolvFlushHtmlErrors();
         htmlComponent.addEventListener("DataChanged", dataFromMATLABToHTML);
 
         function dataFromMATLABToHTML(event) {
-            testData = JSON.parse(htmlComponent.Data);
+            const payload = htmlComponent.Data;
+            if (payload == null || payload === '') {
+                testData = {};
+            } else if (typeof payload === 'string') {
+                testData = JSON.parse(payload);
+            } else {
+                testData = payload;
+            }
             loadInfoContent();
             loadDataContent();
         }

@@ -1,0 +1,104 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { createDebugScene } from '../scene/debugScene';
+
+describe('viewer store event ordering', () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  it('rejects stale scenes after a newer request begins', async () => {
+    const { matlabBridge } = await import('../bridge/matlabBridge');
+    const { useViewerStore } = await import('./viewerStore');
+    const store = useViewerStore();
+    matlabBridge.dispatchForTesting('scene:begin', { requestId: 'current' });
+    const stale = createDebugScene();
+    stale.requestId = 'stale';
+    matlabBridge.dispatchForTesting('scene:set', stale);
+    expect(store.scene.value).toBeUndefined();
+    const current = createDebugScene();
+    current.requestId = 'current';
+    matlabBridge.dispatchForTesting('scene:set', current);
+    expect(store.scene.value?.requestId).toBe('current');
+    expect(store.status.loading).toBe(false);
+  });
+
+  it('applies remote themes and reports invalid scenes', async () => {
+    const { matlabBridge } = await import('../bridge/matlabBridge');
+    const emit = vi.spyOn(matlabBridge, 'emit');
+    const { useViewerStore } = await import('./viewerStore');
+    const store = useViewerStore();
+    matlabBridge.dispatchForTesting('theme:set', 'materials');
+    expect(store.options.theme).toBe('materials');
+    expect(store.options.showUnitCell).toBe(true);
+    expect(store.options.radiusMode).toBe('atomic');
+    expect(store.options.showBondedOutside).toBe(true);
+    expect(store.options.showPolyhedra).toBe(true);
+    store.updateOptions({ showUnitCell: false });
+    store.setTheme('pretty');
+    expect(store.options.showUnitCell).toBe(true);
+    expect(store.options.radiusMode).toBe('atomic');
+    expect(store.options.showBondedOutside).toBe(true);
+    expect(store.options.showPolyhedra).toBe(true);
+    store.setTheme('materials');
+    expect(store.options.showUnitCell).toBe(false);
+    expect(store.options.radiusMode).toBe('atomic');
+    expect(store.options.showBondedOutside).toBe(true);
+    expect(store.options.showPolyhedra).toBe(true);
+    matlabBridge.dispatchForTesting('scene:set', { schemaVersion: '0' });
+    expect(store.status.error).toContain('schemaVersion');
+    expect(emit).toHaveBeenCalledWith(
+      'viewer:error',
+      expect.objectContaining({ code: 'SCENE_VALIDATION' }),
+    );
+  });
+
+  it('reports queued, building, and completed rebuild states', async () => {
+    const { matlabBridge } = await import('../bridge/matlabBridge');
+    const emit = vi.spyOn(matlabBridge, 'emit');
+    const { useViewerStore } = await import('./viewerStore');
+    const store = useViewerStore();
+    const scene = createDebugScene();
+    scene.requestId = 'rebuilt';
+
+    store.requestAnalysis({
+      requestId: 'previous',
+      algorithm: 'CrystalNN',
+      cell: 'input',
+      repeat: [1, 1, 1],
+    });
+    expect(store.status.activityPhase).toBe('queued');
+    expect(store.status.loading).toBe(true);
+    expect(emit).toHaveBeenCalledWith(
+      'viewer:analysisRequested',
+      expect.objectContaining({ algorithm: 'CrystalNN' }),
+    );
+
+    matlabBridge.dispatchForTesting('scene:begin', { requestId: 'rebuilt' });
+    expect(store.status.activityPhase).toBe('building');
+    matlabBridge.dispatchForTesting('scene:set', scene);
+    expect(store.status.activityPhase).toBe('success');
+    expect(store.status.activityMessage).toContain('Scene rebuilt');
+    expect(store.status.loading).toBe(false);
+    store.clearActivity();
+    expect(store.status.activityPhase).toBe('idle');
+  });
+
+  it('stops waiting when MATLAB does not acknowledge a rebuild', async () => {
+    vi.useFakeTimers();
+    const { useViewerStore } = await import('./viewerStore');
+    const store = useViewerStore();
+    store.requestAnalysis({
+      requestId: 'previous',
+      algorithm: 'CrystalNN',
+      cell: 'input',
+      repeat: [1, 1, 1],
+    });
+
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(store.status.loading).toBe(false);
+    expect(store.status.activityPhase).toBe('error');
+    expect(store.status.activityMessage).toContain('did not acknowledge');
+    vi.useRealTimers();
+  });
+});

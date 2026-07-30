@@ -14,7 +14,11 @@ if autoDetect
     metals=strings(1,0);
     for ii=1:graph.molecule.num_sites
         specie=graph.molecule(ii).specie;
-        if specie.element.is_metal,metals(end+1)=specie.symbol;end %#ok<AGROW>
+        element=specie;
+        if isa(specie,"kssolv.analysis.matgenlab.core.Species")
+            element=specie.element;
+        end
+        if element.is_metal,metals(end+1)=specie.symbol;end %#ok<AGROW>
     end
 end
 for metal=1:graph.molecule.num_sites

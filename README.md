@@ -13,7 +13,7 @@
 
 **KSSOLV Toolbox** adopts a modular design:
 
-* **Preprocessing Module**: Import crystal structures and analyze symmetry.  
+* **Preprocessing Module**: Import crystal/molecular structures, analyze symmetry, and inspect CHGCAR, Cube, and XSF scalar volumes with isosurfaces, lattice slices, and atomic overlays.
 * **Computation Module**: Supports SCF and Non-SCF calculation tasks.  
 * **Post-processing Module**: Computes and processes results such as band structures.  
 * **Visualization Module**: Provides built-in plotting templates for quickly visualizing results.

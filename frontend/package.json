@@ -8,6 +8,10 @@
     "build": "pnpm --recursive --if-present build",
     "build:tree-table": "pnpm --filter @kssolv/tree-table build",
     "build:workflow": "pnpm --filter @kssolv/workflow build",
+    "build:crystal-viewer": "pnpm --filter @kssolv/crystal-viewer build",
+    "build:volume-viewer": "pnpm --filter @kssolv/volume-viewer build",
+    "test:crystal-viewer": "pnpm --filter @kssolv/crystal-viewer test",
+    "test:volume-viewer": "pnpm --filter @kssolv/volume-viewer test",
     "sync:runtime": "node scripts/sync-runtime.mjs",
     "deploy": "pnpm build && pnpm sync:runtime"
   },

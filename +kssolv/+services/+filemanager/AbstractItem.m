@@ -191,8 +191,9 @@ classdef AbstractItem < matlab.mixin.SetGet
                 'createdAt', this.createdAt, 'updatedAt', this.updatedAt, ...
                 'description', this.description);
 
-            if strcmp(this.type, "Structure")
-                % 当前仅对 Structure 类型的 Item 编码 data 字段
+            if any(strcmp(this.type, ["Structure", "Volume"]))
+                % Structure and Volume expose only their lightweight
+                % FileParser projection to the information browser.
                 objectStruct.data = this.data;
                 if isobject(this.data) && ...
                         ismethod(this.data, "toInfoStruct")

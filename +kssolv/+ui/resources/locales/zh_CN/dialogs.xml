@@ -4,6 +4,17 @@
     <message>
         <!-- HomeTab: callbackImportStructureFromFile -->
         <entry key="ImportStructureFromFile">选择要导入的结构文件</entry>
+        <entry key="ImportVolumeFromFile">选择 CHGCAR、Cube 或 XSF 体数据文件</entry>
+        <entry key="VolumeFilterAllSupported">体数据（CHGCAR、Cube、XSF）</entry>
+        <entry key="VolumeFilterVasp">VASP 电荷密度（CHGCAR、CHG）</entry>
+        <entry key="VolumeFilterCube">Gaussian Cube（*.cube、*.cub）</entry>
+        <entry key="VolumeFilterXSF">XCrySDen 标量网格（*.xsf）</entry>
+        <entry key="VolumeFilterAllFiles">所有文件（*.*）</entry>
+        <entry key="VolumeImportFailedTitle">部分体数据文件无法导入</entry>
+        <entry key="VolumeImportFailedMessage">已跳过以下文件。请修正文件或选择其他格式后重试：
+
+%s</entry>
+        <entry key="VolumeImportMoreFailures">……以及另外 %d 个文件</entry>
 
         <!-- KSSOLVToolbox: canClose -->
         <entry key="AppCanCloseTitle">保存项目文件</entry>

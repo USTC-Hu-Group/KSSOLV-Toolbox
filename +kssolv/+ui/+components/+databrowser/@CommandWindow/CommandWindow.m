@@ -105,6 +105,10 @@ classdef CommandWindow < matlab.ui.internal.databrowser.AbstractDataBrowser
                     this.callbackUserPromptSubmitted(src, event);
                 case 'EventSent'
                     this.callbackEventSent(src, event);
+                case 'ClientError'
+                    warning("KSSOLV:CommandWindow:HTMLClientError", ...
+                        "Command Window JavaScript error: %s", ...
+                        string(event.HTMLEventData));
             end
         end
 

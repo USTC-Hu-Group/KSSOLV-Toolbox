@@ -17,8 +17,14 @@ Known third-party or separately licensed components include:
   distributed in that directory.
 - `+kssolv/+ui/+components/+databrowser/@CommandWindow/html/`: separate
   notices for Highlight.js, markdown-it, and KaTeX.
-- `+kssolv/+ui/+components/+figuredocument/@MoleculeDisplay/3Dmol/`: the
-  license bundle distributed with 3Dmol.js.
+- `+kssolv/+ui/+components/+figuredocument/@MoleculeDisplay/CrystalViewer/`:
+  the bundled Vue.js and three.js application. Both projects use the MIT
+  License; the distributable notice is included as
+  `THIRD-PARTY-NOTICES.txt`.
+- `+kssolv/+ui/+components/+figuredocument/@VolumeDisplay/VolumeViewer/`:
+  the bundled Vue.js and three.js volume application. Both projects use the
+  MIT License; the distributable notice is included as
+  `THIRD-PARTY-NOTICES.txt`.
 - Files carrying MathWorks copyright notices remain subject to the rights and
   restrictions applicable to those files.
 
@@ -43,8 +49,12 @@ KSSOLV Toolbox 原创部分，不替代或覆盖任何第三方组件自身的�
   Spglib 二进制组件仍采用该目录内的 BSD 3-Clause 权利声明。
 - `+kssolv/+ui/+components/+databrowser/@CommandWindow/html/`：包含
   Highlight.js、markdown-it 和 KaTeX 的独立权利声明。
-- `+kssolv/+ui/+components/+figuredocument/@MoleculeDisplay/3Dmol/`：包含随
-  3Dmol.js 分发的许可证集合。
+- `+kssolv/+ui/+components/+figuredocument/@MoleculeDisplay/CrystalViewer/`：
+  内含使用 MIT 许可证的 Vue.js 与 three.js 应用，发行版权声明见其中的
+  `THIRD-PARTY-NOTICES.txt`。
+- `+kssolv/+ui/+components/+figuredocument/@VolumeDisplay/VolumeViewer/`：
+  内含使用 MIT 许可证的 Vue.js 与 three.js 体数据应用，发行版权声明见其中的
+  `THIRD-PARTY-NOTICES.txt`。
 - 带有 MathWorks 版权声明的文件继续适用相应文件所规定的权利和限制。
 
 各组件随附的许可证文件或权利声明具有最终效力。再分发者必须保留所有适用的声明。本清单仅为方便查阅而提供，不限制仓库其他位置所载任何第三方权利或许可证的适用范围。

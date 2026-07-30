@@ -13,6 +13,7 @@ classdef BabelMolAdaptor < handle
 
     properties (Dependent, SetAccess = private)
         pymatgen_mol
+        molecule_graph
         openbabel_mol
         pybel_mol
     end
@@ -43,8 +44,15 @@ classdef BabelMolAdaptor < handle
                 obj.data_ = mol;
                 obj.backend_state_ = mol;
             elseif isstruct(mol) && isfield(mol, "x_babel_raw")
+                bondOrigin = "none";
+                if isfield(mol, "bond_origin")
+                    bondOrigin = mol.bond_origin;
+                elseif ~isempty(mol.bonds)
+                    bondOrigin = "source";
+                end
                 obj.data_ = kssolv.analysis.matgenlab.io.babel. ...
-                    BabelMolData(mol, mol.bonds, mol.dimension);
+                    BabelMolData(mol, mol.bonds, mol.dimension, [], ...
+                    bondOrigin);
             elseif ~isempty(backend)
                 obj.backend_state_ = mol;
                 molecule = callBackend(backend, "to_molecule", mol);
@@ -64,6 +72,30 @@ classdef BabelMolAdaptor < handle
                 value = normalizeMolecule(value);
             else
                 value = obj.data_.getMolecule().copy();
+            end
+            value.properties.topology = struct( ...
+                "bonds", obj.data_.bonds, ...
+                "origin", obj.data_.bond_origin);
+        end
+
+        function value = get.molecule_graph(obj)
+            molecule = obj.pymatgen_mol;
+            value = kssolv.analysis.matgenlab.core.MoleculeGraph. ...
+                from_empty_graph(molecule, ...
+                "edge_weight_name", "bond_order", ...
+                "edge_weight_units", "");
+            for index = 1:size(obj.data_.bonds, 1)
+                order = obj.data_.bonds(index, 3);
+                properties = struct( ...
+                    "origin", obj.data_.bond_origin, ...
+                    "bond_order", order, ...
+                    "distance", molecule.get_distance( ...
+                        obj.data_.bonds(index, 1), ...
+                        obj.data_.bonds(index, 2)));
+                value.add_edge(obj.data_.bonds(index, 1), ...
+                    obj.data_.bonds(index, 2), ...
+                    "weight", order, ...
+                    "edge_properties", properties);
             end
         end
 
@@ -252,6 +284,7 @@ classdef BabelMolAdaptor < handle
                     edges(index).to_index, order];
             end
             value.data_.bonds = bonds;
+            value.data_.bond_origin = "source";
         end
 
         function value = from_str(string_data, file_format, backend)
@@ -550,6 +583,7 @@ molecules = cell(1, 0);
 for groupIndex = 1:numel(groups)
     species = strings(0, 1);
     coords = zeros(0, 3);
+    serials = zeros(0, 1);
     for line = reshape(groups{groupIndex}, 1, [])
         raw = char(line);
         if ~(startsWith(raw, "ATOM  ") || startsWith(raw, "HETATM"))
@@ -579,10 +613,13 @@ for groupIndex = 1:numel(groups)
         end
         species(end + 1, 1) = symbol; %#ok<AGROW>
         coords(end + 1, :) = values; %#ok<AGROW>
+        serial = str2double(strtrim(raw(7:11)));
+        if isnan(serial), serial = numel(serials) + 1; end
+        serials(end + 1, 1) = serial; %#ok<AGROW>
     end
     if ~isempty(species)
-        molecules{end + 1} = kssolv.analysis.matgenlab.core. ...
-            Molecule(species, coords, charge_spin_check = false); %#ok<AGROW>
+        bonds = pdbBonds(groups{groupIndex}, serials);
+        molecules{end + 1} = rawMolecule(species, coords, bonds); %#ok<AGROW>
     end
 end
 end
@@ -601,7 +638,8 @@ for recordIndex = 1:numel(records)
         "^\s*(\d+)\s+(\d+)", "tokens", "once");
     if isempty(counts), continue, end
     atomCount = str2double(counts{1});
-    if numel(lines) < atomCount + 4, continue, end
+    bondCount = str2double(counts{2});
+    if numel(lines) < atomCount + bondCount + 4, continue, end
     species = strings(atomCount, 1);
     coords = zeros(atomCount, 3);
     for atom = 1:atomCount
@@ -617,8 +655,17 @@ for recordIndex = 1:numel(records)
             ["D", "d"], ["E", "e"]));
         species(atom) = string(tokens{4});
     end
-    molecules{end + 1} = kssolv.analysis.matgenlab.core. ...
-        Molecule(species, coords, charge_spin_check = false); %#ok<AGROW>
+    bonds = zeros(bondCount, 3);
+    for bond = 1:bondCount
+        tokens = regexp(char(lines(atomCount + 4 + bond)), ...
+            "^\s*(\d+)\s+(\d+)\s+(\d+)", "tokens", "once");
+        if isempty(tokens)
+            error("KSSOLV:Matgenlab:Babel:MolBond", ...
+                "Invalid MOL bond record %d.", bond);
+        end
+        bonds(bond, :) = str2double(string(tokens(1:3)));
+    end
+    molecules{end + 1} = rawMolecule(species, coords, bonds); %#ok<AGROW>
 end
 end
 
@@ -636,11 +683,13 @@ for chunkIndex = 1:numel(chunks)
     else, atomEnd = atomEnd - 1; end
     species = strings(atomEnd, 1);
     coords = zeros(atomEnd, 3);
+    atomIds = zeros(atomEnd, 1);
     count = 0;
     for index = atomStart + (1:atomEnd)
         tokens = split(strip(lines(index)));
         if numel(tokens) < 6, continue, end
         count = count + 1;
+        atomIds(count) = str2double(tokens(1));
         coords(count, :) = str2double(tokens(3:5));
         atomType = extractBefore(tokens(6) + ".", ".");
         symbol = regexp(char(atomType), "^[A-Za-z]{1,2}", ...
@@ -649,9 +698,10 @@ for chunkIndex = 1:numel(chunks)
     end
     species = species(1:count);
     coords = coords(1:count, :);
+    atomIds = atomIds(1:count);
     if count > 0
-        molecules{end + 1} = kssolv.analysis.matgenlab.core. ...
-            Molecule(species, coords, charge_spin_check = false); %#ok<AGROW>
+        bonds = mol2Bonds(lines, atomIds);
+        molecules{end + 1} = rawMolecule(species, coords, bonds); %#ok<AGROW>
     end
 end
 end
@@ -665,12 +715,15 @@ for blockIndex = 1:numel(blocks)
     atoms = regexp(blocks{blockIndex}, '<atom[^>]*>', 'match');
     species = strings(numel(atoms), 1);
     coords = zeros(numel(atoms), 3);
+    atomIds = strings(numel(atoms), 1);
     count = 0;
     for atomIndex = 1:numel(atoms)
         symbol = xmlAttribute(atoms{atomIndex}, "elementType");
         if symbol == "", continue, end
         count = count + 1;
         species(count) = symbol;
+        atomIds(count) = xmlAttribute(atoms{atomIndex}, "id");
+        if atomIds(count) == "", atomIds(count) = "a" + count; end
         x = xmlNumber(atoms{atomIndex}, ["x3", "x2"]);
         y = xmlNumber(atoms{atomIndex}, ["y3", "y2"]);
         z = xmlNumber(atoms{atomIndex}, "z3");
@@ -680,10 +733,109 @@ for blockIndex = 1:numel(blocks)
         coords(count, :) = [x, y, z];
     end
     if count > 0
-        molecules{end + 1} = kssolv.analysis.matgenlab.core. ...
-            Molecule(species(1:count), coords(1:count, :), ...
-            charge_spin_check = false); %#ok<AGROW>
+        bonds = xmlBonds(blocks{blockIndex}, atomIds(1:count));
+        molecules{end + 1} = rawMolecule( ...
+            species(1:count), coords(1:count, :), bonds); %#ok<AGROW>
     end
+end
+end
+
+function value = rawMolecule(species, coordinates, bonds)
+value = struct(x_babel_raw = true, ...
+    species = reshape(string(species), [], 1), ...
+    coordinates = double(coordinates), ...
+    bonds = double(bonds), ...
+    bond_origin = sourceBondOrigin(bonds), ...
+    dimension = rawCoordinateDimension(coordinates));
+end
+
+function origin = sourceBondOrigin(bonds)
+if isempty(bonds), origin = "none"; else, origin = "source"; end
+end
+
+function bonds = pdbBonds(lines, serials)
+serialMap = containers.Map("KeyType", "double", "ValueType", "double");
+for index = 1:numel(serials), serialMap(serials(index)) = index; end
+orders = containers.Map("KeyType", "char", "ValueType", "double");
+for line = reshape(lines, 1, [])
+    raw = strip(string(line));
+    if ~startsWith(raw, "CONECT"), continue, end
+    values = str2double(regexp(char(raw), "\d+", "match"));
+    if numel(values) < 2 || ~isKey(serialMap, values(1)), continue, end
+    source = serialMap(values(1));
+    targets = values(2:end);
+    uniqueTargets = unique(targets, "stable");
+    for targetSerial = uniqueTargets
+        if ~isKey(serialMap, targetSerial), continue, end
+        target = serialMap(targetSerial);
+        if target == source, continue, end
+        pair = sort([source, target]);
+        key = sprintf("%d:%d", pair(1), pair(2));
+        order = sum(targets == targetSerial);
+        if ~isKey(orders, key) || order > orders(key), orders(key) = order; end
+    end
+end
+keys = orders.keys;
+bonds = zeros(numel(keys), 3);
+for index = 1:numel(keys)
+    pair = sscanf(keys{index}, "%d:%d").';
+    bonds(index, :) = [pair, orders(keys{index})];
+end
+if ~isempty(bonds), bonds = sortrows(bonds, [1, 2]); end
+end
+
+function bonds = mol2Bonds(lines, atomIds)
+bondStart = find(strip(lines) == "@<TRIPOS>BOND", 1);
+if isempty(bondStart)
+    bonds = zeros(0, 3);
+    return
+end
+bondEnd = find(startsWith(strip(lines(bondStart + 1:end)), ...
+    "@<TRIPOS>"), 1);
+if isempty(bondEnd), bondEnd = numel(lines) - bondStart;
+else, bondEnd = bondEnd - 1; end
+bonds = zeros(bondEnd, 3);
+count = 0;
+for index = bondStart + (1:bondEnd)
+    tokens = split(strip(lines(index)));
+    if numel(tokens) < 4, continue, end
+    first = find(atomIds == str2double(tokens(2)), 1);
+    second = find(atomIds == str2double(tokens(3)), 1);
+    if isempty(first) || isempty(second), continue, end
+    count = count + 1;
+    bonds(count, :) = [first, second, parseBondOrder(tokens(4))];
+end
+bonds = bonds(1:count, :);
+end
+
+function bonds = xmlBonds(text, atomIds)
+records = regexp(char(text), "<bond[^>]*>", "match");
+bonds = zeros(numel(records), 3);
+count = 0;
+for index = 1:numel(records)
+    refs = xmlAttribute(records{index}, "atomRefs2");
+    if refs == "", refs = xmlAttribute(records{index}, "atomRefs"); end
+    ids = split(strip(refs));
+    if numel(ids) < 2, continue, end
+    first = find(atomIds == ids(1), 1);
+    second = find(atomIds == ids(2), 1);
+    if isempty(first) || isempty(second), continue, end
+    count = count + 1;
+    bonds(count, :) = [first, second, ...
+        parseBondOrder(xmlAttribute(records{index}, "order"))];
+end
+bonds = bonds(1:count, :);
+end
+
+function value = parseBondOrder(token)
+token = lower(strip(string(token)));
+value = str2double(token);
+if ~isnan(value), return, end
+switch token
+    case {"d", "double"}, value = 2;
+    case {"t", "triple"}, value = 3;
+    case {"ar", "a", "aromatic"}, value = 1.5;
+    otherwise, value = 1;
 end
 end
 
@@ -714,22 +866,22 @@ switch format
     case "xyz"
         text = string(kssolv.analysis.matgenlab.io.xyz.XYZ(molecules));
     case "pdb"
-        text = serializePDB(molecules{1});
+        text = serializePDB(molecules{1}, bonds);
     case {"mol", "sdf"}
         text = serializeMol(molecules{1}, bonds);
         if format == "sdf", text = text + newline + "$$$$"; end
     case "mol2"
         text = serializeMol2(molecules{1}, bonds);
     case {"cml", "mrv"}
-        text = serializeCML(molecules{1}, format == "mrv");
+        text = serializeCML(molecules{1}, bonds, format == "mrv");
     otherwise
         error("KSSOLV:Matgenlab:Babel:Format", ...
             "Unsupported native molecular format '%s'.", format);
 end
 end
 
-function text = serializePDB(molecule)
-lines = strings(molecule.num_sites + 2, 1);
+function text = serializePDB(molecule, bonds)
+lines = strings(molecule.num_sites + size(bonds, 1) + 2, 1);
 lines(1) = "COMPND    MATGENLAB";
 for index = 1:molecule.num_sites
     site = molecule.get_site(index);
@@ -737,6 +889,13 @@ for index = 1:molecule.num_sites
     lines(index + 1) = sprintf( ...
         "HETATM%5d %-4s MOL     1    %8.3f%8.3f%8.3f  1.00  0.00          %2s", ...
         index, char(symbol), site.x, site.y, site.z, char(symbol));
+end
+offset = molecule.num_sites + 1;
+for index = 1:size(bonds, 1)
+    targets = repmat(bonds(index, 2), 1, ...
+        max(1, round(bonds(index, 3))));
+    lines(offset + index) = sprintf("CONECT%5d%s", ...
+        bonds(index, 1), sprintf("%5d", targets));
 end
 lines(end) = "END";
 text = strjoin(lines, newline);
@@ -788,7 +947,7 @@ if abs(order - 1.5) < 1e-8, value = "ar";
 else, value = string(round(order)); end
 end
 
-function text = serializeCML(molecule, marvin)
+function text = serializeCML(molecule, bonds, marvin)
 atoms = strings(molecule.num_sites, 1);
 for index = 1:molecule.num_sites
     site = molecule.get_site(index);
@@ -797,16 +956,29 @@ for index = 1:molecule.num_sites
         index, char(site.specie.symbol), site.x, site.y, site.z);
 end
 body = "    " + strjoin(atoms, newline + "    ");
+bondLines = strings(size(bonds, 1), 1);
+for index = 1:size(bonds, 1)
+    bondLines(index) = sprintf( ...
+        '<bond id="b%d" atomRefs2="a%d a%d" order="%s"/>', ...
+        index, bonds(index, 1), bonds(index, 2), ...
+        char(bondOrderString(bonds(index, 3))));
+end
+bondBody = "";
+if ~isempty(bondLines)
+    bondBody = newline + "  <bondArray>" + newline + "    " + ...
+        strjoin(bondLines, newline + "    ") + newline + "  </bondArray>";
+end
 if marvin
     text = "<cml xmlns=""http://www.chemaxon.com"">" + newline + ...
         "  <MDocument><MChemicalStruct><molecule>" + newline + ...
         "  <atomArray>" + newline + body + newline + ...
-        "  </atomArray></molecule></MChemicalStruct></MDocument>" + ...
+        "  </atomArray>" + bondBody + ...
+        "</molecule></MChemicalStruct></MDocument>" + ...
         newline + "</cml>";
 else
     text = "<cml xmlns=""http://www.xml-cml.org/schema"">" + newline + ...
         "  <molecule><atomArray>" + newline + body + newline + ...
-        "  </atomArray></molecule>" + newline + "</cml>";
+        "  </atomArray>" + bondBody + "</molecule>" + newline + "</cml>";
 end
 end
 

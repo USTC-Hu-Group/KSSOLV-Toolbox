@@ -70,5 +70,35 @@ classdef MoleculeTest < matlab.unittest.TestCase
             testCase.verifyEqual(structure.num_sites, 2);
             testCase.verifyEqual(structure.volume, 125, AbsTol = 1e-12);
         end
+
+        function spatialCovalentSearchMatchesAllPairs(testCase)
+            [x, y, z] = ndgrid(0:5, 0:4, 0:3);
+            coordinates = [x(:), y(:), z(:)] * 1.45;
+            species = repmat("C", size(coordinates, 1), 1);
+            molecule = kssolv.analysis.matgenlab.core.Molecule( ...
+                species, coordinates, charge_spin_check = false);
+            expected = bruteForcePairs(molecule, 0.2);
+            actual = molecule.get_covalent_bond_pairs(0.2);
+            testCase.verifyEqual(actual, expected);
+
+            graph = kssolv.analysis.matgenlab.core.OpenBabelNN(). ...
+                get_bonded_structure(molecule);
+            testCase.verifyEqual(graph.graph.number_of_edges(), ...
+                size(expected, 1));
+            testCase.verifyEqual(graph.graph.edges(1). ...
+                edge_properties.origin, "OpenBabelNN");
+        end
     end
+end
+
+function pairs = bruteForcePairs(molecule, tolerance)
+pairs = zeros(0, 2);
+for first = 1:molecule.num_sites
+    for second = first + 1:molecule.num_sites
+        if kssolv.analysis.matgenlab.core.CovalentBond.is_bonded( ...
+                molecule(first), molecule(second), tolerance)
+            pairs(end + 1, :) = [first, second]; %#ok<AGROW>
+        end
+    end
+end
 end

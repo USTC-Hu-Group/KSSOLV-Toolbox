@@ -21,6 +21,20 @@ const mappings = [
       '+kssolv/+ui/+components/+figuredocument/@Workflow/workflow',
     ),
   },
+  {
+    source: path.join(frontendDirectory, 'apps/crystal-viewer/dist'),
+    target: path.join(
+      repositoryDirectory,
+      '+kssolv/+ui/+components/+figuredocument/@MoleculeDisplay/CrystalViewer',
+    ),
+  },
+  {
+    source: path.join(frontendDirectory, 'apps/volume-viewer/dist'),
+    target: path.join(
+      repositoryDirectory,
+      '+kssolv/+ui/+components/+figuredocument/@VolumeDisplay/VolumeViewer',
+    ),
+  },
 ];
 
 for (const { source, target } of mappings) {

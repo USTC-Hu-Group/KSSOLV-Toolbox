@@ -475,6 +475,7 @@ while index <= numel(lines)
         end
         if strlength(label) == 0, label = "UNKGRID" + numel(blockLabels); end
         shape = sscanf(char(strtrim(lines(index))), "%d").'; index = index + 1;
+        validateGridShape(shape, blockDim, numel(blockData) + 1);
         [origin, index] = readRows(lines, index, 1);
         [latticeValue, index] = readRows(lines, index, blockDim);
         [blockOrigin, blockLattice] = mergeGeometry( ...
@@ -696,6 +697,38 @@ if numel(values) ~= count
         "Expected %d %s values but parsed %d", count, description, numel(values));
 end
 next = index;
+end
+
+function count = validateGridShape(shape, dimensionality, componentCount)
+shape = double(reshape(shape, 1, []));
+if numel(shape) ~= dimensionality || ...
+        any(~isfinite(shape)) || any(shape < 1) || ...
+        any(shape ~= fix(shape))
+    error("KSSOLV:Matgenlab:XSF:GridLimit", ...
+        "DATAGRID dimensions must contain %d positive integers.", ...
+        dimensionality);
+end
+count = 1;
+for dimension = shape
+    if count > flintmax / dimension
+        error("KSSOLV:Matgenlab:XSF:GridLimit", ...
+            "DATAGRID dimension product exceeds the exact range.");
+    end
+    count = count * dimension;
+end
+maximumVoxels = 256^3;
+maximumComponents = 64;
+maximumValues = 256 * 1024^2;
+if count > maximumVoxels || componentCount > maximumComponents || ...
+        count > floor(maximumValues / componentCount)
+    error("KSSOLV:Matgenlab:XSF:GridLimit", ...
+        "DATAGRID requests %.3g voxels, %d components, and %.3g " + ...
+        "values; limits are %.3g voxels, %d components, and %.3g " + ...
+        "values. " + ...
+        "Use a smaller grid or precomputed LOD.", ...
+        count, componentCount, count * componentCount, maximumVoxels, ...
+        maximumComponents, maximumValues);
+end
 end
 
 function [storedOrigin, storedLattice] = mergeGeometry( ...

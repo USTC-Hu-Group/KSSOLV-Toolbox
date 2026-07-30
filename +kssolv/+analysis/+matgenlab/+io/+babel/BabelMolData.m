@@ -10,6 +10,7 @@ classdef BabelMolData < handle
         species cell = cell(1, 0)
         coordinates double = zeros(0, 3)
         bonds double = zeros(0, 3)
+        bond_origin string = "inferred"
         dimension (1,1) double = 3
         conformers cell = cell(1, 0)
     end
@@ -19,13 +20,16 @@ classdef BabelMolData < handle
     end
 
     methods
-        function obj = BabelMolData(molecule, bonds, dimension, conformers)
+        function obj = BabelMolData(molecule, bonds, dimension, conformers, bondOrigin)
             if nargin < 1
                 molecule = kssolv.analysis.matgenlab.core.Molecule( ...
                     strings(0, 1), zeros(0, 3), charge_spin_check = false);
             end
             if nargin < 2 || isempty(bonds), bonds = zeros(0, 3); end
             if nargin < 3 || isempty(dimension), dimension = 3; end
+            if nargin < 5 || strlength(string(bondOrigin)) == 0
+                bondOrigin = "inferred";
+            end
             if isstruct(molecule) && isfield(molecule, "x_babel_raw")
                 obj.species = reshape(cellstr(string(molecule.species)), 1, []);
                 obj.coordinates = double(molecule.coordinates);
@@ -43,6 +47,7 @@ classdef BabelMolData < handle
                 end
             end
             obj.bonds = double(bonds);
+            obj.bond_origin = string(bondOrigin);
             obj.dimension = double(dimension);
             obj.conformers = reshape(conformers, 1, []);
         end

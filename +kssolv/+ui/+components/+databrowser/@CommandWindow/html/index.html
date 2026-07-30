@@ -4,6 +4,32 @@
     <meta charset="UTF-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <title>Command Window UI</title>
+    <script>
+        window.__kssolvHtmlErrors = [];
+        window.__kssolvReportHtmlError = function (value) {
+            const message = value && (value.stack || value.message)
+                ? String(value.stack || value.message)
+                : String(value);
+            if (window.__kssolvHTMLComponent) {
+                window.__kssolvHTMLComponent.sendEventToMATLAB("ClientError", message);
+            } else {
+                window.__kssolvHtmlErrors.push(message);
+            }
+        };
+        window.__kssolvFlushHtmlErrors = function () {
+            const errors = window.__kssolvHtmlErrors.splice(0);
+            errors.forEach(window.__kssolvReportHtmlError);
+        };
+        window.addEventListener("error", function (event) {
+            const source = event.filename ? ` (${event.filename}:${event.lineno})` : "";
+            window.__kssolvReportHtmlError(
+                event.error || `${event.message || "Resource loading error"}${source}`,
+            );
+        });
+        window.addEventListener("unhandledrejection", function (event) {
+            window.__kssolvReportHtmlError(event.reason || "Unhandled promise rejection");
+        });
+    </script>
 
     <script src="./3p/markdown-it/markdown-it.min.js"></script>
     <script crossorigin="anonymous" defer
@@ -523,6 +549,8 @@
     // 设置 MATLAB 组件
     function setup(htmlComponent) {
         MATLAB = htmlComponent;
+        window.__kssolvHTMLComponent = htmlComponent;
+        window.__kssolvFlushHtmlErrors();
         htmlComponent.addEventListener("ResultUpdated", resultFromMATLABToHTML);
         htmlComponent.addEventListener("DataChanged", () => {
             references = MATLAB.Data.join(',');

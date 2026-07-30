@@ -21,6 +21,8 @@ classdef Project < kssolv.services.filemanager.AbstractItem
             this.addChildrenItem(workflowParent);
             structureParent = kssolv.services.filemanager.Structure('Structure', 'Folder');
             this.addChildrenItem(structureParent);
+            volumeParent = kssolv.services.filemanager.Volume('Volume', 'Folder');
+            this.addChildrenItem(volumeParent);
             resultsParent = kssolv.services.filemanager.Results('Results', 'Folder');
             this.addChildrenItem(resultsParent);
 
@@ -38,9 +40,12 @@ classdef Project < kssolv.services.filemanager.AbstractItem
             % 检查 filename 是否为绝对路径，并检查目录是否存在，不存在则创建
             folderPath = fileparts(filename);
             if ~isempty(folderPath) && ~exist(folderPath, 'dir')
-                warning('off');
+                previousWarningState = warning;
+                warningCleanup = ...
+                    onCleanup(@() warning(previousWarningState));
+                warning('off', 'all');
                 mkdir(folderPath);
-                warning('on');
+                clear warningCleanup
             end
 
             data = this;
@@ -80,4 +85,3 @@ classdef Project < kssolv.services.filemanager.AbstractItem
         end
     end
 end
-

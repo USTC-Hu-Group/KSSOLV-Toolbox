@@ -77,6 +77,19 @@ classdef KSSOLVToolbox < handle
 
         function delete(this)
             %DELETE 析构函数
+            storedApp = ...
+                kssolv.ui.util.DataStorage.getData("KSSOLVToolbox");
+            if ~isempty(storedApp) && isequal(storedApp, this)
+                kssolv.ui.util.DataStorage.removeData( ...
+                    "KSSOLVToolbox");
+            end
+            storedContainer = ...
+                kssolv.ui.util.DataStorage.getData("AppContainer");
+            if ~isempty(storedContainer) && ...
+                    isequal(storedContainer, this.AppContainer)
+                kssolv.ui.util.DataStorage.removeData( ...
+                    "AppContainer");
+            end
             % 删除 App Container
             if ~isempty(this.AppContainer) && isvalid(this.AppContainer)
                 delete(this.runBrowser);

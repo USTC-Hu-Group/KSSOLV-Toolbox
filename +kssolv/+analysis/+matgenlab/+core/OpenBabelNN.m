@@ -24,16 +24,7 @@ classdef OpenBabelNN < kssolv.analysis.matgenlab.core.NearNeighbors
                 error("KSSOLV:Matgenlab:OpenBabelNN:Index", ...
                     "Site index is out of bounds.");
             end
-            bonds=molecule.get_covalent_bonds(.2);
-            pairs=zeros(numel(bonds),2);lengths=zeros(1,numel(bonds));
-            preferences=zeros(1,numel(bonds));
-            for ii=1:numel(bonds)
-                pairs(ii,1)=siteIndex(molecule,bonds{ii}.site1);
-                pairs(ii,2)=siteIndex(molecule,bonds{ii}.site2);
-                lengths(ii)=bonds{ii}.length;
-                preferences(ii)=bonds{ii}.get_bond_order();
-            end
-            orders=perceiveOrders(molecule,pairs,preferences);
+            [pairs,lengths,orders]=obj.get_bonds(molecule);
             info=cell(1,sum(any(pairs==n,2)));position=0;
             for ii=1:size(pairs,1)
                 if pairs(ii,1)==n,neighbor=pairs(ii,2);
@@ -48,8 +39,39 @@ classdef OpenBabelNN < kssolv.analysis.matgenlab.core.NearNeighbors
         end
         function graph=get_bonded_structure(obj,molecule,varargin)
             options=struct(decorate=false);options=parse(options,varargin);
-            graph=get_bonded_structure@kssolv.analysis.matgenlab.core. ...
-                NearNeighbors(obj,molecule,"decorate",options.decorate);
+            if ~isa(molecule,"kssolv.analysis.matgenlab.core.IMolecule")
+                error("KSSOLV:Matgenlab:OpenBabelNN:Molecule", ...
+                    "OpenBabelNN is only appropriate for molecules.");
+            end
+            [pairs,lengths,orders]=obj.get_bonds(molecule);
+            graph=kssolv.analysis.matgenlab.core.MoleculeGraph. ...
+                from_empty_graph(molecule,"edge_weight_name","weight", ...
+                "edge_weight_units","");
+            for ii=1:size(pairs,1)
+                weight=lengths(ii);
+                if obj.order,weight=orders(ii);end
+                properties=struct("origin","OpenBabelNN", ...
+                    "bond_order",orders(ii),"distance",lengths(ii));
+                graph.add_edge(pairs(ii,1),pairs(ii,2), ...
+                    "weight",weight,"edge_properties",properties);
+            end
+            if options.decorate
+                local=cell(1,molecule.num_sites);
+                for ii=1:molecule.num_sites
+                    local{ii}=obj.get_local_order_parameters(molecule,ii);
+                end
+                graph.molecule=graph.molecule.add_site_property( ...
+                    "order_parameters",local);
+                graph.set_node_attributes();
+            end
+        end
+        function [pairs,lengths,orders]=get_bonds(~,molecule)
+            %GET_BONDS Perceive molecular pairs without materializing a graph.
+            if ~isa(molecule,"kssolv.analysis.matgenlab.core.IMolecule")
+                error("KSSOLV:Matgenlab:OpenBabelNN:Molecule", ...
+                    "OpenBabelNN is only appropriate for molecules.");
+            end
+            [pairs,lengths,orders]=perceiveMolecule(molecule);
         end
         function info=get_nn_shell_info(obj,molecule,siteIdx,shell)
             info=get_nn_shell_info@kssolv.analysis.matgenlab.core. ...
@@ -58,18 +80,25 @@ classdef OpenBabelNN < kssolv.analysis.matgenlab.core.NearNeighbors
     end
 end
 
-function index=siteIndex(molecule,site)
-index=find(cellfun(@(candidate) ...
-    candidate.species_string==site.species_string&& ...
-    norm(candidate.coords-site.coords)<1e-10,molecule.sites),1);
-if isempty(index)
-    error("KSSOLV:Matgenlab:OpenBabelNN:Site", ...
-        "Perceived bond site is absent from the molecule.");
+function [pairs,lengths,orders]=perceiveMolecule(molecule)
+pairs=molecule.get_covalent_bond_pairs(.2);
+lengths=zeros(1,size(pairs,1));
+preferences=zeros(1,size(pairs,1));
+for ii=1:size(pairs,1)
+    bond=kssolv.analysis.matgenlab.core.CovalentBond( ...
+        molecule(pairs(ii,1)),molecule(pairs(ii,2)));
+    lengths(ii)=bond.length;
+    preferences(ii)=bond.get_bond_order();
 end
+orders=perceiveOrders(molecule,pairs,preferences);
 end
 
 function orders=perceiveOrders(molecule,pairs,preferences)
-orders=ones(1,size(pairs,1));degree=zeros(1,molecule.num_sites);
+orders=ones(1,size(pairs,1));
+if isempty(pairs)
+    return
+end
+degree=zeros(1,molecule.num_sites);
 for ii=1:size(pairs,1)
     degree(pairs(ii,1))=degree(pairs(ii,1))+1;
     degree(pairs(ii,2))=degree(pairs(ii,2))+1;

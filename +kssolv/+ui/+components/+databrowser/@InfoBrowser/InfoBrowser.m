@@ -58,6 +58,10 @@ classdef InfoBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser
             switch event.HTMLEventName
                 case 'ValueChanged'
                     this.callbackValueChanged(src, event);
+                case 'ClientError'
+                    warning("KSSOLV:InfoBrowser:HTMLClientError", ...
+                        "Information Browser JavaScript error: %s", ...
+                        string(event.HTMLEventData));
             end
         end
 
@@ -120,4 +124,3 @@ classdef InfoBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser
         end
     end
 end
-

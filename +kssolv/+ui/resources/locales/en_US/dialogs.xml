@@ -4,6 +4,17 @@
     <message>
         <!-- HomeTab: callbackImportStructureFromFile -->
         <entry key="ImportStructureFromFile">Select the Structure File to Import</entry>
+        <entry key="ImportVolumeFromFile">Select CHGCAR, Cube, or XSF Volume Data</entry>
+        <entry key="VolumeFilterAllSupported">Volume data (CHGCAR, Cube, XSF)</entry>
+        <entry key="VolumeFilterVasp">VASP charge density (CHGCAR, CHG)</entry>
+        <entry key="VolumeFilterCube">Gaussian Cube (*.cube, *.cub)</entry>
+        <entry key="VolumeFilterXSF">XCrySDen scalar grids (*.xsf)</entry>
+        <entry key="VolumeFilterAllFiles">All files (*.*)</entry>
+        <entry key="VolumeImportFailedTitle">Some Volume Files Could Not Be Imported</entry>
+        <entry key="VolumeImportFailedMessage">The following files were skipped. Correct the file or choose another format, then try again:
+
+%s</entry>
+        <entry key="VolumeImportMoreFailures">…and %d more files</entry>
 
         <!-- KSSOLVToolbox: canClose -->
         <entry key="AppCanCloseTitle">Save this project file</entry>

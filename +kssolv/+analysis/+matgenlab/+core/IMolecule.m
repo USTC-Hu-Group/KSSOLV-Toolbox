@@ -281,19 +281,52 @@ classdef IMolecule < kssolv.analysis.matgenlab.core.SiteCollection & ...
 
         function bonds = get_covalent_bonds(obj, tol)
             if nargin < 2, tol = 0.2; end
-            bonds = cell(1, 0);
-            for first = 1:obj.num_sites
-                for second = first + 1:obj.num_sites
-                    if kssolv.analysis.matgenlab.core.CovalentBond. ...
-                            is_bonded(obj.sites_{first}, ...
-                            obj.sites_{second}, tol)
-                        bonds{end + 1} = ...
-                            kssolv.analysis.matgenlab.core.CovalentBond( ...
-                                obj.sites_{first}, ...
-                                obj.sites_{second}); %#ok<AGROW>
-                    end
+            pairs = obj.get_covalent_bond_pairs(tol);
+            bonds = cell(1, size(pairs, 1));
+            for index = 1:size(pairs, 1)
+                bonds{index} = kssolv.analysis.matgenlab.core. ...
+                    CovalentBond(obj.sites_{pairs(index, 1)}, ...
+                    obj.sites_{pairs(index, 2)});
+            end
+        end
+
+        function pairs = get_covalent_bond_pairs(obj, tol)
+            %GET_COVALENT_BOND_PAIRS Return one-based bonded site pairs.
+            %
+            % A spatial hash limits exact CovalentBond checks to nearby
+            % atoms. The result remains lexicographically ordered like the
+            % former all-pairs implementation.
+            if nargin < 2, tol = 0.2; end
+            if obj.num_sites < 2
+                pairs = zeros(0, 2);
+                return
+            end
+            [candidates, bondData, coordinates, symbols] = ...
+                covalentCandidates(obj, tol);
+            if isempty(candidates)
+                pairs = zeros(0, 2);
+                return
+            end
+            thresholds = zeros(size(candidates, 1), 1);
+            uniqueSymbols = unique(symbols);
+            for first = 1:numel(uniqueSymbols)
+                for second = first:numel(uniqueSymbols)
+                    firstSymbol = uniqueSymbols(first);
+                    secondSymbol = uniqueSymbols(second);
+                    mask = (symbols(candidates(:, 1)) == firstSymbol & ...
+                        symbols(candidates(:, 2)) == secondSymbol) | ...
+                        (symbols(candidates(:, 1)) == secondSymbol & ...
+                        symbols(candidates(:, 2)) == firstSymbol);
+                    key = char(strjoin(sort( ...
+                        [firstSymbol, secondSymbol]), "|"));
+                    lengths = cell2mat(bondData(key).values);
+                    thresholds(mask) = (1 + tol) * max(lengths);
                 end
             end
+            distances = vecnorm( ...
+                coordinates(candidates(:, 1), :) - ...
+                coordinates(candidates(:, 2), :), 2, 2);
+            pairs = candidates(distances < thresholds, :);
         end
 
         function [firstMolecule, secondMolecule] = ...
@@ -585,4 +618,104 @@ classdef IMolecule < kssolv.analysis.matgenlab.core.SiteCollection & ...
             end
         end
     end
+end
+
+function [pairs, data, coordinates, symbols] = ...
+        covalentCandidates(molecule, tol)
+data = kssolv.analysis.matgenlab.core.bond_lengths_data();
+symbols = reshape(string(molecule.species), 1, []);
+uniqueSymbols = unique(symbols);
+maximumLength = 0;
+for first = 1:numel(uniqueSymbols)
+    for second = first:numel(uniqueSymbols)
+        key = char(strjoin(sort( ...
+            [uniqueSymbols(first), uniqueSymbols(second)]), "|"));
+        if ~isKey(data, key)
+            error("KSSOLV:Matgenlab:Bonds:MissingData", ...
+                "No bond data for elements %s - %s", ...
+                uniqueSymbols(first), uniqueSymbols(second));
+        end
+        lengths = cell2mat(data(key).values);
+        maximumLength = max(maximumLength, max(lengths));
+    end
+end
+bucketWidth = max((1 + tol) * maximumLength, eps);
+coordinates = molecule.cart_coords;
+origin = min(coordinates, [], 1);
+cells = floor((coordinates - origin) ./ bucketWidth);
+dimensions = max(cells, [], 1) + 1;
+linearKeys = cells(:, 1) + dimensions(1) .* ...
+    (cells(:, 2) + dimensions(2) .* cells(:, 3));
+[uniqueKeys, firstIndices, groups] = unique(linearKeys, "sorted");
+uniqueCells = cells(firstIndices, :);
+members = accumarray(groups, (1:molecule.num_sites).', [], @(value) {value});
+groupCounts = accumarray(groups, 1);
+offsets = halfCellOffsets();
+chunks = cell(size(offsets, 1), 1);
+for offsetIndex = 1:size(offsets, 1)
+    offset = offsets(offsetIndex, :);
+    targetCells = uniqueCells + offset;
+    valid = all(targetCells >= 0 & targetCells < dimensions, 2);
+    targetKeys = targetCells(:, 1) + dimensions(1) .* ...
+        (targetCells(:, 2) + dimensions(2) .* targetCells(:, 3));
+    [found, targetGroups] = ismember(targetKeys, uniqueKeys);
+    found = found & valid;
+    sourceGroups = find(found);
+    targets = targetGroups(sourceGroups);
+    rows = cell(1, 0);
+    if any(offset ~= 0)
+        simple = groupCounts(sourceGroups) == 1 & ...
+            groupCounts(targets) == 1;
+        if any(simple)
+            rows{end + 1} = [ ...
+                firstIndices(sourceGroups(simple)), ...
+                firstIndices(targets(simple))]; %#ok<AGROW>
+        end
+        sourceGroups = sourceGroups(~simple);
+        targets = targets(~simple);
+    else
+        keep = groupCounts(sourceGroups) > 1;
+        sourceGroups = sourceGroups(keep);
+        targets = targets(keep);
+    end
+    for groupIndex = 1:numel(sourceGroups)
+        sourceGroup = sourceGroups(groupIndex);
+        targetGroup = targets(groupIndex);
+        first = members{sourceGroup};
+        second = members{targetGroup};
+        if all(offset == 0)
+            [a, b] = find(triu( ...
+                true(numel(first), numel(first)), 1));
+            rows{end + 1} = [first(a), first(b)]; %#ok<AGROW>
+        else
+            [a, b] = ndgrid(first, second);
+            rows{end + 1} = [a(:), b(:)]; %#ok<AGROW>
+        end
+    end
+    if ~isempty(rows), chunks{offsetIndex} = vertcat(rows{:}); end
+end
+chunks = chunks(~cellfun("isempty", chunks));
+if isempty(chunks)
+    pairs = zeros(0, 2);
+else
+    pairs = vertcat(chunks{:});
+    pairs = sort(pairs, 2);
+    pairs = sortrows(unique(pairs, "rows"), [1, 2]);
+end
+end
+
+function offsets = halfCellOffsets()
+persistent value
+if isempty(value)
+    [x, y, z] = ndgrid(-1:1, -1:1, -1:1);
+    candidates = [x(:), y(:), z(:)];
+    keep = false(size(candidates, 1), 1);
+    for index = 1:size(candidates, 1)
+        row = candidates(index, :);
+        first = find(row ~= 0, 1);
+        keep(index) = isempty(first) || row(first) > 0;
+    end
+    value = candidates(keep, :);
+end
+offsets = value;
 end

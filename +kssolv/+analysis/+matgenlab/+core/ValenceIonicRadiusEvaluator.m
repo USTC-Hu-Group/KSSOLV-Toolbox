@@ -40,7 +40,12 @@ classdef ValenceIonicRadiusEvaluator
                 else
                     radius=species.atomic_radius;
                     if isempty(radius)||isnan(radius)
-                        radius=species.element.atomic_radius_calculated;
+                        element=species;
+                        if isa(species, ...
+                                "kssolv.analysis.matgenlab.core.Species")
+                            element=species.element;
+                        end
+                        radius=element.atomic_radius_calculated;
                     end
                 end
                 if isempty(radius)||isnan(radius)

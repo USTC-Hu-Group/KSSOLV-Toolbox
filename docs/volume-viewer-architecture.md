@@ -147,7 +147,7 @@ plane; an XSF or Cube adapter records its actual convention explicitly.
 
 ## MATLAB components
 
-Add the following package under `+kssolv/+ui/+volume`:
+Add the following package under `+kssolv/+ui/+scene/+volume`:
 
 1. `VolumeFileReader`
    - dispatches filenames and aliases;

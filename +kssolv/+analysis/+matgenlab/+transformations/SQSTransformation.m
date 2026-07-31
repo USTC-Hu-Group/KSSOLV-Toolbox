@@ -64,6 +64,11 @@ classdef SQSTransformation < ...
         end
         function result=apply_transformation(obj,structure,returnRankedList)
             if nargin<3,returnRankedList=false;end
+            if ~isscalar(obj.search_time)||~isfinite(obj.search_time)|| ...
+                    obj.search_time<=0
+                error("KSSOLV:Matgenlab:SQS:SearchTime", ...
+                    "search_time must be a positive finite number of seconds.");
+            end
             requested=kssolv.analysis.matgenlab.transformations.internal. ...
                 Utils.rankedCount(returnRankedList);
             if islogical(returnRankedList)&&returnRankedList&& ...
@@ -74,7 +79,7 @@ classdef SQSTransformation < ...
                 error("KSSOLV:Matgenlab:SQS:Instances", ...
                     "instances must be set when requesting a ranked list.");
             end
-            if requested>obj.instances&&~isempty(obj.instances)
+            if ~isempty(obj.instances)&&requested>obj.instances
                 error("KSSOLV:Matgenlab:SQS:RankCount", ...
                     "The ranked-list count cannot exceed instances.");
             end
@@ -94,20 +99,27 @@ classdef SQSTransformation < ...
                 obj.cluster_size_and_shell);
             obj.state.data.clusters=clusters;
             supercell=structure*obj.scalingMatrix(structure);
-            ordering=kssolv.analysis.matgenlab.transformations. ...
-                OrderDisorderedStructureTransformation( ...
-                kssolv.analysis.matgenlab.transformations. ...
-                OrderDisorderedStructureTransformation.ALGO_COMPLETE);
-            candidates=ordering.apply_transformation(supercell,Inf);
-            if ~iscell(candidates)
-                candidates={struct("structure",candidates)};
-            end
-            ranked=cell(1,numel(candidates));
-            for index=1:numel(candidates)
-                candidate=candidates{index}.structure;
-                objective=obj.correlationObjective(candidate,structure);
-                ranked{index}=struct("structure",candidate, ...
-                    "objective_function",objective);
+            configurationCount=obj.configurationCount(supercell);
+            if configurationCount<=5000
+                ordering=kssolv.analysis.matgenlab.transformations. ...
+                    OrderDisorderedStructureTransformation( ...
+                    kssolv.analysis.matgenlab.transformations. ...
+                    OrderDisorderedStructureTransformation.ALGO_COMPLETE);
+                candidates=ordering.apply_transformation(supercell,Inf);
+                if ~iscell(candidates)
+                    candidates={struct("structure",candidates)};
+                end
+                ranked=cell(1,numel(candidates));
+                for index=1:numel(candidates)
+                    candidate=candidates{index}.structure;
+                    objective=obj.correlationObjective(candidate,structure);
+                    ranked{index}=struct("structure",candidate, ...
+                        "objective_function",objective);
+                end
+                searchMode="exact-enumeration";
+            else
+                ranked=obj.monteCarloCandidates(supercell,structure);
+                searchMode="bounded-monte-carlo";
             end
             objectives=cellfun(@(entry)entry.objective_function,ranked);
             [~,order]=sort(objectives);ranked=ranked(order);
@@ -128,6 +140,15 @@ classdef SQSTransformation < ...
                 best=ranked{1}.objective_function;
                 ranked=ranked(cellfun(@(entry) ...
                     abs(entry.objective_function-best)<=obj.tol,ranked));
+            end
+            for index=1:numel(ranked)
+                ranked{index}.structure.properties.sqs=struct( ...
+                    "search_mode",searchMode, ...
+                    "configuration_count",configurationCount, ...
+                    "objective_function", ...
+                    ranked{index}.objective_function, ...
+                    "pair_shells",3, ...
+                    "search_budget_seconds",obj.search_time);
             end
             obj.state.data.ranked=ranked;
             if requested==0
@@ -245,6 +266,165 @@ classdef SQSTransformation < ...
                     objective=objective+ ...
                         abs(observed-concentration(speciesIndex)^2);
                 end
+            end
+        end
+
+        function count=configurationCount(obj,structure)
+            [~,~,counts,vacancies]=obj.disorderDefinition(structure);
+            logarithm=0;
+            for group=1:numel(counts)
+                groupCounts=[counts{group},vacancies(group)];
+                total=sum(groupCounts);
+                logarithm=logarithm+gammaln(total+1)- ...
+                    sum(gammaln(groupCounts+1));
+                if logarithm>log(realmax)
+                    count=Inf;
+                    return
+                end
+            end
+            count=round(exp(logarithm));
+        end
+
+        function ranked=monteCarloCandidates(obj,supercell,parent)
+            [groups,speciesLists,counts,vacancies]= ...
+                obj.disorderDefinition(supercell);
+            if any(vacancies>0)
+                error("KSSOLV:Matgenlab:SQS:LargeVacancySearch", ...
+                    "Large stochastic SQS searches with partial vacancies " + ...
+                    "are not supported; reduce the scaling or use a fully " + ...
+                    "occupied alloy model.");
+            end
+            stream=RandStream("mt19937ar","Seed",0);
+            assignments=cell(1,numel(groups));
+            candidate=supercell.copy();
+            mutable=false(1,numel(groups));
+            for group=1:numel(groups)
+                values=cell(1,sum(counts{group}));
+                cursor=0;
+                for speciesIndex=1:numel(speciesLists{group})
+                    amount=counts{group}(speciesIndex);
+                    values(cursor+(1:amount))= ...
+                        repmat(speciesLists{group}(speciesIndex),1,amount);
+                    cursor=cursor+amount;
+                end
+                values=values(randperm(stream,numel(values)));
+                assignments{group}=values;
+                mutable(group)=numel(unique( ...
+                    string(cellfun(@string,values, ...
+                    "UniformOutput",false))))>1;
+                for position=1:numel(groups{group})
+                    candidate=candidate.replace( ...
+                        groups{group}(position),values{position});
+                end
+            end
+            available=find(mutable);
+            if isempty(available)
+                objective=obj.correlationObjective(candidate,parent);
+                ranked={struct("structure",candidate, ...
+                    "objective_function",objective)};
+                return
+            end
+
+            currentObjective=obj.correlationObjective(candidate,parent);
+            best=candidate;
+            bestObjective=currentObjective;
+            started=tic;
+            iteration=0;
+            while toc(started)<obj.search_time&&iteration<100000
+                iteration=iteration+1;
+                group=available(randi(stream,numel(available)));
+                width=numel(groups{group});
+                positions=randperm(stream,width,2);
+                attempts=0;
+                while string(assignments{group}{positions(1)})== ...
+                        string(assignments{group}{positions(2)})&& ...
+                        attempts<width*2
+                    positions=randperm(stream,width,2);
+                    attempts=attempts+1;
+                end
+                if string(assignments{group}{positions(1)})== ...
+                        string(assignments{group}{positions(2)})
+                    continue
+                end
+                first=groups{group}(positions(1));
+                second=groups{group}(positions(2));
+                proposal=candidate.replace( ...
+                    first,assignments{group}{positions(2)});
+                proposal=proposal.replace( ...
+                    second,assignments{group}{positions(1)});
+                proposalObjective=obj.correlationObjective( ...
+                    proposal,parent);
+                progress=min(toc(started)/obj.search_time,1);
+                effectiveTemperature=max( ...
+                    1e-6,obj.temperature*.05*(1-progress));
+                accept=proposalObjective<=currentObjective|| ...
+                    rand(stream)<exp( ...
+                    (currentObjective-proposalObjective)/ ...
+                    effectiveTemperature);
+                if accept
+                    candidate=proposal;
+                    currentObjective=proposalObjective;
+                    assignments{group}(positions)= ...
+                        assignments{group}(fliplr(positions));
+                end
+                if proposalObjective<bestObjective
+                    best=proposal;
+                    bestObjective=proposalObjective;
+                    if bestObjective<=obj.tol
+                        break
+                    end
+                end
+            end
+            ranked={struct("structure",best, ...
+                "objective_function",bestObjective)};
+        end
+
+        function [groups,speciesLists,counts,vacancies]= ...
+                disorderDefinition(obj,structure)
+            groups={};
+            exemplars={};
+            for index=1:structure.num_sites
+                site=structure(index);
+                if site.is_ordered,continue,end
+                matched=0;
+                for group=1:numel(exemplars)
+                    if site.species.almost_equals( ...
+                            exemplars{group}.species)
+                        matched=group;
+                        break
+                    end
+                end
+                if matched==0
+                    exemplars{end+1}=site; %#ok<AGROW>
+                    groups{end+1}=index; %#ok<AGROW>
+                else
+                    groups{matched}(end+1)=index; %#ok<AGROW>
+                end
+            end
+            if isempty(groups)
+                groups={1:structure.num_sites};
+                exemplars={structure(1)};
+            end
+            speciesLists=cell(1,numel(groups));
+            counts=cell(1,numel(groups));
+            vacancies=zeros(1,numel(groups));
+            for group=1:numel(groups)
+                [species,amounts]=exemplars{group}.species.items();
+                siteCount=numel(groups{group});
+                groupCounts=round(amounts*siteCount);
+                if any(abs(amounts*siteCount-groupCounts)>obj.tol)
+                    error("KSSOLV:Matgenlab:SQS:Occupancy", ...
+                        "Occupancy fractions are incompatible with the " + ...
+                        "requested supercell size.");
+                end
+                vacancy=siteCount-sum(groupCounts);
+                if vacancy<0
+                    error("KSSOLV:Matgenlab:SQS:Occupancy", ...
+                        "Site occupancies exceed one.");
+                end
+                speciesLists{group}=species;
+                counts{group}=groupCounts;
+                vacancies(group)=vacancy;
             end
         end
     end

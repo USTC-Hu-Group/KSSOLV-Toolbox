@@ -60,7 +60,7 @@ import { exportPixelRatio, interactivePixelRatio, renderQualityProfile } from '.
 import { viewportLayout } from './viewport';
 
 export interface CrystalRendererCallbacks {
-  onSelection?: (selection?: SelectionInfo) => void;
+  onSelection?: (selection?: SelectionInfo, gesture?: { additive: boolean }) => void;
   onAtomHover?: (hover?: AtomHoverInfo) => void;
   onCameraSettled?: (snapshot: CameraSnapshot) => void;
   onStatistics?: (statistics: RendererStatistics) => void;
@@ -191,6 +191,8 @@ export class CrystalRenderer {
   private polyhedronLayer?: PolyhedronLayer;
   private magmomLayer?: MagmomLayer;
   private requestedFrame?: number;
+  private autoRotating = false;
+  private autoRotationTimestamp?: number;
   private cameraTimer?: number;
   private hoverFrame?: number;
   private hoverPoint?: { clientX: number; clientY: number };
@@ -375,6 +377,17 @@ export class CrystalRenderer {
     this.camera.updateMatrixWorld();
     this.requestRender();
   };
+
+  setAutoRotation(enabled: boolean): void {
+    if (enabled === this.autoRotating || this.disposed) return;
+    this.autoRotating = enabled;
+    this.autoRotationTimestamp = undefined;
+    if (enabled) {
+      this.requestRender();
+    } else {
+      this.emitCamera();
+    }
+  }
 
   private fitScene(direction: Vector3): void {
     if (!this.sceneSpec) return;
@@ -752,26 +765,36 @@ export class CrystalRenderer {
       );
       this.selectionMarker.visible = true;
       this.selected = { kind: 'atom', id: selected.atom.id, radius: selected.radius };
-      this.callbacks.onSelection?.({
-        kind: 'atom',
-        id: selected.atom.id,
-        atom: selected.atom,
-        site: selected.site,
-        clientX: event.clientX,
-        clientY: event.clientY,
-      });
+      this.callbacks.onSelection?.(
+        {
+          kind: 'atom',
+          id: selected.atom.id,
+          atom: selected.atom,
+          site: selected.site,
+          clientX: event.clientX,
+          clientY: event.clientY,
+        },
+        {
+          additive: event.shiftKey || event.ctrlKey || event.metaKey,
+        },
+      );
     } else {
       const bond = this.bondLayer.get(hit.batchId);
       if (!bond) return;
       this.clearSelection(false);
       this.selected = { kind: 'bond', id: bond.id };
-      this.callbacks.onSelection?.({
-        kind: 'bond',
-        id: bond.id,
-        bond,
-        clientX: event.clientX,
-        clientY: event.clientY,
-      });
+      this.callbacks.onSelection?.(
+        {
+          kind: 'bond',
+          id: bond.id,
+          bond,
+          clientX: event.clientX,
+          clientY: event.clientY,
+        },
+        {
+          additive: false,
+        },
+      );
     }
     this.requestRender();
   };
@@ -807,10 +830,34 @@ export class CrystalRenderer {
 
   private requestRender(): void {
     if (this.disposed || this.requestedFrame !== undefined) return;
-    this.requestedFrame = requestAnimationFrame(() => {
+    this.requestedFrame = requestAnimationFrame((timestamp) => {
       this.requestedFrame = undefined;
+      this.updateAutoRotation(timestamp);
       this.render();
+      if (this.autoRotating) this.requestRender();
     });
+  }
+
+  private updateAutoRotation(timestamp: number): void {
+    if (!this.autoRotating || !this.sceneSpec) return;
+    if (this.autoRotationTimestamp === undefined) {
+      this.autoRotationTimestamp = timestamp;
+      return;
+    }
+    const elapsedSeconds = Math.min(
+      Math.max(timestamp - this.autoRotationTimestamp, 0) / 1000,
+      0.1,
+    );
+    this.autoRotationTimestamp = timestamp;
+    if (elapsedSeconds === 0) return;
+
+    const eye = this.camera.position.clone().sub(this.controls.target);
+    const axis = this.camera.up.clone().normalize();
+    if (eye.lengthSq() === 0 || axis.lengthSq() === 0) return;
+    eye.applyQuaternion(new Quaternion().setFromAxisAngle(axis, elapsedSeconds * 0.45));
+    this.camera.position.copy(this.controls.target).add(eye);
+    this.camera.lookAt(this.controls.target);
+    this.controls.update();
   }
 
   private render(): void {

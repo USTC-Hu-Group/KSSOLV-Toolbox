@@ -43,15 +43,16 @@ classdef PackmolRunner
             end
             fclose(fid); old=pwd; cd(td); restore=onCleanup(@()cd(old));
             if isempty(obj.executor)
-                error("KSSOLV:Matgenlab:PackmolRunner:ExecutorRequired", ...
-                    "An explicit Packmol executor must be supplied.");
+                executor = @kssolv.analysis.packmol.native_executor;
+            else
+                executor = obj.executor;
             end
             request=struct("command",string(obj.bin), ...
                 "stdin_path",string(obj.input_file), ...
                 "stdin",string(fileread(obj.input_file)), ...
                 "output_path",string(obj.output_file), ...
                 "working_directory",string(td));
-            result=obj.executor(request);
+            result=executor(request);
             if ~isstruct(result)
                 result=struct("status",0,"stdout",string(result), ...
                     "stderr","");

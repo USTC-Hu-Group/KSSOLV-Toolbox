@@ -17,6 +17,7 @@ const root = ref<HTMLElement>();
 const canvas = ref<HTMLCanvasElement>();
 const settingsOpen = ref(false);
 const minimalUi = ref(false);
+const autoRotating = ref(false);
 const atomHover = shallowRef<AtomHoverInfo>();
 // Three.js owns mutable, non-configurable matrix properties and must never be
 // wrapped in Vue's deep reactive proxy.
@@ -26,7 +27,7 @@ const store = useViewerStore();
 const atomHoverLabel = computed(() => {
   if (!atomHover.value) return '';
   const coordinates = atomHover.value.atom.position.map((value) => value.toFixed(3)).join(', ');
-  return `${atomHover.value.site.label} (${coordinates}) index:${atomHover.value.site.siteIndex}`;
+  return `${atomHover.value.site.label} (${coordinates}) site:${atomHover.value.site.siteIndex + 1}`;
 });
 const atomHoverStyle = computed(() => {
   if (!atomHover.value || !root.value) return {};
@@ -104,6 +105,11 @@ const toggleFullscreen = async (): Promise<void> => {
   if (!root.value) return;
   if (document.fullscreenElement) await document.exitFullscreen();
   else await root.value.requestFullscreen();
+};
+
+const toggleAutoRotation = (): void => {
+  autoRotating.value = !autoRotating.value;
+  renderer.value?.setAutoRotation(autoRotating.value);
 };
 
 const applyOptions = (options: ViewerOptions): void => {
@@ -218,7 +224,9 @@ onBeforeUnmount(() => {
     <ViewerToolbar
       :settings-open="settingsOpen"
       :crystal="store.scene.value?.kind === 'crystal'"
+      :auto-rotating="autoRotating"
       @reset="renderer?.resetView()"
+      @toggle-auto-rotation="toggleAutoRotation"
       @axis="renderer?.setCameraAxis($event)"
       @toggle-settings="settingsOpen = !settingsOpen"
       @screenshot="saveScreenshot"

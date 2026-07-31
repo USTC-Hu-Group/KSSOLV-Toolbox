@@ -13,6 +13,7 @@ classdef MoleculeDisplay < handle
 
     properties (SetAccess = private)
         LastSelection = struct.empty
+        Document = matlab.ui.internal.FigureDocument.empty
     end
 
     properties (Access = private)
@@ -24,6 +25,14 @@ classdef MoleculeDisplay < handle
             "repeat", [1, 1, 1])
         RequestSerial (1,1) double = 0
         IsBuilding (1,1) logical = false
+        UndoStack cell = {}
+        RedoStack cell = {}
+        MaximumHistory (1,1) double = 50
+    end
+
+    events
+        HistoryChanged
+        SelectionChanged
     end
 
     methods
@@ -89,6 +98,7 @@ classdef MoleculeDisplay < handle
                 figOptions.Title = project.findChildrenItem(this.tag).label;
             end
             document = matlab.ui.internal.FigureDocument(figOptions);
+            this.Document = document;
 
             % 添加 html 组件
             fig = document.Figure;
@@ -110,6 +120,8 @@ classdef MoleculeDisplay < handle
 
             % 添加到 App Container
             appContainer.add(document);
+            kssolv.ui.features.modeling.SessionRegistry.getInstance().register( ...
+                document, this);
 
             % 等待渲染完成
             waitfor(document.Figure, 'FigureViewReady', true);
@@ -118,9 +130,160 @@ classdef MoleculeDisplay < handle
                 document.Docked = true;
             end
         end
+
+        function model = getModel(this)
+            %GETMODEL Return a defensive copy of the rendered model.
+            if isempty(this.ParsedModel)
+                model = [];
+            else
+                model = this.ParsedModel.copy();
+            end
+        end
+
+        function value = isCrystal(this)
+            value = isa(this.ParsedModel, ...
+                "kssolv.analysis.matgenlab.core.IStructure");
+        end
+
+        function applyModel(this, model, description)
+            %APPLYMODEL Atomically commit, persist and render a modeled result.
+            arguments
+                this
+                model
+                description {mustBeTextScalar} = "Modeling operation"
+            end
+            this.validateModel(model);
+            previous = this.ParsedModel.copy();
+            this.commitModel(model);
+            this.UndoStack{end + 1} = struct( ...
+                "model", previous, "description", string(description));
+            if numel(this.UndoStack) > this.MaximumHistory
+                this.UndoStack(1) = [];
+            end
+            this.RedoStack = {};
+            notify(this, "HistoryChanged");
+            notify(this, "SelectionChanged");
+        end
+
+        function value = canUndo(this)
+            value = ~isempty(this.UndoStack);
+        end
+
+        function value = canRedo(this)
+            value = ~isempty(this.RedoStack);
+        end
+
+        function undo(this)
+            if ~this.canUndo()
+                return
+            end
+            entry = this.UndoStack{end};
+            current = this.ParsedModel.copy();
+            this.commitModel(entry.model);
+            this.UndoStack(end) = [];
+            this.RedoStack{end + 1} = struct( ...
+                "model", current, ...
+                "description", entry.description);
+            notify(this, "HistoryChanged");
+            notify(this, "SelectionChanged");
+        end
+
+        function redo(this)
+            if ~this.canRedo()
+                return
+            end
+            entry = this.RedoStack{end};
+            current = this.ParsedModel.copy();
+            this.commitModel(entry.model);
+            this.RedoStack(end) = [];
+            this.UndoStack{end + 1} = struct( ...
+                "model", current, ...
+                "description", entry.description);
+            notify(this, "HistoryChanged");
+            notify(this, "SelectionChanged");
+        end
+
+        function indices = getSelectedSiteIndices(this)
+            %GETSELECTEDSITEINDICES Convert viewer zero-based selection to MATLAB.
+            indices = [];
+            data = this.LastSelection;
+            if isempty(data) || ~isstruct(data)
+                return
+            end
+            if isfield(data, "siteIndices")
+                indices = double(data.siteIndices) + 1;
+            elseif isfield(data, "siteIndex")
+                indices = double(data.siteIndex) + 1;
+            end
+            indices = unique(reshape(indices, 1, []), "stable");
+            if ~isempty(this.ParsedModel)
+                indices = indices(indices >= 1 & ...
+                    indices <= this.ParsedModel.num_sites);
+            end
+        end
     end
 
     methods (Access = private)
+        function commitModel(this, model)
+            %COMMITMODEL Render first, then persist; rollback every layer.
+            this.validateModel(model);
+            candidate = model.copy();
+            previous = this.ParsedModel.copy();
+            try
+                % A modeled result is not committed until its complete scene
+                % can be built.  This prevents a caught renderer exception
+                % from corrupting the project item while reporting success.
+                this.renderModel(candidate, true);
+                this.ParsedModel = candidate;
+                this.LastSelection = struct.empty;
+                this.persistModel();
+            catch exception
+                this.ParsedModel = previous;
+                try
+                    this.persistModel();
+                catch
+                end
+                try
+                    this.renderModel(previous, false);
+                catch
+                end
+                rethrow(exception)
+            end
+        end
+
+        function validateModel(~, model)
+            if ~(isa(model, ...
+                    "kssolv.analysis.matgenlab.core.IStructure") || ...
+                    isa(model, ...
+                    "kssolv.analysis.matgenlab.core.IMolecule"))
+                error("KSSOLV:Modeling:InvalidModel", ...
+                    "A modeled result must be a matgenlab structure or molecule.");
+            end
+            if model.num_sites < 1
+                error("KSSOLV:Modeling:EmptyModel", ...
+                    "A modeled result must contain at least one atom.");
+            end
+        end
+
+        function persistModel(this)
+            if this.tag == ""
+                return
+            end
+            project = kssolv.ui.util.DataStorage.getData("Project");
+            if isempty(project) || ~isvalid(project)
+                return
+            end
+            item = project.findChildrenItem(this.tag);
+            if isempty(item) || isempty(item.data)
+                return
+            end
+            if ismethod(item.data, "updateMatgenlabObject")
+                item.data.updateMatgenlabObject(this.ParsedModel);
+                item.updatedAt = datetime;
+                project.isDirty = true;
+            end
+        end
+
         function eventReceiver(this, ~, event)
             switch string(event.HTMLEventName)
                 case "viewer:ready"
@@ -129,6 +292,7 @@ classdef MoleculeDisplay < handle
                     this.applyAnalysisRequest(event.HTMLEventData);
                 case "viewer:selection"
                     this.LastSelection = event.HTMLEventData;
+                    notify(this, "SelectionChanged");
                 case "viewer:error"
                     this.reportViewerError(event.HTMLEventData);
             end
@@ -166,12 +330,34 @@ classdef MoleculeDisplay < handle
         end
 
         function rebuildScene(this)
+            this.renderModel(this.ParsedModel, false);
+        end
+
+        function renderModel(this, model, throwOnFailure)
+            arguments
+                this
+                model
+                throwOnFailure (1,1) logical = false
+            end
             if this.IsBuilding
+                if throwOnFailure
+                    error("KSSOLV:CrystalViewer:SceneBusy", ...
+                        "A scene build is already in progress. Please retry.");
+                end
                 this.sendSceneError("MATLAB_SCENE_BUSY", ...
                     "A scene build is already in progress. Please retry.", "");
                 return
             end
-            if isempty(this.HTMLComponent) || isempty(this.ParsedModel)
+            % Headless display instances are used by model/history tests and
+            % have no viewer to update.
+            if isempty(this.HTMLComponent)
+                return
+            end
+            if isempty(model)
+                if throwOnFailure
+                    error("KSSOLV:CrystalViewer:SceneUnavailable", ...
+                        "The structure is not ready for scene generation.");
+                end
                 this.sendSceneError("MATLAB_SCENE_UNAVAILABLE", ...
                     "The structure is not ready for scene generation.", "");
                 return
@@ -184,20 +370,20 @@ classdef MoleculeDisplay < handle
             this.HTMLComponent.sendEventToHTMLSource( ...
                 "scene:begin", struct("requestId", requestId));
             try
-                isMolecule = isa(this.ParsedModel, ...
+                isMolecule = isa(model, ...
                     "kssolv.analysis.matgenlab.core.IMolecule");
-                if this.ParsedModel.num_sites >= 256
+                if model.num_sites >= 256
                     if isMolecule
                         preview = ...
-                            kssolv.ui.crystal.MoleculeSceneBuilder.build( ...
-                            this.ParsedModel, ...
+                            kssolv.ui.scene.atomic.MoleculeSceneBuilder.build( ...
+                            model, ...
                             algorithm = this.SceneOptions.algorithm, ...
                             includeConnectivity = false, ...
                             requestId = requestId);
                     else
                         preview = ...
-                            kssolv.ui.crystal.CrystalSceneBuilder.build( ...
-                            this.ParsedModel, ...
+                            kssolv.ui.scene.atomic.CrystalSceneBuilder.build( ...
+                            model, ...
                             algorithm = this.SceneOptions.algorithm, ...
                             cell = this.SceneOptions.cell, ...
                             repeat = this.SceneOptions.repeat, ...
@@ -209,16 +395,19 @@ classdef MoleculeDisplay < handle
                     drawnow limitrate
                 end
                 if isMolecule
-                    scene = kssolv.ui.crystal.MoleculeSceneCache.build( ...
-                        this.ParsedModel, this.SceneOptions, requestId);
+                    scene = kssolv.ui.scene.atomic.MoleculeSceneCache.build( ...
+                        model, this.SceneOptions, requestId);
                 else
-                    scene = kssolv.ui.crystal.CrystalSceneCache.build( ...
-                        this.ParsedModel, this.SceneOptions, requestId);
+                    scene = kssolv.ui.scene.atomic.CrystalSceneCache.build( ...
+                        model, this.SceneOptions, requestId);
                 end
                 this.sendScene(scene);
             catch exception
                 this.sendSceneError("MATLAB_SCENE_BUILD", ...
                     string(exception.message), requestId);
+                if throwOnFailure
+                    rethrow(exception)
+                end
                 warning("KSSOLV:CrystalViewer:SceneBuild", ...
                     "Unable to build the crystal scene: %s", ...
                     exception.message);
@@ -228,7 +417,7 @@ classdef MoleculeDisplay < handle
 
         function sendScene(this, scene)
             transport = ...
-                kssolv.ui.crystal.CrystalSceneSerializer. ...
+                kssolv.ui.scene.atomic.CrystalSceneSerializer. ...
                 transportScene(scene);
             this.HTMLComponent.sendEventToHTMLSource( ...
                 "scene:set", jsonencode(transport));

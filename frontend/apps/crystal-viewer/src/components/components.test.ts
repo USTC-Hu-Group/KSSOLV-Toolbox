@@ -185,8 +185,18 @@ describe('viewer controls', () => {
     const toolbar = mount(ViewerToolbar, { props: { settingsOpen: false, crystal: true } });
     await toolbar.get('[aria-label="Reset camera"]').trigger('click');
     expect(toolbar.emitted('reset')).toHaveLength(1);
-    expect(toolbar.findAll('button')).toHaveLength(11);
-    expect(toolbar.findAll('svg')).toHaveLength(4);
+    expect(toolbar.findAll('button')).toHaveLength(12);
+    expect(toolbar.findAll('svg')).toHaveLength(5);
+    const autoRotate = toolbar.get('[aria-label="Auto rotate"]');
+    expect(autoRotate.attributes('aria-pressed')).toBe('false');
+    await autoRotate.trigger('click');
+    expect(toolbar.emitted('toggleAutoRotation')).toHaveLength(1);
+    await toolbar.setProps({ autoRotating: true });
+    expect(toolbar.find('[aria-label="Auto rotate"]').exists()).toBe(false);
+    const stopRotation = toolbar.get('[aria-label="Stop rotation"]');
+    expect(stopRotation.attributes('aria-pressed')).toBe('true');
+    await stopRotation.trigger('click');
+    expect(toolbar.emitted('toggleAutoRotation')).toHaveLength(2);
     expect(
       toolbar.findAll('.reciprocal-axis-button').map((button) => button.text().trim()),
     ).toEqual(['a*', 'b*', 'c*']);
@@ -198,7 +208,7 @@ describe('viewer controls', () => {
 
   it('does not expose reciprocal-lattice views for molecules', () => {
     const toolbar = mount(ViewerToolbar, { props: { settingsOpen: false, crystal: false } });
-    expect(toolbar.findAll('button')).toHaveLength(8);
+    expect(toolbar.findAll('button')).toHaveLength(9);
     expect(toolbar.text()).not.toContain('a*');
   });
 

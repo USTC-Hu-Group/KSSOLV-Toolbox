@@ -6,8 +6,7 @@ describe('viewer interaction profile', () => {
   it('uses deliberate free-rotation mouse sensitivities', () => {
     expect(viewerInteractionProfile.rotateSpeed).toBeGreaterThan(1);
     expect(viewerInteractionProfile.rotateSpeed).toBeLessThan(2);
-    expect(viewerInteractionProfile.zoomSpeed).toBeGreaterThan(1);
-    expect(viewerInteractionProfile.zoomSpeed).toBeLessThan(1.5);
+    expect(viewerInteractionProfile.zoomSpeed).toBe(6);
     expect(viewerInteractionProfile.freeRotation).toBe(true);
     expect(viewerInteractionProfile.minZoom).toBeGreaterThan(0);
     expect(viewerInteractionProfile.maxZoom).toBeGreaterThan(1);

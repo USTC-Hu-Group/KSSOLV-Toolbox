@@ -174,7 +174,7 @@ integral when physically meaningful
 
 ### 6.1 工作步骤
 
-1. 新建 `kssolv.ui.volume.VolumeFileReader`，仅负责格式路由和标准错误包装。
+1. 新建 `kssolv.ui.scene.volume.VolumeFileReader`，仅负责格式路由和标准错误包装。
 2. CHGCAR 适配：
    - 复用 `io.vasp.Chgcar.from_file`；
    - 映射 `total`、`diff`、`diff_x/y/z`；

@@ -23,28 +23,37 @@ describe('viewer store event ordering', () => {
     expect(store.status.loading).toBe(false);
   });
 
-  it('applies remote themes and reports invalid scenes', async () => {
+  it('changes themes without resetting current display settings', async () => {
+    const { matlabBridge } = await import('../bridge/matlabBridge');
+    const { useViewerStore } = await import('./viewerStore');
+    const store = useViewerStore();
+    store.updateOptions({
+      radiusMode: 'uniform',
+      showAtoms: false,
+      showBonds: false,
+      showUnitCell: false,
+      showPolyhedra: false,
+      showAxes: false,
+      showBoundaryAtoms: false,
+      showBondedOutside: false,
+      hideIncompleteBonds: true,
+      showMagmoms: true,
+      showStatistics: true,
+    });
+    const materialsSettings = { ...store.options };
+
+    store.setTheme('pretty');
+    expect({ ...store.options, theme: materialsSettings.theme }).toEqual(materialsSettings);
+
+    matlabBridge.dispatchForTesting('theme:set', 'materials');
+    expect({ ...store.options }).toEqual(materialsSettings);
+  });
+
+  it('reports invalid scenes', async () => {
     const { matlabBridge } = await import('../bridge/matlabBridge');
     const emit = vi.spyOn(matlabBridge, 'emit');
     const { useViewerStore } = await import('./viewerStore');
     const store = useViewerStore();
-    matlabBridge.dispatchForTesting('theme:set', 'materials');
-    expect(store.options.theme).toBe('materials');
-    expect(store.options.showUnitCell).toBe(true);
-    expect(store.options.radiusMode).toBe('atomic');
-    expect(store.options.showBondedOutside).toBe(true);
-    expect(store.options.showPolyhedra).toBe(true);
-    store.updateOptions({ showUnitCell: false });
-    store.setTheme('pretty');
-    expect(store.options.showUnitCell).toBe(true);
-    expect(store.options.radiusMode).toBe('atomic');
-    expect(store.options.showBondedOutside).toBe(true);
-    expect(store.options.showPolyhedra).toBe(true);
-    store.setTheme('materials');
-    expect(store.options.showUnitCell).toBe(false);
-    expect(store.options.radiusMode).toBe('atomic');
-    expect(store.options.showBondedOutside).toBe(true);
-    expect(store.options.showPolyhedra).toBe(true);
     matlabBridge.dispatchForTesting('scene:set', { schemaVersion: '0' });
     expect(store.status.error).toContain('schemaVersion');
     expect(emit).toHaveBeenCalledWith(
@@ -100,5 +109,40 @@ describe('viewer store event ordering', () => {
     expect(store.status.activityPhase).toBe('error');
     expect(store.status.activityMessage).toContain('did not acknowledge');
     vi.useRealTimers();
+  });
+
+  it('emits zero-based multi-site selections for MATLAB conversion', async () => {
+    const { matlabBridge } = await import('../bridge/matlabBridge');
+    const emit = vi.spyOn(matlabBridge, 'emit');
+    const { useViewerStore } = await import('./viewerStore');
+    const store = useViewerStore();
+    const scene = createDebugScene();
+    store.setScene(scene);
+
+    store.setSelection({
+      kind: 'atom',
+      id: scene.atomInstances[0].id,
+      atom: scene.atomInstances[0],
+      site: scene.sites[0],
+      clientX: 0,
+      clientY: 0,
+    });
+    store.setSelection(
+      {
+        kind: 'atom',
+        id: scene.atomInstances[1].id,
+        atom: scene.atomInstances[1],
+        site: scene.sites[1],
+        clientX: 0,
+        clientY: 0,
+      },
+      { additive: true },
+    );
+
+    expect(store.selectedSiteIndices.value).toEqual([0, 1]);
+    expect(emit).toHaveBeenLastCalledWith(
+      'viewer:selection',
+      expect.objectContaining({ siteIndex: 1, siteIndices: [0, 1] }),
+    );
   });
 });

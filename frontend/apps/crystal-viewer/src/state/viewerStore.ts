@@ -15,27 +15,9 @@ export type SceneActivityPhase = 'idle' | 'queued' | 'building' | 'success' | 'e
 
 const scene = shallowRef<AtomicSceneSpec>();
 const selection = shallowRef<SelectionInfo>();
+const selectedSiteIndices = shallowRef<number[]>([]);
 const camera = shallowRef<CameraSnapshot>();
 const options = reactive<ViewerOptions>(defaultViewerOptions());
-type ThemeDisplayPreference = Pick<
-  ViewerOptions,
-  'radiusMode' | 'showBondedOutside' | 'showPolyhedra' | 'showUnitCell'
->;
-
-const themeDisplayPreference: Record<ThemeId, ThemeDisplayPreference> = {
-  pretty: {
-    radiusMode: 'atomic',
-    showBondedOutside: true,
-    showPolyhedra: true,
-    showUnitCell: true,
-  },
-  materials: {
-    radiusMode: 'atomic',
-    showBondedOutside: true,
-    showPolyhedra: true,
-    showUnitCell: true,
-  },
-};
 const status = reactive({
   ready: false,
   loading: false,
@@ -87,6 +69,7 @@ const acceptScene = (payload: unknown): void => {
     scene.value = next;
     status.lastRequestId = next.requestId;
     selection.value = undefined;
+    selectedSiteIndices.value = [];
     status.loading = false;
     if (status.activityPhase !== 'idle') {
       const elapsed = elapsedLabel();
@@ -109,28 +92,7 @@ const acceptScene = (payload: unknown): void => {
 };
 
 const updateOptions = (patch: Partial<ViewerOptions>): void => {
-  const previousTheme = options.theme;
-  const nextTheme = patch.theme ?? previousTheme;
-  if (nextTheme !== previousTheme) {
-    themeDisplayPreference[previousTheme] = {
-      radiusMode: options.radiusMode,
-      showBondedOutside: options.showBondedOutside,
-      showPolyhedra: options.showPolyhedra,
-      showUnitCell: options.showUnitCell,
-    };
-  }
   Object.assign(options, patch);
-  if (nextTheme !== previousTheme) {
-    Object.assign(options, themeDisplayPreference[nextTheme]);
-  } else {
-    const preference = themeDisplayPreference[nextTheme];
-    if (patch.radiusMode !== undefined) preference.radiusMode = patch.radiusMode;
-    if (patch.showBondedOutside !== undefined) {
-      preference.showBondedOutside = patch.showBondedOutside;
-    }
-    if (patch.showPolyhedra !== undefined) preference.showPolyhedra = patch.showPolyhedra;
-    if (patch.showUnitCell !== undefined) preference.showUnitCell = patch.showUnitCell;
-  }
 };
 
 const installBridge = (): void => {
@@ -181,6 +143,7 @@ export const useViewerStore = () => {
   return {
     scene,
     selection,
+    selectedSiteIndices,
     camera,
     options,
     status: readonly(status),
@@ -192,16 +155,41 @@ export const useViewerStore = () => {
     }),
     warnings: computed(() => scene.value?.warnings ?? []),
     setScene: acceptScene,
-    setSelection(value?: SelectionInfo): void {
+    setSelection(value?: SelectionInfo, gesture: { additive?: boolean } = {}): void {
       selection.value = value;
-      if (value) {
+      if (!value) {
+        selectedSiteIndices.value = [];
         matlabBridge.emit('viewer:selection', {
           requestId: scene.value?.requestId ?? '',
-          kind: value.kind,
-          id: value.id,
-          siteIndex: value.site?.siteIndex ?? null,
+          kind: 'none',
+          id: '',
+          siteIndex: null,
+          siteIndices: [],
         });
+        return;
       }
+
+      const clicked =
+        value.kind === 'atom' && value.site
+          ? [value.site.siteIndex]
+          : value.kind === 'bond' && value.bond
+            ? [value.bond.fromSiteIndex, value.bond.toSiteIndex]
+            : [];
+      if (gesture.additive && clicked.length === 1) {
+        const siteIndex = clicked[0];
+        selectedSiteIndices.value = selectedSiteIndices.value.includes(siteIndex)
+          ? selectedSiteIndices.value.filter((candidate) => candidate !== siteIndex)
+          : [...selectedSiteIndices.value, siteIndex];
+      } else {
+        selectedSiteIndices.value = [...new Set(clicked)];
+      }
+      matlabBridge.emit('viewer:selection', {
+        requestId: scene.value?.requestId ?? '',
+        kind: value.kind,
+        id: value.id,
+        siteIndex: value.site?.siteIndex ?? null,
+        siteIndices: selectedSiteIndices.value,
+      });
     },
     setCamera(value: CameraSnapshot): void {
       camera.value = value;

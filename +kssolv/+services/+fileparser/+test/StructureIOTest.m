@@ -15,6 +15,26 @@ classdef StructureIOTest < matlab.unittest.TestCase
     end
 
     methods (Test)
+        function updatesEditedMatgenlabObjectAndDerivedCaches(testCase)
+            source = fullfile(testCase.StructureDirectory, "Si.cif");
+            reader = kssolv.services.fileparser.StructureIO(source);
+            edited = reader.MatgenlabObject.copy();
+            edited = edited.translate_sites( ...
+                1, [0.1, 0, 0], frac_coords = true);
+
+            reader.updateMatgenlabObject(edited);
+
+            testCase.verifyEqual( ...
+                reader.MatgenlabObject.frac_coords, ...
+                edited.frac_coords, AbsTol = 1e-12);
+            testCase.verifyEqual( ...
+                reader.KSSOLVSetupObject.xyzList, ...
+                edited.cart_coords * ...
+                kssolv.analysis.matgenlab.core.UnitConstants.ang_to_bohr, ...
+                AbsTol = 1e-10);
+            testCase.verifyNotEmpty(reader.rawFileContent);
+        end
+
         function readsCifAsCrystal(testCase)
             source = fullfile(testCase.StructureDirectory, "Si.cif");
             warningID = "KSSOLV:Matgenlab:CifParser:ParseWarning";

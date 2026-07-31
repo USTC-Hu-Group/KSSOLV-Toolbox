@@ -7,7 +7,7 @@ for both periodic crystals and finite molecules.
 ## Scientific boundary
 
 `AtomicSceneSpec 2.0` is a discriminated union. Its `crystal` branch is compiled
-by `kssolv.ui.crystal.CrystalSceneBuilder`:
+by `kssolv.ui.scene.atomic.CrystalSceneBuilder`:
 
 1. `matgenlab.core.Structure` parses and normalizes the periodic structure.
 2. The Crystal Toolkit strategy set (`CrystalNN`, `CutOffDictNN`, `JmolNN`,
@@ -19,7 +19,7 @@ by `kssolv.ui.crystal.CrystalSceneBuilder`:
    limits, and JSON transport.
 
 Its `molecule` branch is compiled by
-`kssolv.ui.crystal.MoleculeSceneBuilder`:
+`kssolv.ui.scene.atomic.MoleculeSceneBuilder`:
 
 1. `StructureIO` dispatches PDB, XYZ, MOL, SDF, MOL2, CML, MRV, and aliases to
    `matgenlab.core.Molecule` without a `Structure.from_str` round-trip.

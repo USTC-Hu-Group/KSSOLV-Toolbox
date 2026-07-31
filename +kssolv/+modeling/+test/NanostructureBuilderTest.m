@@ -1,0 +1,89 @@
+classdef NanostructureBuilderTest < matlab.unittest.TestCase
+    %NANOSTRUCTUREBUILDERTEST Geometry contracts for native nano builders.
+
+    methods (Test)
+        function zigzagNanotubeHasExpectedCountRadiusAndPeriod(testCase)
+            layer = testCase.graphene();
+            tube = ...
+                kssolv.modeling.builders.NanotubeBuilder.build( ...
+                layer, [4, 0], length = 2, vacuum = 6);
+
+            testCase.verifyEqual(tube.num_sites, 32);
+            testCase.verifyEqual(tube.pbc, [false, false, true]);
+            center = [tube.lattice.a, tube.lattice.b] / 2;
+            radii = hypot( ...
+                tube.cart_coords(:, 1) - center(1), ...
+                tube.cart_coords(:, 2) - center(2));
+            testCase.verifyEqual(radii, ...
+                repmat(tube.properties.nanotube.radius, ...
+                tube.num_sites, 1), AbsTol = 1e-9);
+            testCase.verifyGreaterThan(tube.lattice.c, 0);
+        end
+
+        function ribbonPreservesOnlyAxialPeriodicity(testCase)
+            ribbon = ...
+                kssolv.modeling.builders.NanoribbonBuilder.build( ...
+                testCase.graphene(), width = 3, length = 2, ...
+                edgeType = "armchair", vacuum = 5);
+
+            testCase.verifyEqual(ribbon.pbc, [false, true, false]);
+            testCase.verifyGreaterThan(ribbon.num_sites, 0);
+            testCase.verifyEqual( ...
+                ribbon.properties.nanoribbon.edge_type, "armchair");
+            testCase.verifyGreaterThanOrEqual(ribbon.lattice.a, 10);
+            testCase.verifyGreaterThanOrEqual(ribbon.lattice.c, 10);
+        end
+
+        function wireAndDotRespectDimensionality(testCase)
+            parent = testCase.cubicSilicon();
+            wire = ...
+                kssolv.modeling.builders.NanowireBuilder.build( ...
+                parent, [0, 0, 1], 3, vacuum = 5);
+            dot = ...
+                kssolv.modeling.builders.QuantumDotVoidBuilder.build( ...
+                parent, 3, "dot", vacuum = 5);
+
+            testCase.verifyEqual(wire.pbc, [false, false, true]);
+            testCase.verifyFalse(any(dot.pbc));
+            testCase.verifyGreaterThan(wire.num_sites, 0);
+            testCase.verifyGreaterThan(dot.num_sites, 0);
+            testCase.verifyLessThanOrEqual( ...
+                max(max(dot.cart_coords) - min(dot.cart_coords)), 6 + 1e-8);
+        end
+
+        function voidRemovesOnlyCentralSites(testCase)
+            parent = testCase.cubicSilicon().make_supercell( ...
+                [3, 3, 3], true, false);
+            output = ...
+                kssolv.modeling.builders.QuantumDotVoidBuilder.build( ...
+                parent, 3, "void");
+            testCase.verifyLessThan(output.num_sites, parent.num_sites);
+            testCase.verifyGreaterThan(output.num_sites, 0);
+            testCase.verifyEqual(output.lattice.matrix, ...
+                parent.lattice.matrix, AbsTol = 1e-12);
+        end
+
+        function atomLimitFailsBeforeMaterializingSupercell(testCase)
+            testCase.verifyError(@() ...
+                kssolv.modeling.builders.NanotubeBuilder.build( ...
+                testCase.graphene(), [20, 20], maximumAtoms = 10), ...
+                "KSSOLV:Modeling:NanotubeAtomLimit");
+        end
+    end
+
+    methods (Static, Access = private)
+        function value = graphene()
+            lattice = ...
+                kssolv.analysis.matgenlab.core.Lattice. ...
+                hexagonal(2.46, 15);
+            value = kssolv.analysis.matgenlab.core.Structure( ...
+                lattice, {"C", "C"}, ...
+                [0, 0, .5; 1/3, 2/3, .5]);
+        end
+
+        function value = cubicSilicon()
+            value = kssolv.analysis.matgenlab.core.Structure( ...
+                eye(3) * 3, {"Si"}, [0, 0, 0]);
+        end
+    end
+end

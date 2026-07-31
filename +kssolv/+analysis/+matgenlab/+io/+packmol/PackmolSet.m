@@ -1,5 +1,5 @@
 classdef PackmolSet < kssolv.analysis.matgenlab.io.InputSet
-    %PACKMOLSET Named PACKMOL inputs with an explicit execution boundary.
+    %PACKMOLSET Named PACKMOL inputs backed by native MATLAB Packmol.
 
     properties
         seed (1,1) double = 1
@@ -45,14 +45,12 @@ classdef PackmolSet < kssolv.analysis.matgenlab.io.InputSet
         end
 
         function run(obj, path, timeout, executor)
-            %RUN Execute PACKMOL via an explicitly supplied MATLAB callback.
+            %RUN Execute PACKMOL natively, or through an override callback.
             if nargin < 2 || strlength(string(path)) == 0, path = "."; end
             if nargin < 3 || isempty(timeout), timeout = 30; end
             if nargin < 4 || isempty(executor), executor = obj.executor; end
             if isempty(executor)
-                error("KSSOLV:Matgenlab:Packmol:ExecutorRequired", ...
-                    "Running PackmolSet requires an explicit executor " + ...
-                    "function handle; implicit PATH execution is disabled.");
+                executor = @kssolv.analysis.packmol.native_executor;
             end
             if ~isa(executor, "function_handle")
                 error("KSSOLV:Matgenlab:Packmol:ExecutorType", ...
@@ -107,10 +105,37 @@ classdef PackmolSet < kssolv.analysis.matgenlab.io.InputSet
     end
 
     methods (Static)
-        function obj = from_directory(~)
-            obj = kssolv.analysis.matgenlab.io.packmol.PackmolSet(); %#ok<NASGU>
-            error("KSSOLV:Matgenlab:Packmol:FromDirectory", ...
-                "from_directory has not been implemented in PackmolSet");
+        function obj = from_directory(directory)
+            directory = string(directory);
+            if ~isfolder(directory)
+                error("KSSOLV:Matgenlab:Packmol:Directory", ...
+                    "PACKMOL directory '%s' does not exist.", directory);
+            end
+            listing = dir(directory);
+            listing = listing(~[listing.isdir]);
+            inputs = containers.Map("KeyType", "char", "ValueType", "any");
+            inputfile = "";
+            for i = 1:numel(listing)
+                name = string(listing(i).name);
+                contents = string(fileread(fullfile(directory, name)));
+                inputs(char(name)) = contents;
+                if any(endsWith(lower(name), [".inp", ".in", ".pack"])) && ...
+                        strlength(inputfile) == 0
+                    inputfile = name;
+                end
+            end
+            if strlength(inputfile) == 0
+                error("KSSOLV:Matgenlab:Packmol:InputFile", ...
+                    "No Packmol input file was found in '%s'.", directory);
+            end
+            config = kssolv.analysis.packmol.parse_input( ...
+                fullfile(directory, inputfile), ...
+                WorkingDirectory = directory);
+            obj = kssolv.analysis.matgenlab.io.packmol.PackmolSet( ...
+                inputs, inputfile = inputfile, ...
+                outputfile = config.settings.output, ...
+                seed = config.settings.seed, ...
+                tolerance = config.settings.tolerance);
         end
 
         function obj = fromDirectory(directory)

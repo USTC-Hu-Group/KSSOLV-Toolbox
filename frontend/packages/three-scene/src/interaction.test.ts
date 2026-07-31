@@ -55,7 +55,7 @@ describe('shared viewer interaction', () => {
     expect(controls.zoomSpeed).toBe(2.2);
     expect(controls.rotateSpeed).toBe(viewerInteractionProfile.rotateSpeed);
     expect(controls.panSpeed).toBe(1.4);
-    expect(viewerInteractionProfile.zoomSpeed).toBe(1.15);
+    expect(viewerInteractionProfile.zoomSpeed).toBe(6);
     expect(viewerInteractionProfile.panSpeed).toBe(0.9);
   });
 });

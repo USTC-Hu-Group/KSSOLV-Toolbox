@@ -3,7 +3,7 @@ import { MOUSE } from 'three';
 /** Shared camera interaction profile for atomic and volumetric 3-D viewers. */
 export const viewerInteractionProfile = Object.freeze({
   rotateSpeed: 1.1,
-  zoomSpeed: 1.15,
+  zoomSpeed: 6,
   panSpeed: 0.9,
   freeRotation: true,
   dragThresholdPixels: 4,

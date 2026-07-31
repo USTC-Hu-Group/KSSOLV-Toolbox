@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import type { CrystalCameraAxis } from '../renderer/cameraAxis';
 
-defineProps<{ settingsOpen: boolean; crystal: boolean }>();
+withDefaults(defineProps<{ settingsOpen: boolean; crystal: boolean; autoRotating?: boolean }>(), {
+  autoRotating: false,
+});
 const emit = defineEmits<{
   reset: [];
+  toggleAutoRotation: [];
   toggleSettings: [];
   screenshot: [];
   exportScene: [];
@@ -19,6 +22,23 @@ const emit = defineEmits<{
         <path d="M4.5 8.5A8 8 0 1 1 4 15" />
         <path d="M4.5 4.5v4h4" />
         <circle cx="12" cy="12" r="2.5" />
+      </svg>
+    </button>
+    <button
+      type="button"
+      :title="autoRotating ? 'Stop rotation' : 'Auto rotate'"
+      :aria-label="autoRotating ? 'Stop rotation' : 'Auto rotate'"
+      :aria-pressed="autoRotating"
+      @click="emit('toggleAutoRotation')"
+    >
+      <svg v-if="!autoRotating" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4.5 8.5A8 8 0 0 1 18.8 6" />
+        <path d="M19.5 2.5V6h-3.5" />
+        <path d="M19.5 15.5A8 8 0 0 1 5.2 18" />
+        <path d="M4.5 21.5V18H8" />
+      </svg>
+      <svg v-else viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="7" y="7" width="10" height="10" rx="1" />
       </svg>
     </button>
     <div class="toolbar-separator" />

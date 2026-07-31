@@ -13,6 +13,7 @@ classdef KSSOLVToolbox < handle
     properties (Access = private)
         projectBrowser % 用于判断 AppContainer 是否渲染结束
         runBrowser % 运行浏览器
+        modelingTab % 结构文档打开时显示的上下文建模标签页
     end
 
     methods
@@ -61,6 +62,8 @@ classdef KSSOLVToolbox < handle
             tabGroup.add(homeTab.Tab);
             tabGroup.add(workflowTab.Tab);
             this.AppContainer.add(tabGroup);
+            this.modelingTab = ...
+                kssolv.ui.components.tab.ModelingTab(tabGroup);
             % 添加位于底部的 FooterBar 组件
             footerBar = kssolv.ui.components.others.FooterBar();
             footerBar.addToAppContainer(this.AppContainer);
@@ -92,6 +95,9 @@ classdef KSSOLVToolbox < handle
             end
             % 删除 App Container
             if ~isempty(this.AppContainer) && isvalid(this.AppContainer)
+                if ~isempty(this.modelingTab) && isvalid(this.modelingTab)
+                    delete(this.modelingTab);
+                end
                 delete(this.runBrowser);
                 delete(this.AppContainer);
             end

@@ -97,6 +97,9 @@ classdef StructureTest < matlab.unittest.TestCase
                 "Si", [0, 0, 0]);
             structure = structure.append("Si", [0.25, 0.25, 0.25]);
             testCase.verifyEqual(structure.num_sites, 2);
+            structure = structure.replace(1, "C");
+            testCase.verifyEqual(structure(1).species_string, "C");
+            testCase.verifyEqual(structure(1).label, "C");
             structure = structure.translate_sites(2, [0.25, 0, 0]);
             testCase.verifyEqual(structure(2).frac_coords, [0.5, 0.25, 0.25]);
             structure = structure.scale_lattice(512);

@@ -79,6 +79,7 @@ import { viewportLayout } from './viewport';
 
 export interface CrystalRendererCallbacks {
   onSelection?: (selection?: SelectionInfo, gesture?: { additive: boolean }) => void;
+  onAtomContextMenu?: (selection?: SelectionInfo) => void;
   onAtomHover?: (hover?: AtomHoverInfo) => void;
   onCameraSettled?: (snapshot: CameraSnapshot) => void;
   onStatistics?: (statistics: RendererStatistics) => void;
@@ -247,10 +248,7 @@ export class CrystalRenderer {
     depthTest: false,
     side: DoubleSide,
   });
-  private readonly selectionMarker = new Mesh(
-    this.selectionHaloGeometry,
-    this.selectionHaloMaterial,
-  );
+  private readonly selectionMarkers = new Group();
   private readonly bondSelectionGeometry = new CylinderGeometry(1, 1, 1, 28, 1, true);
   private readonly bondSelectionMaterial = new MeshBasicMaterial({
     color: selectionHaloColor,
@@ -335,7 +333,8 @@ export class CrystalRenderer {
   private mousePanning = false;
   private panningPointerId?: number;
   private suppressNextClick = false;
-  private selected?: { kind: 'atom' | 'bond'; id: string; radius?: number };
+  private readonly selectedAtoms = new Map<string, { siteIndex: number; marker: Mesh }>();
+  private selectedBondId?: string;
   private readonly frameDurations: number[] = [];
 
   constructor(
@@ -364,12 +363,12 @@ export class CrystalRenderer {
     this.scene.add(this.keyLight);
     this.fillLight.position.set(-8, -4, 6);
     this.scene.add(this.fillLight);
-    this.selectionMarker.visible = false;
-    this.selectionMarker.renderOrder = 20;
+    this.selectionMarkers.name = 'atom-selection-markers';
+    this.selectionMarkers.renderOrder = 20;
     this.bondSelectionMarker.visible = false;
     this.bondSelectionMarker.matrixAutoUpdate = false;
     this.bondSelectionMarker.renderOrder = 21;
-    this.scene.add(this.selectionMarker, this.bondSelectionMarker);
+    this.scene.add(this.selectionMarkers, this.bondSelectionMarker);
     this.measurementMarkers.name = 'measurement-selection-markers';
     this.measurementMarkers.renderOrder = 30;
     this.measurementHoverMarker.name = 'measurement-hover-marker';
@@ -399,6 +398,7 @@ export class CrystalRenderer {
     canvas.addEventListener('pointercancel', this.handlePointerUp);
     canvas.addEventListener('pointerleave', this.handlePointerLeave);
     canvas.addEventListener('click', this.handleClick);
+    canvas.addEventListener('contextmenu', this.handleContextMenu);
     canvas.addEventListener('webglcontextlost', this.handleContextLost);
     canvas.addEventListener('webglcontextrestored', this.handleContextRestored);
 
@@ -505,6 +505,20 @@ export class CrystalRenderer {
     this.requestRender();
   }
 
+  selectAtomInstances(atomIds: readonly string[]): string[] {
+    if (this.measurementMode || !this.atomLayer) return [];
+    this.clearSelection(false);
+    const selectedIds: string[] = [];
+    for (const atomId of new Set(atomIds)) {
+      const selected = this.atomLayer.getVisibleAtom(atomId);
+      if (!selected) continue;
+      this.addAtomSelection(selected);
+      selectedIds.push(atomId);
+    }
+    this.requestRender();
+    return selectedIds;
+  }
+
   resetView = (): void => {
     if (!this.sceneSpec) return;
     this.fitScene(defaultCameraDirection());
@@ -606,6 +620,8 @@ export class CrystalRenderer {
     if (!this.sceneSpec) throw new Error('No atomic structure is available to export.');
     const size = this.renderer.getSize(new Vector2());
     if (format === 'svg' || format === 'pdf-vector') {
+      const selectedAtom = this.selectedAtoms.entries().next().value as
+        [string, { siteIndex: number; marker: Mesh }] | undefined;
       const svg = buildVectorSvg({
         scene: this.sceneSpec,
         options: this.options,
@@ -614,7 +630,11 @@ export class CrystalRenderer {
         width: size.x,
         height: size.y,
         axisDirections: latticeAxisDirections(this.sceneSpec),
-        selected: this.selected,
+        selected: this.selectedBondId
+          ? { kind: 'bond', id: this.selectedBondId }
+          : selectedAtom
+            ? { kind: 'atom', id: selectedAtom[0], radius: selectedAtom[1].marker.scale.x }
+            : undefined,
       });
       return format === 'svg' ? svgBlob(svg) : svgToPdfBlob(svg, size.x, size.y);
     }
@@ -699,6 +719,7 @@ export class CrystalRenderer {
     this.canvas.removeEventListener('pointercancel', this.handlePointerUp);
     this.canvas.removeEventListener('pointerleave', this.handlePointerLeave);
     this.canvas.removeEventListener('click', this.handleClick);
+    this.canvas.removeEventListener('contextmenu', this.handleContextMenu);
     this.canvas.removeEventListener('webglcontextlost', this.handleContextLost);
     this.canvas.removeEventListener('webglcontextrestored', this.handleContextRestored);
     if (document.pointerLockElement === this.canvas) document.exitPointerLock();
@@ -773,9 +794,6 @@ export class CrystalRenderer {
     this.measurementMarkerGlowMaterial.color.set(selectionHaloColor);
     this.measurementMarkerGlowMaterial.opacity = themeId === 'pretty' ? 0.54 : 0.48;
     this.measurementMarkerGlowMaterial.needsUpdate = true;
-    if (this.selected?.kind === 'atom' && this.selected.radius) {
-      this.selectionMarker.scale.setScalar(this.selected.radius);
-    }
     this.atomLayer?.updateTheme(theme);
     this.bondLayer?.updateTheme(theme);
     this.cellLayer?.updateTheme(theme);
@@ -980,13 +998,42 @@ export class CrystalRenderer {
 
   private clearSelection(notify = true): void {
     const hadSelection =
-      this.selectionMarker.visible ||
+      this.selectionMarkers.children.length > 0 ||
       this.bondSelectionMarker.visible ||
-      this.selected !== undefined;
-    this.selected = undefined;
-    this.selectionMarker.visible = false;
+      this.selectedBondId !== undefined;
+    this.clearAtomSelectionMarkers();
+    this.selectedBondId = undefined;
     this.bondSelectionMarker.visible = false;
     if (notify && hadSelection) this.callbacks.onSelection?.();
+  }
+
+  private clearAtomSelectionMarkers(): void {
+    this.selectionMarkers.clear();
+    this.selectedAtoms.clear();
+  }
+
+  private addAtomSelection(selected: {
+    atom: { id: string; siteIndex: number; position: Vector3Tuple };
+    radius: number;
+  }): void {
+    const marker = new Mesh(this.selectionHaloGeometry, this.selectionHaloMaterial);
+    marker.name = `atom-selection-${selected.atom.id}`;
+    marker.renderOrder = 20;
+    marker.position.copy(vector(selected.atom.position));
+    marker.scale.setScalar(selected.radius);
+    marker.quaternion.copy(this.camera.quaternion);
+    this.selectionMarkers.add(marker);
+    this.selectedAtoms.set(selected.atom.id, {
+      siteIndex: selected.atom.siteIndex,
+      marker,
+    });
+  }
+
+  private removeAtomSelection(atomId: string): void {
+    const selected = this.selectedAtoms.get(atomId);
+    if (!selected) return;
+    this.selectionMarkers.remove(selected.marker);
+    this.selectedAtoms.delete(atomId);
   }
 
   private clearHover(): void {
@@ -1037,11 +1084,14 @@ export class CrystalRenderer {
   }
 
   private reconcileSelection(): void {
-    if (!this.selected) return;
-    const visible =
-      this.selected.kind === 'atom'
-        ? this.atomLayer?.isAtomVisible(this.selected.id)
-        : this.bondLayer?.isBondVisible(this.selected.id);
+    if (this.selectedAtoms.size === 0 && !this.selectedBondId) return;
+    const atomsVisible = [...this.selectedAtoms.keys()].every((atomId) =>
+      this.atomLayer?.isAtomVisible(atomId),
+    );
+    const bondVisible = this.selectedBondId
+      ? this.bondLayer?.isBondVisible(this.selectedBondId)
+      : true;
+    const visible = atomsVisible && bondVisible;
     if (visible) return;
     this.clearSelection();
   }
@@ -1139,11 +1189,15 @@ export class CrystalRenderer {
     if (hit.object === this.atomLayer.mesh) {
       const selected = this.atomLayer.get(hit.batchId);
       if (!selected) return;
-      this.selectionMarker.position.copy(vector(selected.atom.position));
-      this.selectionMarker.scale.setScalar(selected.radius);
-      this.selectionMarker.quaternion.copy(this.camera.quaternion);
-      this.selectionMarker.visible = true;
-      this.selected = { kind: 'atom', id: selected.atom.id, radius: selected.radius };
+      const additive = event.shiftKey || event.ctrlKey || event.metaKey;
+      this.selectedBondId = undefined;
+      this.bondSelectionMarker.visible = false;
+      if (!additive) this.clearAtomSelectionMarkers();
+      if (additive && this.selectedAtoms.has(selected.atom.id)) {
+        this.removeAtomSelection(selected.atom.id);
+      } else {
+        this.addAtomSelection(selected);
+      }
       this.callbacks.onSelection?.(
         {
           kind: 'atom',
@@ -1153,9 +1207,7 @@ export class CrystalRenderer {
           clientX: event.clientX,
           clientY: event.clientY,
         },
-        {
-          additive: event.shiftKey || event.ctrlKey || event.metaKey,
-        },
+        { additive },
       );
     } else {
       const bond = this.bondLayer.get(hit.batchId);
@@ -1166,7 +1218,7 @@ export class CrystalRenderer {
       );
       this.bondSelectionMarker.matrixWorldNeedsUpdate = true;
       this.bondSelectionMarker.visible = true;
-      this.selected = { kind: 'bond', id: bond.id };
+      this.selectedBondId = bond.id;
       this.callbacks.onSelection?.(
         {
           kind: 'bond',
@@ -1180,6 +1232,48 @@ export class CrystalRenderer {
         },
       );
     }
+    this.requestRender();
+  };
+
+  private readonly handleContextMenu = (event: MouseEvent): void => {
+    event.preventDefault();
+    if (this.suppressNextClick) {
+      this.suppressNextClick = false;
+      this.callbacks.onAtomContextMenu?.();
+      return;
+    }
+    if (this.measurementMode || !this.atomLayer || !this.sceneSpec) {
+      this.callbacks.onAtomContextMenu?.();
+      return;
+    }
+    const bounds = this.canvas.getBoundingClientRect();
+    this.pointer.set(
+      ((event.clientX - bounds.left) / bounds.width) * 2 - 1,
+      -((event.clientY - bounds.top) / bounds.height) * 2 + 1,
+    );
+    this.raycaster.setFromCamera(this.pointer, this.camera);
+    const hit = (
+      this.raycaster.intersectObject(this.atomLayer.mesh, false) as BatchIntersection[]
+    )[0];
+    const selected = hit?.batchId === undefined ? undefined : this.atomLayer.get(hit.batchId);
+    if (!selected) {
+      this.callbacks.onAtomContextMenu?.();
+      return;
+    }
+    const selection: SelectionInfo = {
+      kind: 'atom',
+      id: selected.atom.id,
+      atom: selected.atom,
+      site: selected.site,
+      clientX: event.clientX,
+      clientY: event.clientY,
+    };
+    if (!this.selectedAtoms.has(selected.atom.id)) {
+      this.clearSelection(false);
+      this.addAtomSelection(selected);
+      this.callbacks.onSelection?.(selection, { additive: false });
+    }
+    this.callbacks.onAtomContextMenu?.(selection);
     this.requestRender();
   };
 
@@ -1288,7 +1382,9 @@ export class CrystalRenderer {
     const layout = viewportLayout(viewport.x, viewport.y);
     this.renderer.info.reset();
     this.controls.update();
-    this.selectionMarker.quaternion.copy(this.camera.quaternion);
+    this.selectionMarkers.children.forEach((marker) => {
+      marker.quaternion.copy(this.camera.quaternion);
+    });
     this.measurementHoverMarker.quaternion.copy(this.camera.quaternion);
     this.renderer.setScissorTest(false);
     this.renderer.setViewport(0, 0, layout.main.width, layout.main.height);

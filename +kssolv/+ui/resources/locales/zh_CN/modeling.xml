@@ -82,7 +82,7 @@
         <entry key="CenterAtoms">原子居中</entry>
         <entry key="CenterAtomsTooltip">将所选原子平移到指定分数坐标中心。</entry>
         <entry key="DeleteAtoms">删除原子</entry>
-        <entry key="DeleteAtomsTooltip">删除所选原子；至少保留一个原子。</entry>
+        <entry key="DeleteAtomsTooltip">删除所选原子；删除全部原子后保留可继续编辑的空白晶格。</entry>
         <entry key="MergeAtoms">合并原子</entry>
         <entry key="MergeAtomsTooltip">合并周期边界下距离小于容差的相邻原子。</entry>
         <entry key="FixAtoms">固定原子</entry>

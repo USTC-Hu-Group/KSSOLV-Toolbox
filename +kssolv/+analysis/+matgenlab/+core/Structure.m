@@ -74,6 +74,7 @@ classdef Structure < kssolv.analysis.matgenlab.core.IStructure
             end
             obj.validateSiteIndex(index);
             current = obj.sites_{index};
+            speciesChanged = ~isempty(species);
             if isempty(species), species = current.species; end
             if isempty(coords)
                 coords = current.frac_coords;
@@ -82,7 +83,9 @@ classdef Structure < kssolv.analysis.matgenlab.core.IStructure
             if isempty(options.properties)
                 options.properties = current.site_properties;
             end
-            if ismissing(string(options.label)), options.label = current.label; end
+            if ismissing(string(options.label)) && ~speciesChanged
+                options.label = current.label;
+            end
             obj.sites_{index} = ...
                 kssolv.analysis.matgenlab.core.PeriodicSite( ...
                     species, coords, obj.lattice, ...

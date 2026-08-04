@@ -38,6 +38,20 @@ classdef CrystalSceneBuilderTest < matlab.unittest.TestCase
             testCase.verifyEqual(roundTrip.structure.siteCount, 1);
         end
 
+        function modeledSubstitutionUsesCurrentSpeciesLabel(testCase)
+            structure = kssolv.analysis.matgenlab.core.Structure( ...
+                kssolv.analysis.matgenlab.core.Lattice.cubic(4), ...
+                {"B", "N"}, [0, 0, 0; .5, .5, .5]);
+            result = kssolv.modeling.CommandExecutor.execute( ...
+                structure, "substitute_atoms", struct( ...
+                "indices", 1, "species", "C"));
+            scene = kssolv.ui.scene.atomic.CrystalSceneBuilder.build( ...
+                result.model, includeConnectivity = false);
+
+            testCase.verifyEqual(scene.sites(1).label, "C");
+            testCase.verifyEqual(scene.sites(1).species{1}.symbol, "C");
+        end
+
         function crystalNNRelationsMatchStructureGraph(testCase)
             structures = testCase.crystalFixtures();
             strategy = kssolv.analysis.matgenlab.core.CrystalNN();

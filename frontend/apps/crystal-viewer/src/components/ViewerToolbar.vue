@@ -9,6 +9,8 @@ import type { StructureExportFormat } from '../structureExport';
 const props = withDefaults(
   defineProps<{
     settingsOpen: boolean;
+    informationOpen?: boolean;
+    informationAvailable?: boolean;
     crystal: boolean;
     autoRotating?: boolean;
     imageExporting?: boolean;
@@ -19,6 +21,8 @@ const props = withDefaults(
   }>(),
   {
     autoRotating: false,
+    informationOpen: false,
+    informationAvailable: false,
     imageExporting: false,
     structureExporting: false,
     structureExportFormats: () => [],
@@ -30,6 +34,7 @@ const emit = defineEmits<{
   reset: [];
   toggleAutoRotation: [];
   toggleSettings: [];
+  toggleInformation: [];
   exportImage: [format: ImageExportFormat];
   exportScene: [];
   exportOfflineHtml: [];
@@ -221,6 +226,12 @@ const closeAllMenus = (): void => {
   imageExportPopoverPositioned.value = false;
   fileExportMenuOpen.value = false;
   structureExportMenuOpen.value = false;
+};
+
+const handleInformationButton = (): void => {
+  if (!props.informationAvailable) return;
+  closeAllMenus();
+  emit('toggleInformation');
 };
 
 const toggleMeasurementMenu = (): void => {
@@ -415,6 +426,22 @@ const closeFileMenuOnFocusOut = (event: FocusEvent): void => {
           d="M9.7 3.3h4.6l.6 2.2a7.5 7.5 0 0 1 1.4.8l2.2-.6 2.3 4-1.6 1.6v1.6l1.6 1.6-2.3 4-2.2-.6a7.5 7.5 0 0 1-1.4.8l-.6 2.2H9.7l-.6-2.2a7.5 7.5 0 0 1-1.4-.8l-2.2.6-2.3-4 1.6-1.6v-1.6L3.2 9.7l2.3-4 2.2.6a7.5 7.5 0 0 1 1.4-.8z"
         />
         <circle cx="12" cy="12" r="3" />
+      </svg>
+    </button>
+    <button
+      v-if="crystal"
+      class="toolbar-information"
+      type="button"
+      title="Fractional coordinates"
+      :aria-pressed="informationOpen"
+      aria-label="Structure information"
+      :disabled="!informationAvailable"
+      @click="handleInformationButton"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="8.5" />
+        <path d="M12 10.5v6" />
+        <path d="M12 7.5h.01" />
       </svg>
     </button>
     <div class="toolbar-export-menu toolbar-image-menu" @focusout="closeImageMenuOnFocusOut">

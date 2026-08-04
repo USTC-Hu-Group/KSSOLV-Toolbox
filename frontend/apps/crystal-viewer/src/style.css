@@ -69,6 +69,7 @@ button {
 .minimal-ui .structure-card,
 .minimal-ui .element-legend,
 .minimal-ui .selection-inspector,
+.minimal-ui .fractional-coordinates-panel,
 .minimal-ui .performance-badge {
   display: none;
 }
@@ -76,8 +77,10 @@ button {
 .structure-card,
 .viewer-toolbar,
 .settings-panel,
+.fractional-coordinates-panel,
 .element-legend,
 .selection-inspector,
+.atom-context-panel,
 .atom-hover-tooltip,
 .warning-stack > div,
 .error-banner,
@@ -222,6 +225,11 @@ button {
   opacity: 0.5;
 }
 
+.viewer-toolbar .toolbar-information:disabled {
+  cursor: not-allowed;
+  opacity: 0.36;
+}
+
 .toolbar-export-menu {
   position: relative;
 }
@@ -350,6 +358,87 @@ button {
   overflow-x: hidden;
   overflow-y: auto;
   border-radius: 14px;
+}
+
+.fractional-coordinates-panel {
+  position: absolute;
+  z-index: 2;
+  top: 18px;
+  right: 72px;
+  display: flex;
+  flex-direction: column;
+  width: min(520px, calc(100% - 104px));
+  max-height: calc(100% - 36px);
+  overflow: hidden;
+  border-radius: 12px;
+  color: var(--viewer-foreground);
+}
+
+.fractional-coordinates-panel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 42px;
+  padding: 6px 8px 6px 14px;
+  border-bottom: 1px solid var(--viewer-panel-border);
+  background: var(--viewer-panel);
+  backdrop-filter: blur(18px);
+}
+
+.fractional-coordinates-panel h2 {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.fractional-coordinates-table-wrap {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.fractional-coordinates-panel table {
+  width: 100%;
+  min-width: 475px;
+  border-collapse: collapse;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.fractional-coordinates-panel th,
+.fractional-coordinates-panel td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--viewer-panel-border);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.fractional-coordinates-panel th {
+  position: sticky;
+  z-index: 1;
+  top: 0;
+  color: var(--viewer-muted);
+  background: var(--viewer-panel);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.fractional-coordinates-panel tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.fractional-coordinates-panel td:nth-child(n + 4) {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.fractional-coordinates-empty {
+  margin: 0;
+  padding: 17px;
+  color: var(--viewer-muted);
+  font-size: 12px;
 }
 
 .settings-panel header {
@@ -1310,6 +1399,219 @@ button {
   transform: translateY(-50%);
 }
 
+.atom-context-panel {
+  position: fixed;
+  z-index: 20;
+  width: 224px;
+  max-height: calc(100vh - 16px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  border-radius: 14px;
+  color: var(--viewer-foreground);
+  overscroll-behavior: contain;
+}
+
+.atom-context-panel.has-dialog {
+  width: min(330px, calc(100vw - 16px));
+}
+
+.atom-context-panel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 48px;
+  padding: 9px 12px 9px 17px;
+  border-bottom: 1px solid var(--viewer-panel-border);
+  background: var(--viewer-panel);
+  backdrop-filter: blur(18px);
+}
+
+.atom-context-panel h2 {
+  margin: 0;
+  overflow: hidden;
+  font-size: 15px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.atom-context-actions {
+  display: grid;
+  padding: 8px;
+  gap: 2px;
+}
+
+.atom-context-actions button,
+.atom-modeling-buttons button {
+  border: 0;
+  border-radius: 6px;
+  color: var(--viewer-foreground);
+  background: transparent;
+  cursor: pointer;
+}
+
+.atom-context-actions button {
+  min-height: 34px;
+  padding: 7px 9px;
+  font-size: 12px;
+  text-align: left;
+}
+
+.atom-context-actions button:hover:not(:disabled),
+.atom-context-actions button:focus-visible,
+.atom-modeling-buttons button:hover:not(:disabled),
+.atom-modeling-buttons button:focus-visible {
+  outline: none;
+  background: color-mix(in srgb, var(--viewer-accent) 12%, transparent);
+}
+
+.atom-context-actions button:disabled,
+.atom-modeling-buttons button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.atom-context-actions .danger-action {
+  margin-top: 5px;
+  border-top: 1px solid var(--viewer-panel-border);
+  color: #cf2e2e;
+}
+
+.atom-context-actions .selection-action {
+  margin-bottom: 5px;
+  border-bottom: 1px solid var(--viewer-panel-border);
+}
+
+.atom-context-notice,
+.atom-context-hint {
+  margin: 0;
+  padding: 10px 17px 12px;
+  border-top: 1px solid var(--viewer-panel-border);
+  color: var(--viewer-muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.atom-context-notice {
+  color: #a25500;
+}
+
+.atom-modeling-form {
+  display: block;
+}
+
+.atom-dialog-context {
+  margin: 0;
+  padding: 11px 17px;
+  border-bottom: 1px solid var(--viewer-panel-border);
+  color: var(--viewer-muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.atom-modeling-copy,
+.atom-modeling-error {
+  margin: 0;
+  padding: 15px 17px 4px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.atom-modeling-field,
+.atom-modeling-check {
+  display: grid;
+  align-items: center;
+  margin: 15px 17px;
+  color: var(--viewer-muted);
+  font-size: 12px;
+  gap: 8px;
+}
+
+.atom-modeling-field {
+  grid-template-columns: 1fr 126px;
+}
+
+.atom-modeling-check {
+  grid-template-columns: auto 1fr;
+  gap: 9px;
+}
+
+.atom-modeling-check input[type='checkbox'] {
+  accent-color: var(--viewer-accent);
+}
+
+.atom-modeling-field input,
+.atom-vector-fields input {
+  min-width: 0;
+  padding: 5px 7px;
+  border: 1px solid var(--viewer-panel-border);
+  border-radius: 6px;
+  color: var(--viewer-foreground);
+  background: var(--viewer-background);
+}
+
+.atom-modeling-field input:focus,
+.atom-vector-fields input:focus {
+  border-color: var(--viewer-accent);
+  outline: 2px solid color-mix(in srgb, var(--viewer-accent) 20%, transparent);
+}
+
+.atom-vector-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 12px 17px 15px;
+  padding: 9px;
+  border: 1px solid var(--viewer-panel-border);
+  border-radius: 8px;
+  gap: 8px;
+}
+
+.atom-vector-fields label {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  color: var(--viewer-muted);
+  font-size: 11px;
+  gap: 5px;
+}
+
+.atom-modeling-error {
+  padding-top: 0;
+  color: #cf2e2e;
+}
+
+.atom-modeling-buttons {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 17px 15px;
+  border-top: 1px solid var(--viewer-panel-border);
+  gap: 7px;
+}
+
+.atom-modeling-buttons button {
+  min-width: 72px;
+  min-height: 30px;
+  padding: 5px 12px;
+  border: 1px solid var(--viewer-panel-border);
+  font-size: 12px;
+}
+
+.atom-modeling-buttons button[type='submit'] {
+  border-color: var(--viewer-accent);
+  color: #fff;
+  background: var(--viewer-accent);
+}
+
+.atom-modeling-buttons button.danger-confirm {
+  border-color: #b42318;
+  background: #b42318;
+}
+
+.theme-materials .atom-context-panel {
+  border-radius: 3px;
+  backdrop-filter: none;
+}
+
 @media (max-height: 540px) {
   .viewer-toolbar {
     display: grid;
@@ -1333,7 +1635,7 @@ button {
     order: 3;
   }
 
-  .toolbar-settings {
+  .toolbar-fullscreen {
     order: 4;
   }
 
@@ -1361,20 +1663,37 @@ button {
     order: 10;
   }
 
-  .toolbar-image-menu {
+  .toolbar-settings {
     order: 11;
   }
 
-  .toolbar-file-menu {
+  .toolbar-information {
     order: 12;
   }
 
-  .toolbar-fullscreen {
+  .toolbar-image-menu {
     order: 13;
   }
 
-  .settings-panel {
+  .toolbar-file-menu {
+    order: 14;
+  }
+
+  .settings-panel,
+  .fractional-coordinates-panel {
+    top: 10px;
     right: 102px;
+    max-height: calc(100% - 20px);
+  }
+
+  .fractional-coordinates-panel header {
+    min-height: 38px;
+    padding-block: 4px;
+  }
+
+  .fractional-coordinates-panel th,
+  .fractional-coordinates-panel td {
+    padding: 4px 7px;
   }
 
   .selection-inspector {
@@ -1486,8 +1805,90 @@ button {
     grid-template-columns: repeat(3, 30px);
   }
 
-  .settings-panel {
+  .settings-panel,
+  .fractional-coordinates-panel {
+    top: 8px;
     right: 135px;
+    max-height: calc(100% - 16px);
+  }
+
+  .toolbar-reset {
+    order: 1;
+  }
+
+  .toolbar-auto-rotate {
+    order: 2;
+  }
+
+  .toolbar-measurement-menu {
+    order: 3;
+  }
+
+  .viewer-toolbar [data-toolbar-axis='a'] {
+    order: 4;
+  }
+
+  .viewer-toolbar [data-toolbar-axis='b'] {
+    order: 5;
+  }
+
+  .viewer-toolbar [data-toolbar-axis='c'] {
+    order: 6;
+  }
+
+  .viewer-toolbar [data-toolbar-axis='a*'] {
+    order: 7;
+  }
+
+  .viewer-toolbar [data-toolbar-axis='b*'] {
+    order: 8;
+  }
+
+  .viewer-toolbar [data-toolbar-axis='c*'] {
+    order: 9;
+  }
+
+  .toolbar-settings {
+    grid-column: 1;
+    order: 10;
+  }
+
+  .toolbar-information {
+    grid-column: 2;
+    order: 11;
+  }
+
+  .toolbar-fullscreen {
+    grid-column: 3;
+    order: 12;
+  }
+
+  .toolbar-image-menu {
+    grid-column: 1;
+    order: 13;
+  }
+
+  .toolbar-file-menu {
+    grid-column: 2;
+    order: 14;
+  }
+
+  .fractional-coordinates-panel header {
+    min-height: 34px;
+    padding: 3px 6px 3px 11px;
+  }
+
+  .fractional-coordinates-panel h2 {
+    font-size: 13px;
+  }
+
+  .fractional-coordinates-panel table {
+    font-size: 10px;
+  }
+
+  .fractional-coordinates-panel th,
+  .fractional-coordinates-panel td {
+    padding: 3px 6px;
   }
 }
 
@@ -1502,10 +1903,15 @@ button {
     right: 10px;
   }
 
-  .settings-panel {
+  .settings-panel,
+  .fractional-coordinates-panel {
     top: 10px;
     right: 56px;
     max-height: calc(100% - 20px);
+  }
+
+  .fractional-coordinates-panel {
+    width: calc(100% - 66px);
   }
 
   .element-legend {
@@ -1528,13 +1934,15 @@ button {
 }
 
 @media (max-width: 720px) and (max-height: 540px) {
-  .settings-panel {
+  .settings-panel,
+  .fractional-coordinates-panel {
     right: 94px;
   }
 }
 
 @media (max-width: 720px) and (max-height: 300px) {
-  .settings-panel {
+  .settings-panel,
+  .fractional-coordinates-panel {
     right: 127px;
   }
 }

@@ -94,6 +94,19 @@ window.debug = (): void => {
         });
         return;
       }
+      if (name === 'viewer:modelingCommandRequested') {
+        window.setTimeout(() => {
+          matlabBridge.dispatchForTesting('modeling:result', {
+            commandId:
+              typeof data === 'object' && data !== null && 'commandId' in data
+                ? data.commandId
+                : '',
+            status: 'error',
+            message: 'Modeling commands require a running KSSOLV Toolbox session.',
+          });
+        }, 0);
+        return;
+      }
       if (name !== 'viewer:analysisRequested' || !debugStore.scene.value) return;
       const requestId = `debug-${Date.now()}`;
       window.setTimeout(() => {

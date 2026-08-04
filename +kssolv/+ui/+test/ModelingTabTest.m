@@ -96,6 +96,37 @@ classdef ModelingTabTest < matlab.unittest.TestCase
             end
         end
 
+        function displayAcceptsEmptyCrystalAndCanUndoDeletion(testCase)
+            app = matlab.ui.container.internal.AppContainer( ...
+                struct("Title", "Empty Crystal History Test", ...
+                "ToolstripEnabled", true));
+            cleanup = onCleanup(@()cleanupHistoryApp(app));
+            kssolv.ui.util.DataStorage.setData("AppContainer", app);
+            original = kssolv.analysis.matgenlab.core.Structure( ...
+                eye(3) * 4, {"Si"}, [0, 0, 0]);
+            display = ...
+                kssolv.ui.components.figuredocument.MoleculeDisplay( ...
+                original);
+            emptied = kssolv.modeling.CommandExecutor.execute( ...
+                original, "delete_atoms", struct("indices", 1));
+
+            display.applyModel(emptied.model, "Delete Atoms");
+            testCase.verifyEqual(display.getModel().num_sites, 0);
+            testCase.verifyTrue(display.canUndo());
+            display.undo();
+            restored = display.getModel();
+            testCase.verifyEqual(restored.num_sites, 1);
+            testCase.verifyEqual(restored(1).species_string, "Si");
+            clear cleanup
+
+            function cleanupHistoryApp(value)
+                if ~isempty(value) && isvalid(value)
+                    delete(value);
+                end
+                kssolv.ui.util.DataStorage.removeData("AppContainer");
+            end
+        end
+
         function tabFollowsOpenStructureDocuments(testCase)
             app = matlab.ui.container.internal.AppContainer( ...
                 struct("Title", "Modeling Test", ...

@@ -24,6 +24,7 @@ classdef MoleculeDisplay < handle
             "cell", "input", ...
             "repeat", [1, 1, 1])
         RequestSerial (1,1) double = 0
+        CurrentRequestId string = ""
         IsBuilding (1,1) logical = false
         UndoStack cell = {}
         RedoStack cell = {}
@@ -294,6 +295,8 @@ classdef MoleculeDisplay < handle
                 case "viewer:selection"
                     this.LastSelection = event.HTMLEventData;
                     notify(this, "SelectionChanged");
+                case "viewer:modelingCommandRequested"
+                    this.applyModelingRequest(event.HTMLEventData);
                 case "viewer:exportStructure"
                     this.exportStructure(event.HTMLEventData);
                 case "viewer:error"
@@ -329,6 +332,122 @@ classdef MoleculeDisplay < handle
             catch exception
                 this.sendSceneError("MATLAB_ANALYSIS_REQUEST", ...
                     string(exception.message), "");
+            end
+        end
+
+        function applyModelingRequest(this, data)
+            commandId = "";
+            try
+                if ischar(data) || (isstring(data) && isscalar(data))
+                    data = jsondecode(data);
+                end
+                if ~isstruct(data) || ~isscalar(data) || ...
+                        ~isfield(data, "requestId") || ...
+                        ~isfield(data, "commandId") || ...
+                        ~isfield(data, "siteIndices") || ...
+                        ~isfield(data, "parameters")
+                    error("KSSOLV:Modeling:ContextRequest", ...
+                        "The atom modeling request is invalid.");
+                end
+                requestId = string(data.requestId);
+                if ~isscalar(requestId) || requestId == "" || ...
+                        requestId ~= this.CurrentRequestId
+                    error("KSSOLV:Modeling:StaleContextRequest", ...
+                        "The structure changed before the modeling command was applied.");
+                end
+                if ~this.isCrystal()
+                    error("KSSOLV:Modeling:CrystalRequired", ...
+                        "Atom modeling commands require a crystal structure.");
+                end
+
+                commandId = string(data.commandId);
+                allowed = ["delete_atoms", "substitute_atoms", ...
+                    "move_atoms", "translate_atoms"];
+                if ~isscalar(commandId) || ~any(commandId == allowed)
+                    error("KSSOLV:Modeling:ContextCommand", ...
+                        "The requested atom modeling command is not available.");
+                end
+
+                zeroBased = unique(reshape(double(data.siteIndices), 1, []), ...
+                    "stable");
+                if isempty(zeroBased) || any(~isfinite(zeroBased)) || ...
+                        any(zeroBased ~= fix(zeroBased)) || ...
+                        any(zeroBased < 0) || ...
+                        any(zeroBased >= this.ParsedModel.num_sites)
+                    error("KSSOLV:Modeling:ContextIndices", ...
+                        "Selected atom indices are invalid for the current structure.");
+                end
+                source = data.parameters;
+                if ~isstruct(source) || ~isscalar(source)
+                    error("KSSOLV:Modeling:ContextParameters", ...
+                        "The atom modeling parameters are invalid.");
+                end
+                parameters = struct("indices", zeroBased + 1);
+                switch commandId
+                    case "delete_atoms"
+                        % Site indices are the complete parameter set.
+                    case "substitute_atoms"
+                        if ~isfield(source, "species")
+                            error("KSSOLV:Modeling:ContextSpecies", ...
+                                "A replacement element or species is required.");
+                        end
+                        species = strtrim(string(source.species));
+                        if ~isscalar(species) || species == ""
+                            error("KSSOLV:Modeling:ContextSpecies", ...
+                                "A replacement element or species is required.");
+                        end
+                        parameters.species = species;
+                    case "move_atoms"
+                        parameters.coordinates = contextVector( ...
+                            source, "coordinates");
+                        parameters.cartesian = contextLogical( ...
+                            source, "cartesian");
+                    case "translate_atoms"
+                        parameters.vector = contextVector(source, "vector");
+                        parameters.fractional = contextLogical( ...
+                            source, "fractional");
+                end
+
+                commandInfo = kssolv.modeling.CommandCatalog.find(commandId);
+                commandLabel = kssolv.ui.util.Localizer.message( ...
+                    commandInfo.labelKey);
+                result = kssolv.modeling.CommandExecutor.execute( ...
+                    this.getModel(), commandId, parameters);
+                if ~result.changed
+                    error("KSSOLV:Modeling:ContextUnchanged", ...
+                        "The modeling command did not update the structure.");
+                end
+                this.applyModel(result.model, commandLabel);
+                this.sendModelingResult(commandId, "success", "");
+            catch exception
+                this.sendModelingResult(commandId, "error", ...
+                    string(exception.message));
+            end
+
+            function value = contextVector(sourceValue, name)
+                if ~isfield(sourceValue, name)
+                    error("KSSOLV:Modeling:ContextVector", ...
+                        "Parameter '%s' is required.", name);
+                end
+                value = reshape(double(sourceValue.(name)), 1, []);
+                if numel(value) ~= 3 || any(~isfinite(value))
+                    error("KSSOLV:Modeling:ContextVector", ...
+                        "Parameter '%s' must contain three finite values.", ...
+                        name);
+                end
+            end
+
+            function value = contextLogical(sourceValue, name)
+                if ~isfield(sourceValue, name)
+                    error("KSSOLV:Modeling:ContextLogical", ...
+                        "Parameter '%s' is required.", name);
+                end
+                value = sourceValue.(name);
+                if ~(islogical(value) || isnumeric(value)) || ~isscalar(value)
+                    error("KSSOLV:Modeling:ContextLogical", ...
+                        "Parameter '%s' must be a logical scalar.", name);
+                end
+                value = logical(value);
             end
         end
 
@@ -370,6 +489,7 @@ classdef MoleculeDisplay < handle
             this.RequestSerial = this.RequestSerial + 1;
             requestId = string(this.RequestSerial) + "-" + ...
                 string(matlab.lang.internal.uuid);
+            this.CurrentRequestId = requestId;
             this.HTMLComponent.sendEventToHTMLSource( ...
                 "scene:begin", struct("requestId", requestId));
             try
@@ -486,6 +606,18 @@ classdef MoleculeDisplay < handle
                 "message", string(message));
             this.HTMLComponent.sendEventToHTMLSource( ...
                 "structure:exportResult", payload);
+        end
+
+        function sendModelingResult(this, commandId, status, message)
+            if isempty(this.HTMLComponent)
+                return
+            end
+            payload = struct( ...
+                "commandId", string(commandId), ...
+                "status", string(status), ...
+                "message", string(message));
+            this.HTMLComponent.sendEventToHTMLSource( ...
+                "modeling:result", payload);
         end
 
         function finishBuild(this)

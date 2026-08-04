@@ -163,4 +163,72 @@ describe('viewer store event ordering', () => {
       expect.objectContaining({ siteIndex: 1, siteIndices: [0, 1] }),
     );
   });
+
+  it('selects more than two rendered atoms even when periodic images share a site', async () => {
+    const { matlabBridge } = await import('../bridge/matlabBridge');
+    const emit = vi.spyOn(matlabBridge, 'emit');
+    const { useViewerStore } = await import('./viewerStore');
+    const store = useViewerStore();
+    const scene = createDebugScene();
+    store.setScene(scene);
+
+    for (let index = 0; index < 4; index += 1) {
+      const atom = scene.atomInstances[index];
+      store.setSelection(
+        {
+          kind: 'atom',
+          id: atom.id,
+          atom,
+          site: scene.sites[0],
+          clientX: index,
+          clientY: index,
+        },
+        { additive: index > 0 },
+      );
+    }
+
+    expect(store.selectedAtomIds.value).toEqual(
+      scene.atomInstances.slice(0, 4).map((atom) => atom.id),
+    );
+    expect(store.selectedSiteIndices.value).toEqual([0]);
+    expect(emit).toHaveBeenLastCalledWith(
+      'viewer:selection',
+      expect.objectContaining({
+        siteIndices: [0],
+        atomIds: scene.atomInstances.slice(0, 4).map((atom) => atom.id),
+      }),
+    );
+  });
+
+  it('sets a same-element atom collection with one selection event', async () => {
+    const { matlabBridge } = await import('../bridge/matlabBridge');
+    const emit = vi.spyOn(matlabBridge, 'emit');
+    const { useViewerStore } = await import('./viewerStore');
+    const store = useViewerStore();
+    const scene = createDebugScene();
+    store.setScene(scene);
+    emit.mockClear();
+    const atoms = scene.atomInstances.slice(0, 4);
+
+    store.setAtomSelections(
+      atoms.map((atom) => ({
+        kind: 'atom',
+        id: atom.id,
+        atom,
+        site: scene.sites[0],
+        clientX: 0,
+        clientY: 0,
+      })),
+      atoms[0].id,
+    );
+
+    expect(store.selectedAtomIds.value).toEqual(atoms.map((atom) => atom.id));
+    expect(store.selectedSiteIndices.value).toEqual([0]);
+    expect(store.selection.value?.id).toBe(atoms[0].id);
+    expect(emit).toHaveBeenCalledTimes(1);
+    expect(emit).toHaveBeenCalledWith(
+      'viewer:selection',
+      expect.objectContaining({ atomIds: atoms.map((atom) => atom.id), siteIndices: [0] }),
+    );
+  });
 });

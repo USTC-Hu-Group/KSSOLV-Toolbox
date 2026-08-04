@@ -183,6 +183,18 @@ export class AtomLayer {
     return { atom: record.atom, site: record.site, radius: this.radiusFor(record) };
   }
 
+  getVisibleAtom(
+    atomId: string,
+  ): { atom: AtomInstanceSpec; site: SiteSpec; radius: number } | undefined {
+    let match: { atom: AtomInstanceSpec; site: SiteSpec; radius: number } | undefined;
+    for (const [batchId, record] of this.records) {
+      if (record.atom.id !== atomId || !this.mesh.getVisibleAt(batchId)) continue;
+      const radius = this.radiusFor(record);
+      if (!match || radius > match.radius) match = { atom: record.atom, site: record.site, radius };
+    }
+    return match;
+  }
+
   isAtomVisible(atomId: string): boolean {
     for (const [batchId, record] of this.records) {
       if (record.atom.id === atomId && this.mesh.getVisibleAt(batchId)) return true;

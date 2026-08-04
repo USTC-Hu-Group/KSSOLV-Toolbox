@@ -82,7 +82,7 @@
         <entry key="CenterAtoms">Center Atoms</entry>
         <entry key="CenterAtomsTooltip">Translate selected atoms to a requested fractional center.</entry>
         <entry key="DeleteAtoms">Delete Atoms</entry>
-        <entry key="DeleteAtomsTooltip">Delete selected atoms while preventing an empty structure.</entry>
+        <entry key="DeleteAtomsTooltip">Delete selected atoms; deleting all atoms leaves an editable blank lattice.</entry>
         <entry key="MergeAtoms">Merge Atoms</entry>
         <entry key="MergeAtomsTooltip">Merge atoms closer than a specified periodic distance.</entry>
         <entry key="FixAtoms">Fix Atoms</entry>

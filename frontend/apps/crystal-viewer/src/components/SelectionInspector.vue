@@ -9,6 +9,7 @@ import {
   type MeasurementKind,
   type MeasurementRecord,
 } from '../measurement';
+import { siteSpeciesLabel } from '../elementSelection';
 import type { SelectionInfo } from '../scene/types';
 import MeasurementGeometry from './MeasurementGeometry.vue';
 
@@ -36,7 +37,8 @@ const guidePrompt = computed(() =>
 );
 
 const title = computed(() => {
-  if (props.selection?.kind === 'atom') return props.selection.site?.label ?? 'Atom';
+  if (props.selection?.kind === 'atom')
+    return props.selection.site ? siteSpeciesLabel(props.selection.site) : 'Atom';
   if (props.selection?.kind === 'bond') return 'Bond';
   return '';
 });

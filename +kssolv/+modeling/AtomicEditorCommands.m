@@ -49,10 +49,6 @@ classdef AtomicEditorCommands
                 case "delete_atoms"
                     indices = ParameterUtils.indices( ...
                         parameters, model.num_sites, []);
-                    if numel(indices) == model.num_sites
-                        error("KSSOLV:Modeling:EmptyStructure", ...
-                            "Deleting every atom is not permitted.");
-                    end
                     model = model.remove_sites(indices);
                 case "merge_atoms"
                     tolerance = double(ParameterUtils.get( ...

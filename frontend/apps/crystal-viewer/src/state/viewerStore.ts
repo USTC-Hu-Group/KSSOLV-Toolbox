@@ -3,19 +3,28 @@ import { computed, reactive, readonly, shallowRef } from 'vue';
 import { matlabBridge } from '../bridge/matlabBridge';
 import {
   defaultViewerOptions,
+  type AtomInstanceSpec,
   type AtomicSceneSpec,
   type CameraSnapshot,
   type SelectionInfo,
+  type SiteSpec,
   type ThemeId,
   type ViewerOptions,
 } from '../scene/types';
 import { SceneValidationError, validateScene } from '../scene/validate';
 
 export type SceneActivityPhase = 'idle' | 'queued' | 'building' | 'success' | 'error';
+type AtomSelectionInfo = SelectionInfo & {
+  kind: 'atom';
+  atom: AtomInstanceSpec;
+  site: SiteSpec;
+};
 
 const scene = shallowRef<AtomicSceneSpec>();
 const selection = shallowRef<SelectionInfo>();
 const selectedSiteIndices = shallowRef<number[]>([]);
+const selectedAtomIds = shallowRef<string[]>([]);
+const selectedAtomSites = new Map<string, number>();
 const camera = shallowRef<CameraSnapshot>();
 const options = reactive<ViewerOptions>(defaultViewerOptions());
 const status = reactive({
@@ -70,6 +79,8 @@ const acceptScene = (payload: unknown): void => {
     status.lastRequestId = next.requestId;
     selection.value = undefined;
     selectedSiteIndices.value = [];
+    selectedAtomIds.value = [];
+    selectedAtomSites.clear();
     status.loading = false;
     if (status.activityPhase !== 'idle') {
       const elapsed = elapsedLabel();
@@ -147,6 +158,7 @@ export const useViewerStore = () => {
     scene,
     selection,
     selectedSiteIndices,
+    selectedAtomIds,
     camera,
     options,
     status: readonly(status),
@@ -168,36 +180,85 @@ export const useViewerStore = () => {
       selection.value = value;
       if (!value) {
         selectedSiteIndices.value = [];
+        selectedAtomIds.value = [];
+        selectedAtomSites.clear();
         matlabBridge.emit('viewer:selection', {
           requestId: scene.value?.requestId ?? '',
           kind: 'none',
           id: '',
           siteIndex: null,
           siteIndices: [],
+          atomIds: [],
         });
         return;
       }
 
-      const clicked =
-        value.kind === 'atom' && value.site
-          ? [value.site.siteIndex]
-          : value.kind === 'bond' && value.bond
-            ? [value.bond.fromSiteIndex, value.bond.toSiteIndex]
-            : [];
-      if (gesture.additive && clicked.length === 1) {
-        const siteIndex = clicked[0];
-        selectedSiteIndices.value = selectedSiteIndices.value.includes(siteIndex)
-          ? selectedSiteIndices.value.filter((candidate) => candidate !== siteIndex)
-          : [...selectedSiteIndices.value, siteIndex];
+      if (value.kind === 'atom' && value.site && value.atom) {
+        const atomId = value.atom.id;
+        const removing = gesture.additive && selectedAtomSites.has(atomId);
+        if (!gesture.additive) {
+          selectedAtomSites.clear();
+          selectedAtomSites.set(atomId, value.site.siteIndex);
+        } else if (removing) {
+          selectedAtomSites.delete(atomId);
+        } else {
+          selectedAtomSites.set(atomId, value.site.siteIndex);
+        }
+        selectedAtomIds.value = [...selectedAtomSites.keys()];
+        selectedSiteIndices.value = [...new Set(selectedAtomSites.values())];
+        if (removing) {
+          const fallbackId = selectedAtomIds.value[selectedAtomIds.value.length - 1];
+          const fallbackAtom = scene.value?.atomInstances.find((atom) => atom.id === fallbackId);
+          const fallbackSite = fallbackAtom
+            ? scene.value?.sites.find((site) => site.siteIndex === fallbackAtom.siteIndex)
+            : undefined;
+          selection.value =
+            fallbackAtom && fallbackSite
+              ? {
+                  kind: 'atom',
+                  id: fallbackAtom.id,
+                  atom: fallbackAtom,
+                  site: fallbackSite,
+                  clientX: value.clientX,
+                  clientY: value.clientY,
+                }
+              : undefined;
+        }
       } else {
-        selectedSiteIndices.value = [...new Set(clicked)];
+        selectedAtomSites.clear();
+        selectedAtomIds.value = [];
+        selectedSiteIndices.value =
+          value.kind === 'bond' && value.bond
+            ? [...new Set([value.bond.fromSiteIndex, value.bond.toSiteIndex])]
+            : [];
       }
       matlabBridge.emit('viewer:selection', {
         requestId: scene.value?.requestId ?? '',
-        kind: value.kind,
-        id: value.id,
-        siteIndex: value.site?.siteIndex ?? null,
+        kind: selection.value?.kind ?? 'none',
+        id: selection.value?.id ?? '',
+        siteIndex: selection.value?.site?.siteIndex ?? null,
         siteIndices: selectedSiteIndices.value,
+        atomIds: selectedAtomIds.value,
+      });
+    },
+    setAtomSelections(values: AtomSelectionInfo[], focusAtomId?: string): void {
+      selectedAtomSites.clear();
+      const selections = new Map<string, AtomSelectionInfo>();
+      for (const value of values) {
+        selections.set(value.atom.id, value);
+        selectedAtomSites.set(value.atom.id, value.site.siteIndex);
+      }
+      selectedAtomIds.value = [...selections.keys()];
+      selectedSiteIndices.value = [...new Set(selectedAtomSites.values())];
+      selection.value =
+        (focusAtomId ? selections.get(focusAtomId) : undefined) ?? values[values.length - 1];
+      matlabBridge.emit('viewer:selection', {
+        requestId: scene.value?.requestId ?? '',
+        kind: selection.value?.kind ?? 'none',
+        id: selection.value?.id ?? '',
+        siteIndex: selection.value?.site?.siteIndex ?? null,
+        siteIndices: selectedSiteIndices.value,
+        atomIds: selectedAtomIds.value,
       });
     },
     setCamera(value: CameraSnapshot): void {

@@ -10,11 +10,32 @@ import {
 } from '../scene/debugScene';
 import { defaultViewerOptions } from '../scene/types';
 import ElementLegend from './ElementLegend.vue';
+import FractionalCoordinatesPanel from './FractionalCoordinatesPanel.vue';
 import SelectionInspector from './SelectionInspector.vue';
 import SettingsPanel from './SettingsPanel.vue';
 import ViewerToolbar from './ViewerToolbar.vue';
 
 describe('viewer controls', () => {
+  it('shows fractional crystal coordinates without a selected column', () => {
+    const scene = createDebugScene();
+    scene.sites[0].label = 'Na1';
+    const wrapper = mount(FractionalCoordinatesPanel, { props: { scene } });
+
+    expect(wrapper.attributes('aria-label')).toBe('Fractional coordinates');
+    expect(wrapper.findAll('th').map((heading) => heading.text())).toEqual([
+      'ID',
+      'Symbol',
+      'Label',
+      'x',
+      'y',
+      'z',
+    ]);
+    expect(wrapper.findAll('tbody tr')).toHaveLength(2);
+    expect(wrapper.find('tbody tr').text()).toContain('1NaNa10.000000.000000.00000');
+    expect(wrapper.text()).not.toContain('2 sites');
+    expect(wrapper.text()).not.toContain('Selected');
+  });
+
   it('exposes the Materials Project control surface with accessible names', () => {
     const wrapper = mount(SettingsPanel, {
       props: {
@@ -214,6 +235,7 @@ describe('viewer controls', () => {
     const toolbar = mount(ViewerToolbar, {
       props: {
         settingsOpen: false,
+        informationAvailable: true,
         crystal: true,
         sceneAvailable: true,
         structureExportFormats: [
@@ -227,6 +249,13 @@ describe('viewer controls', () => {
         ],
       },
     });
+    const informationButton = toolbar.get('[aria-label="Structure information"]');
+    expect(informationButton.attributes('aria-pressed')).toBe('false');
+    expect(informationButton.attributes('disabled')).toBeUndefined();
+    expect(informationButton.get('svg').classes()).not.toContain('toolbar-filled-icon');
+    expect(informationButton.findAll('svg path')).toHaveLength(2);
+    await informationButton.trigger('click');
+    expect(toolbar.emitted('toggleInformation')).toHaveLength(1);
     await toolbar.get('[aria-label="Reset camera"]').trigger('click');
     expect(toolbar.emitted('reset')).toHaveLength(1);
     const autoRotate = toolbar.get('[aria-label="Auto rotate"]');
@@ -410,6 +439,10 @@ describe('viewer controls', () => {
     expect(measurementButton.attributes('disabled')).toBeDefined();
     await measurementButton.trigger('click');
     expect(toolbar.find('[aria-label="Measurement tools"]').exists()).toBe(false);
+    const informationButton = toolbar.get('[aria-label="Structure information"]');
+    expect(informationButton.attributes('disabled')).toBeDefined();
+    await informationButton.trigger('click');
+    expect(toolbar.emitted('toggleInformation')).toBeUndefined();
   });
 
   it('does not expose reciprocal-lattice views for molecules', () => {
@@ -489,6 +522,30 @@ describe('viewer controls', () => {
     expect(atom.text()).toContain('Bond length');
     expect(atom.text()).toContain(scene.bondInstances[0].distance.toFixed(5));
     expect(atom.text()).toContain('Å');
+  });
+
+  it('shows the current species when a modeled site retains an older label', () => {
+    const scene = createDebugScene();
+    const site = {
+      ...scene.sites[0],
+      label: 'B',
+      species: [{ ...scene.sites[0].species[0], symbol: 'C' }],
+    };
+    const atom = mount(SelectionInspector, {
+      props: {
+        selection: {
+          kind: 'atom',
+          id: scene.atomInstances[0].id,
+          atom: scene.atomInstances[0],
+          site,
+          clientX: 0,
+          clientY: 0,
+        },
+      },
+    });
+
+    expect(atom.get('.selection-heading h2').text()).toBe('C');
+    expect(atom.text()).toContain('C 1');
   });
 
   it('reports the rendered periodic image in the atom information card', () => {

@@ -2,11 +2,14 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 
 import { matlabBridge } from './bridge/matlabBridge';
+import AtomContextMenu from './components/AtomContextMenu.vue';
 import ElementLegend from './components/ElementLegend.vue';
+import FractionalCoordinatesPanel from './components/FractionalCoordinatesPanel.vue';
 import SelectionInspector from './components/SelectionInspector.vue';
 import SettingsPanel from './components/SettingsPanel.vue';
 import ViewerToolbar from './components/ViewerToolbar.vue';
 import WarningStack from './components/WarningStack.vue';
+import { atomIdsForElement, siteSpeciesLabel } from './elementSelection';
 import { viewerShortcutFor } from './keyboard';
 import {
   expectedSelectionCount,
@@ -15,6 +18,13 @@ import {
   type MeasurementKind,
   type MeasurementRecord,
 } from './measurement';
+import {
+  isContextModelingResult,
+  modelingBackendAvailable,
+  type ContextModelingCommandId,
+  type ContextModelingParameters,
+  type ContextModelingRequest,
+} from './modeling';
 import { buildOfflineHtml, offlineHtmlBlob } from './offlineExport';
 import { CrystalRenderer, type CrystalRendererCallbacks } from './renderer/CrystalRenderer';
 import type { CrystalCameraAxis } from './renderer/cameraAxis';
@@ -33,6 +43,7 @@ import { themes } from './themes/themes';
 const root = ref<HTMLElement>();
 const canvas = ref<HTMLCanvasElement>();
 const settingsOpen = ref(false);
+const informationOpen = ref(false);
 const minimalUi = ref(false);
 const autoRotating = ref(false);
 const imageExporting = ref(false);
@@ -45,12 +56,34 @@ const progressMeasurement = shallowRef<ReturnType<typeof measurementProgressAnno
 const measurementError = ref('');
 const activeMeasurementKind = ref<MeasurementKind>();
 const measurementSelections = shallowRef<Array<{ atom: AtomInstanceSpec; site: SiteSpec }>>([]);
+const atomContextMenu = shallowRef<{
+  selection: NonNullable<Parameters<NonNullable<CrystalRendererCallbacks['onAtomContextMenu']>>[0]>;
+  x: number;
+  y: number;
+}>();
+const modelingPending = ref(false);
+const modelingError = ref('');
 let measurementSerial = 0;
 // Three.js owns mutable, non-configurable matrix properties and must never be
 // wrapped in Vue's deep reactive proxy.
 const renderer = shallowRef<CrystalRenderer>();
 const statistics = ref<RendererStatistics>();
 const store = useViewerStore();
+const hasModelingBackend = modelingBackendAvailable();
+const informationAvailable = computed(
+  () => store.scene.value?.kind === 'crystal' && store.scene.value.sites.length > 0,
+);
+watch(informationAvailable, (available) => {
+  if (!available) informationOpen.value = false;
+});
+const toggleInformationPanel = (): void => {
+  if (!informationAvailable.value) {
+    informationOpen.value = false;
+    return;
+  }
+  settingsOpen.value = false;
+  informationOpen.value = !informationOpen.value;
+};
 const blankCellDimensions = computed(() => {
   const scene = store.scene.value;
   if (!store.isBlankStructure.value || scene?.kind !== 'crystal') return '';
@@ -59,7 +92,7 @@ const blankCellDimensions = computed(() => {
 const atomHoverLabel = computed(() => {
   if (!atomHover.value) return '';
   const coordinates = atomHover.value.atom.position.map((value) => value.toFixed(3)).join(', ');
-  return `${atomHover.value.site.label} (${coordinates}) site:${atomHover.value.site.siteIndex + 1}`;
+  return `${siteSpeciesLabel(atomHover.value.site)} (${coordinates}) site:${atomHover.value.site.siteIndex + 1}`;
 });
 const atomHoverStyle = computed(() => {
   if (!atomHover.value || !root.value) return {};
@@ -312,6 +345,9 @@ const handleRendererSelection: NonNullable<CrystalRendererCallbacks['onSelection
   selection,
   gesture,
 ) => {
+  atomContextMenu.value = undefined;
+  modelingPending.value = false;
+  modelingError.value = '';
   const kind = activeMeasurementKind.value;
   if (!kind) {
     closeMeasurementResult();
@@ -352,6 +388,80 @@ const handleRendererSelection: NonNullable<CrystalRendererCallbacks['onSelection
   updateMeasurementProgress();
 };
 
+const handleAtomContextMenu: NonNullable<CrystalRendererCallbacks['onAtomContextMenu']> = (
+  selection,
+) => {
+  modelingPending.value = false;
+  modelingError.value = '';
+  if (
+    !selection?.site ||
+    !selection.atom ||
+    activeMeasurementKind.value ||
+    store.status.loading ||
+    store.scene.value?.kind !== 'crystal'
+  ) {
+    atomContextMenu.value = undefined;
+    return;
+  }
+  atomContextMenu.value = {
+    selection,
+    x: selection.clientX,
+    y: selection.clientY,
+  };
+};
+
+const closeAtomContextMenu = (): void => {
+  if (modelingPending.value) return;
+  atomContextMenu.value = undefined;
+  modelingError.value = '';
+};
+
+const selectSameElement = (symbol: string): void => {
+  const scene = store.scene.value;
+  const context = atomContextMenu.value;
+  if (!context || !renderer.value || !scene) return;
+  const selectedIds = renderer.value.selectAtomInstances(atomIdsForElement(scene, symbol));
+  const selectedIdSet = new Set(selectedIds);
+  const sites = new Map(scene.sites.map((site) => [site.siteIndex, site]));
+  const selections = scene.atomInstances.flatMap((atom) => {
+    const site = sites.get(atom.siteIndex);
+    return selectedIdSet.has(atom.id) && site
+      ? [
+          {
+            kind: 'atom' as const,
+            id: atom.id,
+            atom,
+            site,
+            clientX: context.x,
+            clientY: context.y,
+          },
+        ]
+      : [];
+  });
+  store.setAtomSelections(selections, context.selection.atom?.id);
+  atomContextMenu.value = undefined;
+  modelingError.value = '';
+};
+
+const requestContextModeling = (
+  commandId: ContextModelingCommandId,
+  parameters: ContextModelingParameters,
+): void => {
+  const scene = store.scene.value;
+  if (!atomContextMenu.value || scene?.kind !== 'crystal' || !hasModelingBackend) return;
+  const siteIndices = [...store.selectedSiteIndices.value];
+  if (siteIndices.length === 0) return;
+  modelingPending.value = true;
+  modelingError.value = '';
+  const request: ContextModelingRequest = {
+    requestId: scene.requestId,
+    commandId,
+    siteIndices,
+    parameters,
+  };
+  matlabBridge.emit('viewer:modelingCommandRequested', request);
+};
+
 const handleAtomHover = (value?: AtomHoverInfo): void => {
   atomHover.value = value;
   if (activeMeasurementKind.value) updateMeasurementProgress(value);
@@ -379,6 +489,7 @@ onMounted(async () => {
       { ...store.options },
       {
         onSelection: handleRendererSelection,
+        onAtomContextMenu: handleAtomContextMenu,
         onAtomHover: handleAtomHover,
         onCameraSettled: store.setCamera,
         onStatistics: (value) => {
@@ -408,6 +519,9 @@ const stopSceneWatch = watch(
   () => store.scene.value,
   (scene) => {
     if (scene && renderer.value) {
+      atomContextMenu.value = undefined;
+      modelingPending.value = false;
+      modelingError.value = '';
       stopMeasurement();
       renderer.value.setScene(scene, true);
       resetMeasurementResult();
@@ -452,12 +566,24 @@ const removeExportResultListener = matlabBridge.on('structure:exportResult', (pa
   }
 });
 
+const removeModelingResultListener = matlabBridge.on('modeling:result', (payload) => {
+  if (!isContextModelingResult(payload)) return;
+  modelingPending.value = false;
+  if (payload.status === 'success') {
+    atomContextMenu.value = undefined;
+    modelingError.value = '';
+  } else {
+    modelingError.value = payload.message || 'Unable to update the structure.';
+  }
+});
+
 onBeforeUnmount(() => {
   stopSceneWatch();
   stopOptionsWatch();
   removeCommandListener();
   removeExportFormatsListener();
   removeExportResultListener();
+  removeModelingResultListener();
   window.removeEventListener('keydown', handleShortcut);
   renderer.value?.dispose();
 });
@@ -480,6 +606,21 @@ onBeforeUnmount(() => {
       "
     />
 
+    <AtomContextMenu
+      v-if="atomContextMenu"
+      :x="atomContextMenu.x"
+      :y="atomContextMenu.y"
+      :site="atomContextMenu.selection.site!"
+      :selection-count="store.selectedAtomIds.value.length"
+      :selected-site-count="store.selectedSiteIndices.value.length"
+      :backend-available="hasModelingBackend"
+      :pending="modelingPending"
+      :error="modelingError"
+      @close="closeAtomContextMenu"
+      @command="requestContextModeling"
+      @select-same-element="selectSameElement"
+    />
+
     <section class="structure-card">
       <div class="eyebrow">
         {{ store.scene.value?.kind === 'molecule' ? 'Molecular structure' : 'Crystal structure' }}
@@ -492,6 +633,8 @@ onBeforeUnmount(() => {
 
     <ViewerToolbar
       :settings-open="settingsOpen"
+      :information-open="informationOpen"
+      :information-available="informationAvailable"
       :crystal="store.scene.value?.kind === 'crystal'"
       :auto-rotating="autoRotating"
       :image-exporting="imageExporting"
@@ -502,7 +645,11 @@ onBeforeUnmount(() => {
       @reset="renderer?.resetView()"
       @toggle-auto-rotation="toggleAutoRotation"
       @axis="renderer?.setCameraAxis($event)"
-      @toggle-settings="settingsOpen = !settingsOpen"
+      @toggle-settings="
+        informationOpen = false;
+        settingsOpen = !settingsOpen;
+      "
+      @toggle-information="toggleInformationPanel"
       @export-image="exportImage"
       @export-scene="exportScene"
       @export-offline-html="exportOfflineHtml"
@@ -522,6 +669,12 @@ onBeforeUnmount(() => {
       @update:model-value="applyOptions"
       @rebuild="store.requestAnalysis"
       @close="settingsOpen = false"
+    />
+
+    <FractionalCoordinatesPanel
+      v-if="informationOpen && informationAvailable"
+      :scene="store.scene.value"
+      @close="informationOpen = false"
     />
 
     <ElementLegend :scene="store.scene.value" :color-mode="store.options.colorMode" />

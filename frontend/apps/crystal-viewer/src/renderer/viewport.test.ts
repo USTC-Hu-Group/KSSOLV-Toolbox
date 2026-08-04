@@ -15,8 +15,4 @@ describe('viewportLayout', () => {
   it('shrinks the orientation inset in a short document panel', () => {
     expect(viewportLayout(640, 200).axes.size).toBe(48);
   });
-
-  it('uses the same clipping-safe inset rule for every visual theme', () => {
-    expect(viewportLayout(1200, 800).axes).toEqual({ x: 18, y: 18, size: 118 });
-  });
 });

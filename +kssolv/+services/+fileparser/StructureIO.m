@@ -513,7 +513,11 @@ classdef StructureIO < handle
         function [symbols, atoms] = atomData(value)
             count = value.num_sites;
             symbols = strings(1, count);
-            atoms(1, count) = Atom();
+            if count == 0
+                atoms = [];
+            else
+                atoms(1, count) = Atom();
+            end
             warned = false;
             for index = 1:count
                 site = value.get_site(index);

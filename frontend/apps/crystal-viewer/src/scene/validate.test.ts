@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { createDebugMoleculeScene, createDebugScene } from './debugScene';
+import { createBlankDebugScene, createDebugMoleculeScene, createDebugScene } from './debugScene';
 import type { BondAlgorithm } from './types';
 import { scientificSceneFingerprint, SceneValidationError, validateScene } from './validate';
 
@@ -25,6 +25,19 @@ describe('CrystalSceneSpec validation', () => {
       scene.analysis.algorithm = algorithm;
       expect(validateScene(scene).analysis.algorithm).toBe(algorithm);
     }
+  });
+
+  it('accepts None only for a strictly empty crystal scene', () => {
+    const blank = createBlankDebugScene();
+    expect(validateScene(blank)).toBe(blank);
+
+    const populated = createDebugScene();
+    populated.analysis.algorithm = 'None';
+    expect(() => validateScene(populated)).toThrow(/unsupported algorithm/);
+
+    const malformed = createBlankDebugScene();
+    malformed.atomInstances.push(createDebugScene().atomInstances[0]);
+    expect(() => validateScene(malformed)).toThrow(/atomic geometry/);
   });
 
   it('rejects unsupported versions and dangling site references', () => {

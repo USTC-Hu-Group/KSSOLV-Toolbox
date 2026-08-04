@@ -17,6 +17,12 @@ The default visual theme follows pretty-lattice. The alternate Materials theme
 uses the same scene geometry with VESTA colors and Crystal Toolkit-style
 presentation.
 
+Production builds are self-contained single-file HTML documents. The offline
+HTML toolbar export embeds the current validated scene, display options, camera
+orientation, styles, and application runtime, so the downloaded viewer can be
+opened without MATLAB, a web server, or network access while retaining normal
+camera and display interactions.
+
 ## Commands
 
 ```bash

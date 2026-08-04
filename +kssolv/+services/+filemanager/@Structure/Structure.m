@@ -81,6 +81,44 @@ classdef Structure < kssolv.services.filemanager.AbstractItem
                 end
             end
         end
+
+        function structure = createBlankStructure(this, showDisplay)
+            %CREATEBLANKSTRUCTURE Add and display an empty editable crystal.
+            arguments
+                this
+                showDisplay (1, 1) logical = true
+            end
+            existingLabels = strings(numel(this.children), 1);
+            for childIndex = 1:numel(this.children)
+                existingLabels(childIndex) = ...
+                    string(this.children{childIndex}.label);
+            end
+
+            structureIndex = 1;
+            structureLabel = "Structure " + string(structureIndex);
+            while any(existingLabels == structureLabel)
+                structureIndex = structureIndex + 1;
+                structureLabel = "Structure " + string(structureIndex);
+            end
+
+            model = kssolv.analysis.matgenlab.core.Structure( ...
+                kssolv.analysis.matgenlab.core.Lattice.cubic(10), ...
+                cell(1, 0), zeros(0, 3), ...
+                properties = struct("name", structureLabel));
+            structure = ...
+                kssolv.services.filemanager.Structure(structureLabel);
+            structure.data = ...
+                kssolv.services.fileparser.ModeledStructureData( ...
+                model, structure.label);
+            this.addChildrenItem(structure);
+
+            if showDisplay
+                displayObj = ...
+                    kssolv.ui.components.figuredocument.MoleculeDisplay( ...
+                    model, "", structure.name);
+                displayObj.Display();
+            end
+        end
     end
 
     methods (Static)

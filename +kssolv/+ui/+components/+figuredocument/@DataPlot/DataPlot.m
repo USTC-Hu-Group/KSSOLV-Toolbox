@@ -60,11 +60,12 @@ classdef DataPlot
             end
         end
 
-        function Display(this, title)
+        function Display(this, title, resolveProjectTitle)
             %DISPLAY 在 Document Group 中展示图像
             arguments
                 this
                 title (1, :) char = 'Plot'
+                resolveProjectTitle (1,1) logical = true
             end
 
             appContainer = kssolv.ui.util.DataStorage.getData('AppContainer');
@@ -80,8 +81,13 @@ classdef DataPlot
             if this.tag ~= ""
                 figOptions.Tag = this.tag;
 
-                project = kssolv.ui.util.DataStorage.getData('Project');
-                figOptions.Title = project.findChildrenItem(this.tag).label;
+                if resolveProjectTitle
+                    project = kssolv.ui.util.DataStorage.getData('Project');
+                    item = project.findChildrenItem(this.tag);
+                    if ~isempty(item)
+                        figOptions.Title = item.label;
+                    end
+                end
             end
             document = matlab.ui.internal.FigureDocument(figOptions);
 
@@ -153,4 +159,3 @@ classdef DataPlot
         end
     end
 end
-

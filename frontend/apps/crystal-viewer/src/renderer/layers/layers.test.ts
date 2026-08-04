@@ -1,16 +1,37 @@
 import { Color, FrontSide, MeshPhongMaterial, MeshPhysicalMaterial } from 'three';
 import { describe, expect, it } from 'vitest';
 
-import { createDebugMoleculeScene, createDebugScene } from '../../scene/debugScene';
+import {
+  createBlankDebugScene,
+  createDebugMoleculeScene,
+  createDebugScene,
+} from '../../scene/debugScene';
 import { defaultViewerOptions } from '../../scene/types';
 import { themes } from '../../themes/themes';
 import { AtomLayer } from './AtomLayer';
 import { BondLayer } from './BondLayer';
 import { CellLayer } from './CellLayer';
 import { MagmomLayer } from './MagmomLayer';
+import { MeasurementLayer, measurementLineWidths } from './MeasurementLayer';
 import { PolyhedronLayer } from './PolyhedronLayer';
 
 describe('batched crystal layers', () => {
+  it('constructs empty atom, bond, and cell layers without errors', () => {
+    const scene = createBlankDebugScene();
+    const options = defaultViewerOptions();
+    const atoms = new AtomLayer(scene, options, themes.pretty);
+    const bonds = new BondLayer(scene, options, themes.pretty);
+    const cell = new CellLayer(scene, themes.pretty);
+
+    expect(atoms.mesh.instanceCount).toBe(0);
+    expect(bonds.mesh.instanceCount).toBe(0);
+    expect(cell.lines.geometry.getAttribute('position').count).toBe(24);
+
+    atoms.dispose();
+    bonds.dispose();
+    cell.dispose();
+  });
+
   it('batches atom occupancy segments and supports visibility groups', () => {
     const scene = createDebugScene();
     scene.sites[0].species = [
@@ -113,6 +134,37 @@ describe('batched crystal layers', () => {
     prettyPolyhedra.dispose();
     materialsPolyhedra.dispose();
     cell.dispose();
+  });
+
+  it('uses visible screen-space widths for measurement segments and angle arcs', () => {
+    const layer = new MeasurementLayer(themes.pretty);
+    layer.setAnnotations([
+      {
+        id: 'angle-width-test',
+        kind: 'angle',
+        label: 'Angle: 90°',
+        points: [
+          [1, 0, 0],
+          [0, 0, 0],
+          [0, 1, 0],
+        ],
+        segments: [
+          [0, 0, 0, 1, 0, 0],
+          [0, 0, 0, 0, 1, 0],
+        ],
+        planePoints: [],
+      },
+    ]);
+
+    const widths: number[] = [];
+    layer.group.traverse((object) => {
+      if (!('material' in object)) return;
+      const material = object.material as { linewidth?: number };
+      if (typeof material.linewidth === 'number') widths.push(material.linewidth);
+    });
+    expect(widths).toContain(measurementLineWidths.segment);
+    expect(widths).toContain(measurementLineWidths.angleArc);
+    layer.dispose();
   });
 
   it('renders molecular double bonds and hides hydrogen geometry together', () => {

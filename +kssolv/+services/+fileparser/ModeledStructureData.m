@@ -42,8 +42,12 @@ classdef ModeledStructureData < handle
             else
                 this.fileType = "xyz";
             end
-            this.rawFileContent = ...
-                this.MatgenlabObject.to("", this.fileType);
+            if this.MatgenlabObject.num_sites == 0
+                this.rawFileContent = "";
+            else
+                this.rawFileContent = ...
+                    this.MatgenlabObject.to("", this.fileType);
+            end
         end
 
         function value = get.KSSOLVObject(this)

@@ -62,6 +62,9 @@ const requestAnalysis = (): void => {
 };
 
 const isMolecule = computed(() => props.scene?.kind === 'molecule');
+const isBlankStructure = computed(
+  () => props.scene?.kind === 'crystal' && props.scene.structure.siteCount === 0,
+);
 </script>
 
 <template>
@@ -235,10 +238,28 @@ const isMolecule = computed(() => props.scene?.kind === 'molecule');
     </section>
 
     <section>
+      <h3>Measurements</h3>
+      <label class="check"
+        ><input
+          type="checkbox"
+          :checked="modelValue.continuousMeasurement"
+          @change="update('continuousMeasurement', ($event.target as HTMLInputElement).checked)"
+        />Continuous measurement</label
+      >
+    </section>
+
+    <section>
       <h3>Scientific scene</h3>
+      <p v-if="isBlankStructure" class="blank-settings-note">
+        Bond analysis becomes available after the first atom is added.
+      </p>
       <label>
         Bonding strategy
-        <select v-model="algorithm" :disabled="rebuilding || !scene" @change="requestAnalysis">
+        <select
+          v-model="algorithm"
+          :disabled="rebuilding || !scene || isBlankStructure"
+          @change="requestAnalysis"
+        >
           <template v-if="isMolecule">
             <option value="Auto">Source topology · preferred</option>
             <option value="Source">Source topology · explicit</option>
@@ -257,7 +278,11 @@ const isMolecule = computed(() => props.scene?.kind === 'molecule');
       </label>
       <label v-if="!isMolecule">
         Unit-cell representation
-        <select v-model="cell" :disabled="rebuilding || !scene" @change="requestAnalysis">
+        <select
+          v-model="cell"
+          :disabled="rebuilding || !scene || isBlankStructure"
+          @change="requestAnalysis"
+        >
           <option value="input">Input cell</option>
           <option value="primitive">Primitive</option>
           <option value="conventional">Conventional</option>
@@ -274,7 +299,7 @@ const isMolecule = computed(() => props.scene?.kind === 'molecule');
             type="number"
             min="1"
             max="8"
-            :disabled="rebuilding || !scene"
+            :disabled="rebuilding || !scene || isBlankStructure"
             @change="requestAnalysis"
           />
         </label>

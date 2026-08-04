@@ -27,6 +27,7 @@
         <entry key="ProjectSectionTitle">项目</entry>
         <entry key="ProjectStructureButtonLabel">结构</entry>
         <entry key="ProjectStructureButtonTooltip">导入/导出结构</entry>
+        <entry key="NewStructureListItemLabel">新建空白结构</entry>
         <entry key="ImportStructureFromFileListItemLabel">从文件导入结构...</entry>
         <entry key="ImportStructureFromLinkListItemLabel">从链接导入结构...</entry>
         <entry key="ImportStructureFromLibraryListItemLabel">从材料库导入结构...</entry>

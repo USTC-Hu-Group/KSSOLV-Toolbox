@@ -339,10 +339,18 @@ export const validateScene = (value: unknown): AtomicSceneSpec => {
           'MinimumOKeeffeNN',
           'EconNN',
           'BrunnerNNReciprocal',
+          ...(declaredSiteCount === 0 ? ['None'] : []),
         ]
       : ['Source', 'OpenBabelNN', 'None'];
   if (!algorithms.includes(algorithm)) {
     throw new SceneValidationError('uses an unsupported algorithm', 'analysis.algorithm');
+  }
+  if (
+    kind === 'crystal' &&
+    declaredSiteCount === 0 &&
+    (atoms.length > 0 || relations.length > 0 || bonds.length > 0 || polyhedra.length > 0)
+  ) {
+    throw new SceneValidationError('cannot contain atomic geometry', 'structure.siteCount');
   }
   objectAt(analysis.parameters, 'analysis.parameters');
   if (analysis.source !== 'matgenlab') {

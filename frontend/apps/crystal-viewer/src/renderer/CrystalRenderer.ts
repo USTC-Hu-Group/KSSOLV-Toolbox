@@ -1,10 +1,11 @@
 import {
   AmbientLight,
+  BackSide,
   Box3,
   ConeGeometry,
   CylinderGeometry,
   DirectionalLight,
-  FrontSide,
+  DoubleSide,
   Group,
   Mesh,
   MeshBasicMaterial,
@@ -13,7 +14,10 @@ import {
   PMREMGenerator,
   Quaternion,
   Raycaster,
+  RingGeometry,
   Scene,
+  Shape,
+  ShapeGeometry,
   Sphere,
   SphereGeometry,
   Vector2,
@@ -28,6 +32,7 @@ import {
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls.js';
 
+import type { MeasurementDiagram } from '../measurement';
 import type {
   CameraSnapshot,
   AtomHoverInfo,
@@ -45,18 +50,31 @@ import {
   latticeAxisDirections,
   type CrystalCameraAxis,
 } from './cameraAxis';
-import { projectedFitHeight, vector, type FitSphere } from './geometry';
+import { cylinderMatrix, projectedFitHeight, vector, type FitSphere } from './geometry';
 import {
+  autoRotationAngle,
   configureViewerInteraction,
   exceedsDragThreshold,
+  orthographicPanOffset,
   viewerInteractionProfile,
 } from './interaction';
 import { AtomLayer } from './layers/AtomLayer';
 import { BondLayer } from './layers/BondLayer';
 import { CellLayer } from './layers/CellLayer';
 import { MagmomLayer } from './layers/MagmomLayer';
+import { MeasurementLayer } from './layers/MeasurementLayer';
 import { PolyhedronLayer } from './layers/PolyhedronLayer';
-import { exportPixelRatio, interactivePixelRatio, renderQualityProfile } from './quality';
+import type { MeasurementAnnotation } from './measurementAnnotations';
+import {
+  buildVectorSvg,
+  flipRgbaRows,
+  pngToPdfBlob,
+  rgbaToTiffBlob,
+  svgBlob,
+  svgToPdfBlob,
+  type ImageExportFormat,
+} from './imageExport';
+import { exportPixelRatio, interactivePixelRatio } from './quality';
 import { viewportLayout } from './viewport';
 
 export interface CrystalRendererCallbacks {
@@ -114,6 +132,53 @@ const updateOrientationAxisDirections = (
     axes.children[index]?.quaternion.setFromUnitVectors(localUp, direction);
   });
 };
+
+const createMeasurementStarGeometry = (): ShapeGeometry => {
+  const shape = new Shape();
+  for (let index = 0; index < 10; index += 1) {
+    const angle = -Math.PI / 2 + (index * Math.PI) / 5;
+    const radius = index % 2 === 0 ? 0.14 : 0.058;
+    const x = Math.cos(angle) * radius;
+    const y = Math.sin(angle) * radius;
+    if (index === 0) shape.moveTo(x, y);
+    else shape.lineTo(x, y);
+  }
+  shape.closePath();
+  return new ShapeGeometry(shape);
+};
+
+const createMeasurementCometTailGeometry = (
+  halfWidth: number,
+  arcLength: number,
+): ShapeGeometry => {
+  const shape = new Shape();
+  const orbitRadius = 1.28;
+  const segments = 42;
+  const point = (index: number, edge: -1 | 1): [number, number] => {
+    const progress = index / segments;
+    const angle = progress * arcLength;
+    const taper = Math.pow(1 - progress, 0.72);
+    const width = halfWidth * taper + 0.004;
+    const radius = orbitRadius + edge * width;
+    return [Math.cos(angle) * radius, Math.sin(angle) * radius];
+  };
+
+  for (let index = 0; index <= segments; index += 1) {
+    const [x, y] = point(index, 1);
+    if (index === 0) shape.moveTo(x, y);
+    else shape.lineTo(x, y);
+  }
+  for (let index = segments; index >= 0; index -= 1) {
+    const [x, y] = point(index, -1);
+    shape.lineTo(x, y);
+  }
+  shape.closePath();
+  return new ShapeGeometry(shape);
+};
+
+const selectionHaloColor = 0x1557b0;
+const measurementCometColor = 0x36b8ff;
+const measurementCometCoreColor = 0xd9f7ff;
 
 const createOrientationAxes = (theme: ThemeId): Group => {
   const axes = new Group();
@@ -173,14 +238,75 @@ export class CrystalRenderer {
   private readonly prettyAxes = createOrientationAxes('pretty');
   private readonly materialsAxes = createOrientationAxes('materials');
   private materialsEnvironment?: Texture;
+  private readonly selectionHaloGeometry = new RingGeometry(0.99, 1.2, 64);
+  private readonly selectionHaloMaterial = new MeshBasicMaterial({
+    color: selectionHaloColor,
+    transparent: true,
+    opacity: 0.6,
+    depthWrite: false,
+    depthTest: false,
+    side: DoubleSide,
+  });
   private readonly selectionMarker = new Mesh(
-    new SphereGeometry(1, 24, 16),
-    new MeshBasicMaterial({
-      color: themes.pretty.selection,
-      transparent: true,
-      opacity: 0.25,
-      depthWrite: false,
-    }),
+    this.selectionHaloGeometry,
+    this.selectionHaloMaterial,
+  );
+  private readonly bondSelectionGeometry = new CylinderGeometry(1, 1, 1, 28, 1, true);
+  private readonly bondSelectionMaterial = new MeshBasicMaterial({
+    color: selectionHaloColor,
+    transparent: true,
+    opacity: 0.58,
+    depthWrite: false,
+    depthTest: true,
+    side: BackSide,
+  });
+  private readonly bondSelectionMarker = new Mesh(
+    this.bondSelectionGeometry,
+    this.bondSelectionMaterial,
+  );
+  private readonly measurementMarkerStarGeometry = createMeasurementStarGeometry();
+  private readonly measurementCometTailGeometry = createMeasurementCometTailGeometry(0.13, 2.55);
+  private readonly measurementCometCoreTailGeometry = createMeasurementCometTailGeometry(
+    0.048,
+    2.05,
+  );
+  private readonly measurementCometTailMaterial = new MeshBasicMaterial({
+    color: measurementCometColor,
+    transparent: true,
+    opacity: 0.42,
+    depthWrite: false,
+    depthTest: false,
+    side: DoubleSide,
+  });
+  private readonly measurementCometCoreTailMaterial = new MeshBasicMaterial({
+    color: measurementCometCoreColor,
+    transparent: true,
+    opacity: 0.88,
+    depthWrite: false,
+    depthTest: false,
+    side: DoubleSide,
+  });
+  private readonly measurementMarkerStarMaterial = new MeshBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 1,
+    depthWrite: false,
+    depthTest: false,
+    side: DoubleSide,
+  });
+  private readonly measurementMarkerGlowMaterial = new MeshBasicMaterial({
+    color: selectionHaloColor,
+    transparent: true,
+    opacity: 0.5,
+    depthWrite: false,
+    depthTest: false,
+    side: DoubleSide,
+  });
+  private readonly measurementMarkers = new Group();
+  private readonly measurementMarkersByAtom = new Map<string, Group>();
+  private readonly measurementHoverMarker = new Mesh(
+    this.selectionHaloGeometry,
+    this.selectionHaloMaterial,
   );
   private readonly resizeObserver?: ResizeObserver;
   private sceneSpec?: AtomicSceneSpec;
@@ -190,6 +316,7 @@ export class CrystalRenderer {
   private cellLayer?: CellLayer;
   private polyhedronLayer?: PolyhedronLayer;
   private magmomLayer?: MagmomLayer;
+  private readonly measurementLayer: MeasurementLayer;
   private requestedFrame?: number;
   private autoRotating = false;
   private autoRotationTimestamp?: number;
@@ -197,12 +324,16 @@ export class CrystalRenderer {
   private hoverFrame?: number;
   private hoverPoint?: { clientX: number; clientY: number };
   private hoveredAtomId?: string;
+  private measurementMode = false;
+  private measurementMarkerAnimationTimestamp?: number;
   private viewHeight = 10;
   private disposed = false;
   private pointerStart?: { x: number; y: number };
   private pointerPrevious?: { x: number; y: number };
   private pointerTravel = 0;
   private mouseRotating = false;
+  private mousePanning = false;
+  private panningPointerId?: number;
   private suppressNextClick = false;
   private selected?: { kind: 'atom' | 'bond'; id: string; radius?: number };
   private readonly frameDurations: number[] = [];
@@ -214,6 +345,7 @@ export class CrystalRenderer {
   ) {
     this.options = { ...options };
     this.callbacks = callbacks;
+    this.measurementLayer = new MeasurementLayer(themes[options.theme]);
     this.renderer = new WebGLRenderer({
       canvas,
       antialias: true,
@@ -226,6 +358,7 @@ export class CrystalRenderer {
     this.renderer.autoClear = false;
     this.renderer.info.autoReset = false;
     this.scene.add(this.crystal);
+    this.scene.add(this.measurementLayer.group);
     this.scene.add(this.ambientLight);
     this.keyLight.position.set(7, 10, 12);
     this.scene.add(this.keyLight);
@@ -233,7 +366,16 @@ export class CrystalRenderer {
     this.scene.add(this.fillLight);
     this.selectionMarker.visible = false;
     this.selectionMarker.renderOrder = 20;
-    this.scene.add(this.selectionMarker);
+    this.bondSelectionMarker.visible = false;
+    this.bondSelectionMarker.matrixAutoUpdate = false;
+    this.bondSelectionMarker.renderOrder = 21;
+    this.scene.add(this.selectionMarker, this.bondSelectionMarker);
+    this.measurementMarkers.name = 'measurement-selection-markers';
+    this.measurementMarkers.renderOrder = 30;
+    this.measurementHoverMarker.name = 'measurement-hover-marker';
+    this.measurementHoverMarker.visible = false;
+    this.measurementHoverMarker.renderOrder = 31;
+    this.scene.add(this.measurementMarkers, this.measurementHoverMarker);
 
     this.orientationScene.add(this.prettyAxes, this.materialsAxes);
     this.orientationCamera.position.set(3, 3, 3);
@@ -274,6 +416,7 @@ export class CrystalRenderer {
     const snapshot = preserveCamera && this.sceneSpec ? this.cameraSnapshot() : undefined;
     this.clearHover();
     this.clearSelection();
+    this.clearMeasurementSelection();
     this.sceneSpec = scene;
     const orientationDirections = latticeAxisDirections(scene);
     updateOrientationAxisDirections(this.prettyAxes, orientationDirections);
@@ -335,6 +478,30 @@ export class CrystalRenderer {
     this.polyhedronLayer?.updateVisibility(this.options);
     this.magmomLayer?.setVisible(this.options.showMagmoms);
     this.reconcileSelection();
+    this.requestRender();
+  }
+
+  setMeasurementAnnotations(annotations: MeasurementAnnotation[]): void {
+    this.measurementLayer.setAnnotations(annotations);
+    this.requestRender();
+  }
+
+  setMeasurementMode(active: boolean): void {
+    if (this.measurementMode === active) return;
+    this.measurementMode = active;
+    this.controls.noRotate = active;
+    if (active) this.canvas.dataset.measurement = 'true';
+    else delete this.canvas.dataset.measurement;
+    this.clearMeasurementSelection();
+    this.clearHover();
+    if (active) this.clearSelection();
+    this.requestRender();
+  }
+
+  clearMeasurementSelection(): void {
+    this.measurementMarkers.clear();
+    this.measurementMarkersByAtom.clear();
+    this.measurementMarkerAnimationTimestamp = undefined;
     this.requestRender();
   }
 
@@ -429,31 +596,71 @@ export class CrystalRenderer {
     this.emitCamera();
   }
 
-  screenshot(): string {
-    const quality = renderQualityProfile(this.options.renderMode, this.options.renderQuality);
-    if (quality.exportScale === 1) {
-      this.render();
-      return this.canvas.toDataURL('image/png');
-    }
+  setCameraSnapshot(snapshot: CameraSnapshot): void {
+    this.restoreCamera(snapshot);
+    this.requestRender();
+    this.emitCamera();
+  }
+
+  async exportImage(format: ImageExportFormat): Promise<Blob> {
+    if (!this.sceneSpec) throw new Error('No atomic structure is available to export.');
     const size = this.renderer.getSize(new Vector2());
+    if (format === 'svg' || format === 'pdf-vector') {
+      const svg = buildVectorSvg({
+        scene: this.sceneSpec,
+        options: this.options,
+        theme: themes[this.options.theme],
+        camera: this.camera,
+        width: size.x,
+        height: size.y,
+        axisDirections: latticeAxisDirections(this.sceneSpec),
+        selected: this.selected,
+      });
+      return format === 'svg' ? svgBlob(svg) : svgToPdfBlob(svg, size.x, size.y);
+    }
+
     const previousPixelRatio = this.renderer.getPixelRatio();
-    const outputPixelRatio = exportPixelRatio(
-      window.devicePixelRatio || 1,
-      this.options.renderMode,
-      this.options.renderQuality,
+    const outputPixelRatio = Math.max(
+      2,
+      exportPixelRatio(
+        window.devicePixelRatio || 1,
+        this.options.renderMode,
+        this.options.renderQuality,
+      ),
     );
     this.renderer.setPixelRatio(outputPixelRatio);
     this.renderer.setSize(size.x, size.y, false);
     this.updateFrustum();
+    let rasterBlob: Blob;
     try {
       this.render();
-      return this.canvas.toDataURL('image/png');
+      if (format === 'tiff') {
+        const width = this.canvas.width;
+        const height = this.canvas.height;
+        const rgba = new Uint8Array(width * height * 4);
+        const context = this.renderer.getContext();
+        context.readPixels(0, 0, width, height, context.RGBA, context.UNSIGNED_BYTE, rgba);
+        rasterBlob = rgbaToTiffBlob(flipRgbaRows(rgba, width, height), width, height);
+      } else {
+        const mimeType = format === 'jpeg' ? 'image/jpeg' : 'image/png';
+        rasterBlob = await new Promise<Blob>((resolve, reject) => {
+          this.canvas.toBlob(
+            (blob) => {
+              if (blob) resolve(blob);
+              else reject(new Error(`Unable to encode ${format.toUpperCase()} image.`));
+            },
+            mimeType,
+            format === 'jpeg' ? 0.96 : undefined,
+          );
+        });
+      }
     } finally {
       this.renderer.setPixelRatio(previousPixelRatio);
       this.renderer.setSize(size.x, size.y, false);
       this.updateFrustum();
       this.requestRender();
     }
+    return format === 'pdf-raster' ? pngToPdfBlob(rasterBlob, size.x, size.y) : rasterBlob;
   }
 
   cameraSnapshot(): CameraSnapshot {
@@ -462,6 +669,19 @@ export class CrystalRenderer {
       target: tuple(this.controls.target),
       up: tuple(this.camera.up),
       zoom: this.camera.zoom,
+    };
+  }
+
+  projectMeasurementGeometry(annotation: MeasurementAnnotation): MeasurementDiagram {
+    this.camera.updateMatrixWorld(true);
+    this.camera.updateProjectionMatrix();
+    const projectPoint = (point: Vector3Tuple): [number, number] => {
+      const projected = vector(point).project(this.camera);
+      return [projected.x, -projected.y];
+    };
+    return {
+      points: annotation.points.map(projectPoint),
+      projection: annotation.projection ? projectPoint(annotation.projection) : undefined,
     };
   }
 
@@ -486,8 +706,18 @@ export class CrystalRenderer {
     this.controls.removeEventListener('end', this.handleControlsEnd);
     this.controls.dispose();
     this.clearLayers();
-    this.selectionMarker.geometry.dispose();
-    (this.selectionMarker.material as MeshBasicMaterial).dispose();
+    this.measurementLayer.dispose();
+    this.selectionHaloGeometry.dispose();
+    this.selectionHaloMaterial.dispose();
+    this.bondSelectionGeometry.dispose();
+    this.bondSelectionMaterial.dispose();
+    this.measurementMarkerStarGeometry.dispose();
+    this.measurementCometTailGeometry.dispose();
+    this.measurementCometCoreTailGeometry.dispose();
+    this.measurementCometTailMaterial.dispose();
+    this.measurementCometCoreTailMaterial.dispose();
+    this.measurementMarkerStarMaterial.dispose();
+    this.measurementMarkerGlowMaterial.dispose();
     const orientationGeometries = new Set<BufferGeometry>();
     const orientationMaterials = new Set<Material>();
     this.orientationScene.traverse((object) => {
@@ -525,21 +755,31 @@ export class CrystalRenderer {
     this.prettyAxes.visible = themeId === 'pretty';
     this.materialsAxes.visible = themeId === 'materials';
     this.renderer.setClearColor(this.options.background ?? theme.background, 1);
-    const selectionMaterial = this.selectionMarker.material as MeshBasicMaterial;
-    selectionMaterial.color.set(theme.selection);
-    selectionMaterial.transparent = true;
-    selectionMaterial.opacity = themeId === 'pretty' ? 0.25 : 0.16;
-    selectionMaterial.depthWrite = false;
-    selectionMaterial.side = FrontSide;
-    selectionMaterial.needsUpdate = true;
+    this.selectionHaloMaterial.color.set(selectionHaloColor);
+    this.selectionHaloMaterial.opacity = themeId === 'pretty' ? 0.62 : 0.58;
+    this.selectionHaloMaterial.needsUpdate = true;
+    this.bondSelectionMaterial.color.set(selectionHaloColor);
+    this.bondSelectionMaterial.opacity = themeId === 'pretty' ? 0.6 : 0.56;
+    this.bondSelectionMaterial.needsUpdate = true;
+    this.measurementCometTailMaterial.color.set(measurementCometColor);
+    this.measurementCometTailMaterial.opacity = themeId === 'pretty' ? 0.46 : 0.42;
+    this.measurementCometTailMaterial.needsUpdate = true;
+    this.measurementCometCoreTailMaterial.color.set(measurementCometCoreColor);
+    this.measurementCometCoreTailMaterial.opacity = themeId === 'pretty' ? 0.92 : 0.86;
+    this.measurementCometCoreTailMaterial.needsUpdate = true;
+    this.measurementMarkerStarMaterial.color.set(0xffffff);
+    this.measurementMarkerStarMaterial.opacity = 1;
+    this.measurementMarkerStarMaterial.needsUpdate = true;
+    this.measurementMarkerGlowMaterial.color.set(selectionHaloColor);
+    this.measurementMarkerGlowMaterial.opacity = themeId === 'pretty' ? 0.54 : 0.48;
+    this.measurementMarkerGlowMaterial.needsUpdate = true;
     if (this.selected?.kind === 'atom' && this.selected.radius) {
-      this.selectionMarker.scale.setScalar(
-        this.selected.radius * (themeId === 'materials' ? 1.14 : 1.16),
-      );
+      this.selectionMarker.scale.setScalar(this.selected.radius);
     }
     this.atomLayer?.updateTheme(theme);
     this.bondLayer?.updateTheme(theme);
     this.cellLayer?.updateTheme(theme);
+    this.measurementLayer.updateTheme(theme);
     this.requestRender();
   }
 
@@ -559,7 +799,20 @@ export class CrystalRenderer {
     this.pointerPrevious = { x: event.clientX, y: event.clientY };
     this.pointerTravel = 0;
     this.suppressNextClick = false;
-    this.canvas.dataset.interaction = event.button === 2 ? 'pan' : 'rotate';
+    this.canvas.dataset.interaction =
+      this.measurementMode && event.button === 0
+        ? 'measure'
+        : event.button === 2
+          ? 'pan'
+          : 'rotate';
+    if (this.measurementMode && event.button === 0) return;
+    if (event.pointerType === 'mouse' && event.button === 2) {
+      this.mousePanning = true;
+      this.panningPointerId = event.pointerId;
+      this.controls.noPan = true;
+      this.canvas.setPointerCapture?.(event.pointerId);
+      return;
+    }
     if (event.pointerType === 'mouse' && event.button === 0) {
       this.mouseRotating = true;
       // TrackballControls provides touch rotation and mouse pan/zoom. Mouse
@@ -582,6 +835,23 @@ export class CrystalRenderer {
   private readonly handlePointerMove = (event: PointerEvent): void => {
     if (event.buttons !== 0) {
       this.clearHover();
+      if (this.mousePanning && (event.buttons & 2) !== 0) {
+        const previous = this.pointerPrevious ?? {
+          x: event.clientX,
+          y: event.clientY,
+        };
+        const deltaX = event.clientX - previous.x;
+        const deltaY = event.clientY - previous.y;
+        this.pointerPrevious = { x: event.clientX, y: event.clientY };
+        if (deltaX !== 0 || deltaY !== 0) {
+          this.pointerTravel += Math.hypot(deltaX, deltaY);
+          this.panCameraByPointerDelta(deltaX, deltaY);
+          if (this.pointerTravel >= viewerInteractionProfile.dragThresholdPixels) {
+            this.suppressNextClick = true;
+          }
+        }
+        return;
+      }
       if (this.mouseRotating && (event.buttons & 1) !== 0) {
         const previous = this.pointerPrevious ?? {
           x: event.clientX,
@@ -618,7 +888,7 @@ export class CrystalRenderer {
       }
       return;
     }
-    if (this.options.theme !== 'materials') return;
+    if (!this.measurementMode && this.options.theme !== 'materials') return;
     this.hoverPoint = { clientX: event.clientX, clientY: event.clientY };
     if (this.hoverFrame !== undefined) return;
     this.hoverFrame = requestAnimationFrame(() => {
@@ -632,7 +902,7 @@ export class CrystalRenderer {
     // Entering Pointer Lock fires pointerleave even though the left button is
     // still held. Keep the active rotation alive; pointerup performs cleanup
     // and releases the lock.
-    if (this.mouseRotating) {
+    if (this.mouseRotating || this.mousePanning) {
       this.clearHover();
       return;
     }
@@ -644,6 +914,17 @@ export class CrystalRenderer {
     this.pointerStart = undefined;
     this.pointerPrevious = undefined;
     this.pointerTravel = 0;
+    if (this.mousePanning) {
+      this.mousePanning = false;
+      this.controls.noPan = false;
+      if (
+        this.panningPointerId !== undefined &&
+        this.canvas.hasPointerCapture?.(this.panningPointerId)
+      ) {
+        this.canvas.releasePointerCapture?.(this.panningPointerId);
+      }
+      this.panningPointerId = undefined;
+    }
     if (this.mouseRotating) {
       this.mouseRotating = false;
       this.controls.noRotate = false;
@@ -651,6 +932,20 @@ export class CrystalRenderer {
     }
     delete this.canvas.dataset.interaction;
   };
+
+  private panCameraByPointerDelta(deltaX: number, deltaY: number): void {
+    const offset = orthographicPanOffset(
+      this.camera,
+      this.canvas.clientWidth,
+      this.canvas.clientHeight,
+      deltaX,
+      deltaY,
+    );
+    this.camera.position.add(offset);
+    this.controls.target.add(offset);
+    this.camera.lookAt(this.controls.target);
+    this.handleControlsChange();
+  }
 
   private rotateCameraByPointerDelta(deltaX: number, deltaY: number): void {
     const width = Math.max(this.canvas.clientWidth, 1);
@@ -684,9 +979,13 @@ export class CrystalRenderer {
   }
 
   private clearSelection(notify = true): void {
-    const hadSelection = this.selectionMarker.visible || this.selected !== undefined;
+    const hadSelection =
+      this.selectionMarker.visible ||
+      this.bondSelectionMarker.visible ||
+      this.selected !== undefined;
     this.selected = undefined;
     this.selectionMarker.visible = false;
+    this.bondSelectionMarker.visible = false;
     if (notify && hadSelection) this.callbacks.onSelection?.();
   }
 
@@ -694,13 +993,19 @@ export class CrystalRenderer {
     this.hoverPoint = undefined;
     if (this.hoverFrame !== undefined) cancelAnimationFrame(this.hoverFrame);
     this.hoverFrame = undefined;
-    if (this.hoveredAtomId === undefined) return;
+    const hadHover = this.hoveredAtomId !== undefined || this.measurementHoverMarker.visible;
+    this.measurementHoverMarker.visible = false;
+    if (this.hoveredAtomId === undefined) {
+      if (hadHover) this.requestRender();
+      return;
+    }
     this.hoveredAtomId = undefined;
     this.callbacks.onAtomHover?.();
+    this.requestRender();
   }
 
   private updateHover(clientX: number, clientY: number): void {
-    if (!this.atomLayer || this.options.theme !== 'materials') return;
+    if (!this.atomLayer || (!this.measurementMode && this.options.theme !== 'materials')) return;
     const bounds = this.canvas.getBoundingClientRect();
     this.pointer.set(
       ((clientX - bounds.left) / bounds.width) * 2 - 1,
@@ -714,6 +1019,13 @@ export class CrystalRenderer {
     if (!hovered) {
       this.clearHover();
       return;
+    }
+    if (this.measurementMode) {
+      this.measurementHoverMarker.position.copy(vector(hovered.atom.position));
+      this.measurementHoverMarker.scale.setScalar(hovered.radius);
+      this.measurementHoverMarker.quaternion.copy(this.camera.quaternion);
+      this.measurementHoverMarker.visible = true;
+      this.requestRender();
     }
     this.hoveredAtomId = hovered.atom.id;
     this.callbacks.onAtomHover?.({
@@ -734,6 +1046,53 @@ export class CrystalRenderer {
     this.clearSelection();
   }
 
+  private toggleMeasurementMarker(selected: {
+    atom: { id: string; position: Vector3Tuple };
+    radius: number;
+  }): void {
+    const existing = this.measurementMarkersByAtom.get(selected.atom.id);
+    if (existing) {
+      this.measurementMarkers.remove(existing);
+      this.measurementMarkersByAtom.delete(selected.atom.id);
+      return;
+    }
+    const marker = new Group();
+    const halo = new Mesh(this.selectionHaloGeometry, this.selectionHaloMaterial);
+    halo.name = 'measurement-selection-halo';
+    halo.renderOrder = 31;
+    const starOrbit = new Group();
+    starOrbit.name = 'measurement-star-orbit';
+    const tail = new Mesh(this.measurementCometTailGeometry, this.measurementCometTailMaterial);
+    tail.name = 'measurement-comet-tail';
+    tail.renderOrder = 32;
+    const coreTail = new Mesh(
+      this.measurementCometCoreTailGeometry,
+      this.measurementCometCoreTailMaterial,
+    );
+    coreTail.name = 'measurement-comet-core-tail';
+    coreTail.renderOrder = 33;
+    const cometHead = new Group();
+    cometHead.name = 'measurement-comet-head';
+    cometHead.position.set(1.28, 0, 0);
+    const glow = new Mesh(this.measurementMarkerStarGeometry, this.measurementMarkerGlowMaterial);
+    glow.name = 'measurement-comet-glow';
+    glow.scale.setScalar(2.55);
+    glow.renderOrder = 34;
+    const star = new Mesh(this.measurementMarkerStarGeometry, this.measurementMarkerStarMaterial);
+    star.name = 'measurement-comet-star';
+    star.scale.setScalar(1.52);
+    star.renderOrder = 35;
+    cometHead.add(glow, star);
+    starOrbit.add(tail, coreTail, cometHead);
+    marker.add(halo, starOrbit);
+    marker.position.copy(vector(selected.atom.position));
+    marker.scale.setScalar(selected.radius);
+    marker.quaternion.copy(this.camera.quaternion);
+    this.measurementMarkers.add(marker);
+    this.measurementMarkersByAtom.set(selected.atom.id, marker);
+    this.requestRender();
+  }
+
   private readonly handleClick = (event: MouseEvent): void => {
     if (this.suppressNextClick) {
       this.suppressNextClick = false;
@@ -746,13 +1105,34 @@ export class CrystalRenderer {
       -((event.clientY - bounds.top) / bounds.height) * 2 + 1,
     );
     this.raycaster.setFromCamera(this.pointer, this.camera);
-    const hits = this.raycaster.intersectObjects(
-      [this.atomLayer.mesh, this.bondLayer.mesh],
-      false,
-    ) as BatchIntersection[];
+    const hits = this.measurementMode
+      ? (this.raycaster.intersectObject(this.atomLayer.mesh, false) as BatchIntersection[])
+      : (this.raycaster.intersectObjects(
+          [this.atomLayer.mesh, this.bondLayer.mesh],
+          false,
+        ) as BatchIntersection[]);
     const hit = hits[0];
     if (!hit || hit.batchId === undefined) {
+      if (this.measurementMode) return;
       this.clearSelection();
+      this.requestRender();
+      return;
+    }
+    if (this.measurementMode) {
+      const selected = this.atomLayer.get(hit.batchId);
+      if (!selected) return;
+      this.toggleMeasurementMarker(selected);
+      this.callbacks.onSelection?.(
+        {
+          kind: 'atom',
+          id: selected.atom.id,
+          atom: selected.atom,
+          site: selected.site,
+          clientX: event.clientX,
+          clientY: event.clientY,
+        },
+        { additive: true },
+      );
       this.requestRender();
       return;
     }
@@ -760,9 +1140,8 @@ export class CrystalRenderer {
       const selected = this.atomLayer.get(hit.batchId);
       if (!selected) return;
       this.selectionMarker.position.copy(vector(selected.atom.position));
-      this.selectionMarker.scale.setScalar(
-        selected.radius * (this.options.theme === 'materials' ? 1.14 : 1.16),
-      );
+      this.selectionMarker.scale.setScalar(selected.radius);
+      this.selectionMarker.quaternion.copy(this.camera.quaternion);
       this.selectionMarker.visible = true;
       this.selected = { kind: 'atom', id: selected.atom.id, radius: selected.radius };
       this.callbacks.onSelection?.(
@@ -782,6 +1161,11 @@ export class CrystalRenderer {
       const bond = this.bondLayer.get(hit.batchId);
       if (!bond) return;
       this.clearSelection(false);
+      this.bondSelectionMarker.matrix.copy(
+        cylinderMatrix(bond.start, bond.end, this.options.bondRadius * 1.52),
+      );
+      this.bondSelectionMarker.matrixWorldNeedsUpdate = true;
+      this.bondSelectionMarker.visible = true;
       this.selected = { kind: 'bond', id: bond.id };
       this.callbacks.onSelection?.(
         {
@@ -833,8 +1217,41 @@ export class CrystalRenderer {
     this.requestedFrame = requestAnimationFrame((timestamp) => {
       this.requestedFrame = undefined;
       this.updateAutoRotation(timestamp);
+      this.updateMeasurementMarkerAnimation(timestamp);
       this.render();
-      if (this.autoRotating) this.requestRender();
+      if (this.autoRotating || (this.measurementMode && this.measurementMarkers.children.length)) {
+        this.requestRender();
+      }
+    });
+  }
+
+  private updateMeasurementMarkerAnimation(timestamp: number): void {
+    if (!this.measurementMode || this.measurementMarkers.children.length === 0) {
+      this.measurementMarkerAnimationTimestamp = undefined;
+      return;
+    }
+    if (this.measurementMarkerAnimationTimestamp === undefined) {
+      this.measurementMarkerAnimationTimestamp = timestamp;
+      return;
+    }
+    const elapsed = Math.min(
+      Math.max(timestamp - this.measurementMarkerAnimationTimestamp, 0) / 1000,
+      0.1,
+    );
+    this.measurementMarkerAnimationTimestamp = timestamp;
+    this.measurementMarkers.children.forEach((marker, index) => {
+      marker.quaternion.copy(this.camera.quaternion);
+      const starOrbit = marker.getObjectByName('measurement-star-orbit');
+      if (!starOrbit) return;
+      // Negative local-Z rotation is clockwise in the camera-facing plane.
+      starOrbit.rotation.z -= elapsed * (1.72 + index * 0.06);
+      const cometHead = starOrbit.getObjectByName('measurement-comet-head');
+      const glow = cometHead?.getObjectByName('measurement-comet-glow');
+      const star = cometHead?.getObjectByName('measurement-comet-star');
+      const pulse = Math.sin(timestamp * 0.009 + index * 0.83);
+      glow?.scale.setScalar(2.55 + pulse * 0.34);
+      star?.scale.setScalar(1.52 + pulse * 0.1);
+      if (cometHead) cometHead.rotation.z += elapsed * 1.35;
     });
   }
 
@@ -854,7 +1271,7 @@ export class CrystalRenderer {
     const eye = this.camera.position.clone().sub(this.controls.target);
     const axis = this.camera.up.clone().normalize();
     if (eye.lengthSq() === 0 || axis.lengthSq() === 0) return;
-    eye.applyQuaternion(new Quaternion().setFromAxisAngle(axis, elapsedSeconds * 0.45));
+    eye.applyQuaternion(new Quaternion().setFromAxisAngle(axis, autoRotationAngle(elapsedSeconds)));
     this.camera.position.copy(this.controls.target).add(eye);
     this.camera.lookAt(this.controls.target);
     this.controls.update();
@@ -871,6 +1288,8 @@ export class CrystalRenderer {
     const layout = viewportLayout(viewport.x, viewport.y);
     this.renderer.info.reset();
     this.controls.update();
+    this.selectionMarker.quaternion.copy(this.camera.quaternion);
+    this.measurementHoverMarker.quaternion.copy(this.camera.quaternion);
     this.renderer.setScissorTest(false);
     this.renderer.setViewport(0, 0, layout.main.width, layout.main.height);
     this.renderer.clear(true, true, true);

@@ -1,9 +1,10 @@
 import vue from '@vitejs/plugin-vue';
 import { defineConfig } from 'vitest/config';
+import { viteSingleFile } from 'vite-plugin-singlefile';
 
 export default defineConfig({
   base: './',
-  plugins: [vue()],
+  plugins: [vue(), viteSingleFile()],
   build: {
     target: 'es2020',
     sourcemap: false,

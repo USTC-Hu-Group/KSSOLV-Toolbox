@@ -259,9 +259,10 @@ classdef MoleculeDisplay < handle
                 error("KSSOLV:Modeling:InvalidModel", ...
                     "A modeled result must be a matgenlab structure or molecule.");
             end
-            if model.num_sites < 1
+            if model.num_sites < 1 && ~isa(model, ...
+                    "kssolv.analysis.matgenlab.core.IStructure")
                 error("KSSOLV:Modeling:EmptyModel", ...
-                    "A modeled result must contain at least one atom.");
+                    "An empty modeled result must be a crystal structure.");
             end
         end
 
@@ -293,6 +294,8 @@ classdef MoleculeDisplay < handle
                 case "viewer:selection"
                     this.LastSelection = event.HTMLEventData;
                     notify(this, "SelectionChanged");
+                case "viewer:exportStructure"
+                    this.exportStructure(event.HTMLEventData);
                 case "viewer:error"
                     this.reportViewerError(event.HTMLEventData);
             end
@@ -402,6 +405,7 @@ classdef MoleculeDisplay < handle
                         model, this.SceneOptions, requestId);
                 end
                 this.sendScene(scene);
+                this.sendExportFormats(model);
             catch exception
                 this.sendSceneError("MATLAB_SCENE_BUILD", ...
                     string(exception.message), requestId);
@@ -421,6 +425,67 @@ classdef MoleculeDisplay < handle
                 transportScene(scene);
             this.HTMLComponent.sendEventToHTMLSource( ...
                 "scene:set", jsonencode(transport));
+        end
+
+        function sendExportFormats(this, model)
+            formats = kssolv.ui.scene.atomic.StructureExportCatalog. ...
+                list(model, this.structureFileType);
+            payload = struct("formats", formats);
+            this.HTMLComponent.sendEventToHTMLSource( ...
+                "structure:exportFormats", jsonencode(payload));
+        end
+
+        function exportStructure(this, data)
+            format = "";
+            try
+                if ischar(data) || (isstring(data) && isscalar(data))
+                    data = jsondecode(data);
+                end
+                if ~isstruct(data) || ~isscalar(data) || ...
+                        ~isfield(data, "format")
+                    error("KSSOLV:CrystalViewer:ExportRequest", ...
+                        "The structure export request is invalid.");
+                end
+                format = lower(strtrim(string(data.format)));
+                descriptor = kssolv.ui.scene.atomic. ...
+                    StructureExportCatalog.writableFormat( ...
+                    this.ParsedModel, format);
+                base = "structure";
+                if isfield(data, "filename")
+                    base = string(data.filename);
+                end
+                defaultName = kssolv.ui.scene.atomic. ...
+                    StructureExportCatalog.defaultFilename( ...
+                    base, format, descriptor);
+                filter = kssolv.ui.scene.atomic.StructureExportCatalog. ...
+                    fileFilter(format, descriptor);
+                [file, location] = uiputfile(filter, ...
+                    "Export structure", char(defaultName));
+                if isequal(file, 0) || isequal(location, 0)
+                    this.sendExportResult(format, "cancelled", "");
+                    return
+                end
+                this.ParsedModel.to(fullfile(location, file), format);
+                this.sendExportResult(format, "success", "");
+            catch exception
+                this.sendExportResult(format, "error", ...
+                    string(exception.message));
+                warning("KSSOLV:CrystalViewer:StructureExport", ...
+                    "Unable to export the current structure: %s", ...
+                    exception.message);
+            end
+        end
+
+        function sendExportResult(this, format, status, message)
+            if isempty(this.HTMLComponent)
+                return
+            end
+            payload = struct( ...
+                "format", string(format), ...
+                "status", string(status), ...
+                "message", string(message));
+            this.HTMLComponent.sendEventToHTMLSource( ...
+                "structure:exportResult", payload);
         end
 
         function finishBuild(this)

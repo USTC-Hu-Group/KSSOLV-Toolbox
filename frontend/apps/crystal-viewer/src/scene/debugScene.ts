@@ -152,6 +152,38 @@ export const createDebugScene = (): CrystalSceneSpec =>
     warnings: [],
   } satisfies CrystalSceneSpec);
 
+export const createBlankDebugScene = (): CrystalSceneSpec => {
+  const scene = createDebugScene();
+  scene.requestId = 'debug-blank';
+  scene.structure = {
+    formula: '',
+    lattice: [
+      [10, 0, 0],
+      [0, 10, 0],
+      [0, 0, 10],
+    ],
+    periodic: [true, true, true],
+    repeat: [1, 1, 1],
+    siteCount: 0,
+    isOrdered: true,
+  };
+  scene.sites = [];
+  scene.atomInstances = [];
+  scene.bondRelations = [];
+  scene.bondInstances = [];
+  scene.polyhedra = [];
+  scene.analysis.algorithm = 'None';
+  scene.analysis.parameters = { cell: 'input', repeat: [1, 1, 1] };
+  scene.warnings = [
+    {
+      code: 'EMPTY_STRUCTURE',
+      message: 'The structure is empty; add an atom to begin modeling.',
+      severity: 'info',
+    },
+  ];
+  return scene;
+};
+
 export const createStressScene = (count = 10_000): CrystalSceneSpec => {
   const scene = createDebugScene();
   const side = Math.ceil(Math.cbrt(count));

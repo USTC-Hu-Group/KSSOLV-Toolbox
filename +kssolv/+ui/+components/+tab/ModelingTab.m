@@ -204,7 +204,7 @@ classdef ModelingTab < handle
 
             sqsColumn = Column();
             sqsColumn.add(this.createCommandButton( ...
-                "generate_sqs_model", "push", 24));
+                "generate_sqs_model", "push", 24, false));
             section.add(defectsColumn);
             section.add(sqsColumn);
             this.Tab.add(section);
@@ -329,15 +329,21 @@ classdef ModelingTab < handle
         end
 
         function button = createCommandButton( ...
-                this, commandId, type, iconSize)
+                this, commandId, type, iconSize, indicateDialog)
             import matlab.ui.internal.toolstrip.*
 
             if nargin < 4
                 iconSize = 16;
             end
+            if nargin < 5
+                indicateDialog = true;
+            end
             commandInfo = kssolv.modeling.CommandCatalog.find(commandId);
             label = kssolv.ui.util.Localizer.message( ...
                 commandInfo.labelKey);
+            if indicateDialog
+                label = this.dialogLabel(label);
+            end
             icon = kssolv.ui.features.modeling.CommandPresentationCatalog.icon( ...
                 commandId, iconSize);
             switch string(type)
@@ -368,8 +374,13 @@ classdef ModelingTab < handle
             import matlab.ui.internal.toolstrip.ListItem
 
             commandInfo = kssolv.modeling.CommandCatalog.find(commandId);
+            label = kssolv.ui.util.Localizer.message( ...
+                commandInfo.labelKey);
+            if this.usesParameterDialog(commandId)
+                label = this.dialogLabel(label);
+            end
             item = ListItem( ...
-                kssolv.ui.util.Localizer.message(commandInfo.labelKey), ...
+                label, ...
                 kssolv.ui.features.modeling.CommandPresentationCatalog.icon( ...
                 commandId, 24));
             item.Tag = "ModelingCommand_" + string(commandId);
@@ -430,8 +441,9 @@ classdef ModelingTab < handle
             if nargin < 5
                 includeIcon = true;
             end
-            label = kssolv.ui.util.Localizer.message( ...
-                "KSSOLV:modeling:" + string(labelKey));
+            label = this.dialogLabel( ...
+                kssolv.ui.util.Localizer.message( ...
+                "KSSOLV:modeling:" + string(labelKey)));
             if includeIcon
                 item = ListItem(label, ...
                     kssolv.ui.features.modeling.CommandPresentationCatalog. ...
@@ -447,6 +459,17 @@ classdef ModelingTab < handle
                 "Description");
             addlistener(item, "ItemPushed", ...
                 @(~, ~)this.executeCommand(commandId, preset));
+        end
+
+        function label = dialogLabel(~, label)
+            label = string(label);
+            if ~endsWith(label, "...")
+                label = label + "...";
+            end
+        end
+
+        function value = usesParameterDialog(~, commandId)
+            value = string(commandId) ~= "wigner_seitz_cell";
         end
 
         function syncVisibility(this)
@@ -513,12 +536,16 @@ classdef ModelingTab < handle
                     commandLabel));
                 appContainer = ...
                     kssolv.ui.util.DataStorage.getData("AppContainer");
-                [parameters, cancelled] = ...
-                    kssolv.ui.features.modeling.ParameterDialog.prompt( ...
-                    commandInfo, display, preset, appContainer);
-                if cancelled
-                    this.updateStatus("");
-                    return
+                if this.usesParameterDialog(commandId)
+                    [parameters, cancelled] = ...
+                        kssolv.ui.features.modeling.ParameterDialog.prompt( ...
+                        commandInfo, display, preset, appContainer);
+                    if cancelled
+                        this.updateStatus("");
+                        return
+                    end
+                else
+                    parameters = struct();
                 end
                 parameters = ...
                     kssolv.ui.features.modeling.ModelInputResolver.enrich( ...

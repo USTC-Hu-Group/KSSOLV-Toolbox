@@ -27,6 +27,7 @@
         <entry key="ProjectSectionTitle">Project</entry>
         <entry key="ProjectStructureButtonLabel">Structure</entry>
         <entry key="ProjectStructureButtonTooltip">Import/export structure</entry>
+        <entry key="NewStructureListItemLabel">New blank structure</entry>
         <entry key="ImportStructureFromFileListItemLabel">Import structure from file...</entry>
         <entry key="ImportStructureFromLinkListItemLabel">Import structure from link...</entry>
         <entry key="ImportStructureFromLibraryListItemLabel">Import structure from material library...</entry>

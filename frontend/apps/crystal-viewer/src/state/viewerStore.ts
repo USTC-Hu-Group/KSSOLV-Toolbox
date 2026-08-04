@@ -139,6 +139,9 @@ const installBridge = (): void => {
 
 export const useViewerStore = () => {
   installBridge();
+  const isBlankStructure = computed(
+    () => scene.value?.kind === 'crystal' && scene.value.structure.siteCount === 0,
+  );
 
   return {
     scene,
@@ -147,13 +150,19 @@ export const useViewerStore = () => {
     camera,
     options,
     status: readonly(status),
+    isBlankStructure,
     formula: computed(() => {
       if (!scene.value) return 'Atomic structure';
+      if (isBlankStructure.value) return 'Blank structure';
       return scene.value.kind === 'crystal'
         ? scene.value.structure.formula
         : scene.value.molecule.formula;
     }),
-    warnings: computed(() => scene.value?.warnings ?? []),
+    warnings: computed(() =>
+      (scene.value?.warnings ?? []).filter(
+        (warning) => !(isBlankStructure.value && warning.code === 'EMPTY_STRUCTURE'),
+      ),
+    ),
     setScene: acceptScene,
     setSelection(value?: SelectionInfo, gesture: { additive?: boolean } = {}): void {
       selection.value = value;

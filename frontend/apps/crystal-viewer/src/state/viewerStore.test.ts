@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { createDebugScene } from '../scene/debugScene';
+import { createBlankDebugScene, createDebugScene } from '../scene/debugScene';
 
 describe('viewer store event ordering', () => {
   beforeEach(() => {
@@ -57,6 +57,24 @@ describe('viewer store event ordering', () => {
     matlabBridge.dispatchForTesting('scene:set', { schemaVersion: '0' });
     expect(store.status.error).toContain('schemaVersion');
     expect(emit).toHaveBeenCalledWith(
+      'viewer:error',
+      expect.objectContaining({ code: 'SCENE_VALIDATION' }),
+    );
+  });
+
+  it('accepts blank structures without reporting an error or warning banner', async () => {
+    const { matlabBridge } = await import('../bridge/matlabBridge');
+    const emit = vi.spyOn(matlabBridge, 'emit');
+    const { useViewerStore } = await import('./viewerStore');
+    const store = useViewerStore();
+
+    matlabBridge.dispatchForTesting('scene:set', createBlankDebugScene());
+
+    expect(store.isBlankStructure.value).toBe(true);
+    expect(store.formula.value).toBe('Blank structure');
+    expect(store.warnings.value).toEqual([]);
+    expect(store.status.error).toBe('');
+    expect(emit).not.toHaveBeenCalledWith(
       'viewer:error',
       expect.objectContaining({ code: 'SCENE_VALIDATION' }),
     );

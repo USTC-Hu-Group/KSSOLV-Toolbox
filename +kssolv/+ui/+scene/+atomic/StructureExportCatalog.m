@@ -1,0 +1,146 @@
+classdef StructureExportCatalog
+    %STRUCTUREEXPORTCATALOG Describe writable matgenlab atomic formats.
+
+    methods (Static)
+        function formats = list(model, sourceFormat)
+            arguments
+                model
+                sourceFormat string = ""
+            end
+            registry = ...
+                kssolv.ui.scene.atomic.StructureExportCatalog.registry(model);
+            sourceFormat = lower(strtrim(sourceFormat));
+            names = sort(string(keys(registry)));
+            formats = struct( ...
+                "format", {}, "label", {}, "extension", {}, "detail", {});
+            for index = 1:numel(names)
+                name = names(index);
+                descriptor = registry(char(name));
+                if name == sourceFormat || isempty(descriptor.write_str)
+                    continue
+                end
+                extension = kssolv.ui.scene.atomic. ...
+                    StructureExportCatalog.preferredExtension( ...
+                    name, descriptor.patterns);
+                formats(end + 1) = struct( ... %#ok<AGROW>
+                    "format", name, ...
+                    "label", kssolv.ui.scene.atomic. ...
+                    StructureExportCatalog.displayLabel(name), ...
+                    "extension", extension, ...
+                    "detail", "." + extension);
+            end
+            if ~isempty(formats)
+                formatNames = string({formats.format});
+                preferredNames = ["cif", "poscar", "vasp", "xyz"];
+                formats = [ ...
+                    formats(formatNames == "cif"), ...
+                    formats(formatNames == "poscar"), ...
+                    formats(formatNames == "vasp"), ...
+                    formats(formatNames == "xyz"), ...
+                    formats(~ismember(formatNames, preferredNames))];
+            end
+        end
+
+        function descriptor = writableFormat(model, format)
+            registry = ...
+                kssolv.ui.scene.atomic.StructureExportCatalog.registry(model);
+            key = char(lower(strtrim(string(format))));
+            if ~isKey(registry, key)
+                error("KSSOLV:CrystalViewer:ExportFormat", ...
+                    "Unsupported atomic structure export format '%s'.", ...
+                    string(format));
+            end
+            descriptor = registry(key);
+            if isempty(descriptor.write_str)
+                error("KSSOLV:CrystalViewer:ExportFormat", ...
+                    "Atomic format '%s' is not writable.", string(format));
+            end
+        end
+
+        function filename = defaultFilename(base, format, descriptor)
+            base = regexprep(strtrim(string(base)), ...
+                '[\\/:*?"<>|]', "-");
+            if strlength(base) == 0
+                base = "structure";
+            end
+            extension = kssolv.ui.scene.atomic.StructureExportCatalog. ...
+                preferredExtension(format, descriptor.patterns);
+            filename = base + "." + extension;
+        end
+
+        function filter = fileFilter(format, descriptor)
+            extension = kssolv.ui.scene.atomic.StructureExportCatalog. ...
+                preferredExtension(format, descriptor.patterns);
+            label = kssolv.ui.scene.atomic.StructureExportCatalog. ...
+                displayLabel(format);
+            filter = {char("*." + extension), ...
+                char(label + " files (*." + extension + ")")};
+        end
+    end
+
+    methods (Static, Access = private)
+        function registry = registry(model)
+            if isa(model, "kssolv.analysis.matgenlab.core.IStructure")
+                registry = ...
+                    kssolv.analysis.matgenlab.io.FormatRegistryStore. ...
+                    structures();
+            elseif isa(model, "kssolv.analysis.matgenlab.core.IMolecule")
+                registry = ...
+                    kssolv.analysis.matgenlab.io.FormatRegistryStore. ...
+                    molecules();
+            else
+                error("KSSOLV:CrystalViewer:ExportModel", ...
+                    "Only matgenlab structures and molecules can be exported.");
+            end
+        end
+
+        function extension = preferredExtension(format, patterns)
+            format = lower(string(format));
+            extensions = struct( ...
+                "poscar", "poscar", "gaussian", "gjf", ...
+                "gaussian_out", "log", "mcsqs", "in", ...
+                "prismatic", "xyz", "exciting", "xml", ...
+                "lmto", "ctrl", "fleur_inpgen", "in", ...
+                "abinit_nc", "nc");
+            field = matlab.lang.makeValidName(char(format));
+            if isfield(extensions, field)
+                extension = string(extensions.(field));
+                return
+            end
+            for index = 1:numel(patterns)
+                token = regexp(string(patterns{index}), ...
+                    '^\*\.([A-Za-z0-9][A-Za-z0-9_-]*)\*?$', ...
+                    'tokens', 'once');
+                if ~isempty(token)
+                    extension = lower(string(token{1}));
+                    return
+                end
+            end
+            extension = regexprep(format, '[^a-z0-9_-]', '-');
+            if strlength(extension) == 0
+                extension = "dat";
+            end
+        end
+
+        function label = displayLabel(format)
+            format = lower(string(format));
+            labels = struct( ...
+                "poscar", "VASP POSCAR", ...
+                "gaussian", "Gaussian input", ...
+                "gaussian_out", "Gaussian output", ...
+                "mcsqs", "ATAT MCSQS", ...
+                "prismatic", "Prismatic XYZ", ...
+                "exciting", "exciting XML", ...
+                "pwmat", "PWmat CONFIG", ...
+                "lmto", "LMTO CTRL", ...
+                "fleur_inpgen", "FLEUR inpgen", ...
+                "abinit_nc", "ABINIT NetCDF");
+            field = matlab.lang.makeValidName(char(format));
+            if isfield(labels, field)
+                label = string(labels.(field));
+            else
+                label = upper(format);
+            end
+        end
+    end
+end

@@ -16,8 +16,9 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
         FormLayout
         FieldEntries (1,1) struct = struct()
         IsClosing (1,1) logical = false
-        Width (1,1) double = 680
-        Height (1,1) double = 520
+        Width (1,1) double = 560
+        Height (1,1) double = 160
+        FormHeight (1,1) double = 70
     end
 
     methods
@@ -35,12 +36,11 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
                 commandInfo.id, display);
             this.Title = kssolv.ui.util.Localizer.message( ...
                 commandInfo.labelKey);
-            this.Height = min(760, max(330, ...
-                205 + 46 * numel(this.Fields)));
 
             figure = this.getWidget();
             figure.CloseRequestFcn = @(~, ~)this.cancel();
             figure.WindowStyle = "modal";
+            figure.Resize = "off";
         end
 
         function [parameters, cancelled] = show(this, varargin)
@@ -84,14 +84,15 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
             figure.Position(3:4) = [this.Width, this.Height];
 
             this.DialogLayout = uigridlayout(figure, [3, 1], ...
-                "RowHeight", {"fit", "1x", "fit"}, ...
+                "RowHeight", {"fit", this.FormHeight, "fit"}, ...
                 "ColumnWidth", {"1x"}, ...
                 "RowSpacing", 10, ...
-                "Padding", [14, 12, 14, 12], ...
+                "Padding", [14, 16, 14, 12], ...
                 "Scrollable", "off");
 
             this.buildHeader();
             this.buildForm();
+            this.Widgets.FormLayout = this.FormLayout;
             this.buildButtons();
             this.loadInitialValues();
             this.applyConditions();
@@ -128,6 +129,7 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
                 "BorderType", "line", ...
                 "Scrollable", "off");
             panel.Layout.Row = 2;
+            this.Widgets.FormPanel = panel;
             if count == 0
                 this.FormLayout = uigridlayout(panel, [1, 1], ...
                     "ColumnWidth", {"1x"}, ...
@@ -143,11 +145,10 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
                 this.Widgets.EmptyStateLabel = emptyState;
                 return
             end
-            this.FormLayout = uigridlayout(panel, [count, 2], ...
-                "ColumnWidth", {215, "1x"}, ...
+            this.FormLayout = uigridlayout(panel, [count, 1], ...
+                "ColumnWidth", {"1x"}, ...
                 "RowHeight", repmat({"fit"}, 1, count), ...
-                "RowSpacing", 8, ...
-                "ColumnSpacing", 12, ...
+                "RowSpacing", 10, ...
                 "Padding", [12, 12, 12, 12], ...
                 "Scrollable", "on");
 
@@ -156,30 +157,40 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
                 presentation = ...
                     kssolv.ui.features.modeling.ParameterPresentation.describe( ...
                     this.CommandInfo.id, field);
-                label = uilabel(this.FormLayout, ...
+                fieldLayout = uigridlayout(this.FormLayout, [2, 1], ...
+                    "ColumnWidth", {"1x"}, ...
+                    "RowHeight", {"fit", "fit"}, ...
+                    "RowSpacing", 4, ...
+                    "Padding", 0);
+                fieldLayout.Layout.Row = index;
+
+                label = uilabel(fieldLayout, ...
                     "Text", presentation.label, ...
                     "Tooltip", presentation.tooltip, ...
-                    "HorizontalAlignment", "right");
-                label.Layout.Row = index;
+                    "HorizontalAlignment", "left", ...
+                    "WordWrap", "on");
+                label.Layout.Row = 1;
                 label.Layout.Column = 1;
 
                 entry = this.createControl( ...
-                    field, presentation, index);
+                    fieldLayout, field, presentation);
                 entry.label = label;
                 entry.row = index;
+                entry.rowContainer = fieldLayout;
                 entry.presentation = presentation;
                 entry.field = field;
                 this.FieldEntries.(char(field.name)) = entry;
+                this.Widgets.(char(field.name) + "Label") = label;
                 if presentation.control == "matrix"
-                    heights = this.FormLayout.RowHeight;
-                    heights{index} = 118;
-                    this.FormLayout.RowHeight = heights;
+                    fieldHeights = fieldLayout.RowHeight;
+                    fieldHeights{2} = 118;
+                    fieldLayout.RowHeight = fieldHeights;
                 end
             end
         end
 
         function entry = createControl( ...
-                this, field, presentation, row)
+                this, parent, field, presentation)
             name = char(field.name);
             entry = struct( ...
                 "controlType", presentation.control, ...
@@ -187,46 +198,46 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
                 "container", []);
             switch presentation.control
                 case "logical"
-                    control = uicheckbox(this.FormLayout, ...
+                    control = uicheckbox(parent, ...
                         "Text", ...
                         kssolv.ui.util.Localizer.message( ...
                         "KSSOLV:modeling:Enabled"), ...
                         "Tooltip", presentation.tooltip);
-                    control.Layout.Row = row;
-                    control.Layout.Column = 2;
+                    control.Layout.Row = 2;
+                    control.Layout.Column = 1;
                     control.ValueChangedFcn = ...
                         @(~, ~)this.applyConditions();
                     entry.controls = {control};
                     entry.container = control;
                 case "enum"
-                    control = uidropdown(this.FormLayout, ...
+                    control = uidropdown(parent, ...
                         "Items", cellstr(presentation.choiceLabels), ...
                         "ItemsData", cellstr(presentation.choices), ...
                         "Tooltip", presentation.tooltip, ...
                         "Interruptible", "off", ...
                         "ValueChangedFcn", ...
                         @(~, ~)this.applyConditions());
-                    control.Layout.Row = row;
-                    control.Layout.Column = 2;
+                    control.Layout.Row = 2;
+                    control.Layout.Column = 1;
                     entry.controls = {control};
                     entry.container = control;
                 case "scalar"
-                    control = uieditfield(this.FormLayout, "numeric", ...
+                    control = uieditfield(parent, "numeric", ...
                         "Tooltip", presentation.tooltip);
-                    control.Layout.Row = row;
-                    control.Layout.Column = 2;
+                    control.Layout.Row = 2;
+                    control.Layout.Column = 1;
                     entry.controls = {control};
                     entry.container = control;
                 case "vector"
                     width = presentation.shape;
                     container = uigridlayout( ...
-                        this.FormLayout, [1, width], ...
+                        parent, [1, width], ...
                         "RowHeight", {"fit"}, ...
                         "ColumnWidth", repmat({"1x"}, 1, width), ...
                         "ColumnSpacing", 6, ...
                         "Padding", 0);
-                    container.Layout.Row = row;
-                    container.Layout.Column = 2;
+                    container.Layout.Row = 2;
+                    container.Layout.Column = 1;
                     controls = cell(1, width);
                     for component = 1:width
                         controls{component} = uieditfield( ...
@@ -237,14 +248,14 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
                     entry.controls = controls;
                     entry.container = container;
                 case "matrix"
-                    control = uitable(this.FormLayout, ...
+                    control = uitable(parent, ...
                         "Data", eye(3), ...
                         "ColumnEditable", true(1, 3), ...
                         "ColumnName", {"x", "y", "z"}, ...
                         "RowName", {"a", "b", "c"}, ...
                         "Tooltip", presentation.tooltip);
-                    control.Layout.Row = row;
-                    control.Layout.Column = 2;
+                    control.Layout.Row = 2;
+                    control.Layout.Column = 1;
                     entry.controls = {control};
                     entry.container = control;
                 case "structure"
@@ -259,20 +270,20 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
                         labels = values;
                         data = values;
                     end
-                    control = uidropdown(this.FormLayout, ...
+                    control = uidropdown(parent, ...
                         "Items", cellstr(labels), ...
                         "ItemsData", cellstr(data), ...
                         "Tooltip", presentation.tooltip, ...
                         "Interruptible", "off");
-                    control.Layout.Row = row;
-                    control.Layout.Column = 2;
+                    control.Layout.Row = 2;
+                    control.Layout.Column = 1;
                     entry.controls = {control};
                     entry.container = control;
                 otherwise
-                    control = uieditfield(this.FormLayout, "text", ...
+                    control = uieditfield(parent, "text", ...
                         "Tooltip", presentation.tooltip);
-                    control.Layout.Row = row;
-                    control.Layout.Column = 2;
+                    control.Layout.Row = 2;
+                    control.Layout.Column = 1;
                     entry.controls = {control};
                     entry.container = control;
             end
@@ -281,7 +292,7 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
 
         function buildButtons(this)
             layout = uigridlayout(this.DialogLayout, [2, 4], ...
-                "RowHeight", {"fit", "fit"}, ...
+                "RowHeight", {0, "fit"}, ...
                 "ColumnWidth", {"fit", "1x", "fit", "fit"}, ...
                 "RowSpacing", 5, ...
                 "Padding", 0);
@@ -315,6 +326,7 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
             applyButton.Layout.Column = 4;
 
             this.Widgets.StatusLabel = status;
+            this.Widgets.ButtonLayout = layout;
             this.Widgets.ResetButton = resetButton;
             this.Widgets.CancelButton = cancelButton;
             this.Widgets.ApplyButton = applyButton;
@@ -403,18 +415,79 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
                     matlab.lang.OnOffSwitchState(visible);
                 entry.container.Visible = ...
                     matlab.lang.OnOffSwitchState(visible);
+                entry.rowContainer.Visible = ...
+                    matlab.lang.OnOffSwitchState(visible);
                 heights = this.FormLayout.RowHeight;
                 if visible
-                    if entry.controlType == "matrix"
-                        heights{entry.row} = 118;
-                    else
-                        heights{entry.row} = "fit";
-                    end
+                    heights{entry.row} = "fit";
                 else
                     heights{entry.row} = 0;
                 end
                 this.FormLayout.RowHeight = heights;
             end
+            this.updateDialogSize();
+        end
+
+        function updateDialogSize(this)
+            if isempty(this.DialogLayout) || ~isvalid(this.DialogLayout)
+                return
+            end
+
+            names = fieldnames(this.FieldEntries);
+            rowHeights = zeros(1, 0);
+            for index = 1:numel(names)
+                entry = this.FieldEntries.(names{index});
+                if strcmp(entry.rowContainer.Visible, "off")
+                    continue
+                end
+                if entry.controlType == "matrix"
+                    rowHeights(end + 1) = 144; %#ok<AGROW>
+                else
+                    rowHeights(end + 1) = 48; %#ok<AGROW>
+                end
+            end
+            if isempty(rowHeights)
+                contentHeight = 70;
+            else
+                contentHeight = sum(rowHeights) + ...
+                    10 * (numel(rowHeights) - 1) + 26;
+            end
+            this.FormHeight = min(500, contentHeight);
+            if ~isempty(this.FormLayout) && isvalid(this.FormLayout)
+                this.FormLayout.Scrollable = ...
+                    matlab.lang.OnOffSwitchState(contentHeight > 500);
+            end
+            layoutHeights = this.DialogLayout.RowHeight;
+            layoutHeights{2} = this.FormHeight;
+            this.DialogLayout.RowHeight = layoutHeights;
+
+            statusHeight = 0;
+            if isfield(this.Widgets, "StatusLabel") && ...
+                    strcmp(this.Widgets.StatusLabel.Visible, "on")
+                statusHeight = 34;
+            end
+            if isfield(this.Widgets, "ButtonLayout") && ...
+                    isvalid(this.Widgets.ButtonLayout)
+                buttonRowHeights = ...
+                    this.Widgets.ButtonLayout.RowHeight;
+                if statusHeight > 0
+                    buttonRowHeights{1} = "fit";
+                else
+                    buttonRowHeights{1} = 0;
+                end
+                this.Widgets.ButtonLayout.RowHeight = buttonRowHeights;
+            end
+            targetHeight = min(620, max(160, ...
+                104 + this.FormHeight + statusHeight));
+            figure = this.getWidget();
+            position = figure.Position;
+            % Keep the window centered when conditional fields resize it.
+            position(1) = position(1) + (position(3) - this.Width) / 2;
+            position(2) = position(2) + ...
+                (position(4) - targetHeight) / 2;
+            position(3:4) = [this.Width, targetHeight];
+            figure.Position = position;
+            this.Height = targetHeight;
         end
 
         function apply(this)
@@ -426,6 +499,7 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
             catch exception
                 this.Widgets.StatusLabel.Text = exception.message;
                 this.Widgets.StatusLabel.Visible = "on";
+                this.updateDialogSize();
                 figure = this.getWidget();
                 if strcmp(figure.Visible, "on")
                     uialert(figure, exception.message, ...

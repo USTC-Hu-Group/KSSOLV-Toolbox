@@ -250,6 +250,58 @@ classdef ModelingCommandDialogTest < matlab.unittest.TestCase
             end
         end
 
+        function commandDialogsUseCompactContentSizedLayout(testCase)
+            [app, display] = testCase.createDisplay();
+            cleanup = onCleanup(@()testCase.cleanupDisplay(app));
+
+            compact = testCase.createDialog( ...
+                display, "build_supercell", struct());
+            compactCleanup = onCleanup(@()delete(compact));
+            compactPosition = compact.getWidget().Position;
+            testCase.verifyEqual(compactPosition(3), 560);
+            testCase.verifyLessThanOrEqual(compactPosition(4), 190);
+            testCase.verifyEqual(string(compact.getWidget().Resize), "off");
+            testCase.verifyEqual( ...
+                compact.Widgets.ButtonLayout.RowHeight{1}, 0);
+            testCase.verifyEqual( ...
+                compact.Widgets.FormPanel.Parent.Padding(2), 16);
+            testCase.verifyEqual( ...
+                compact.Widgets.FormLayout.ColumnWidth, {'1x'});
+            compactLabelAlignment = ...
+                compact.Widgets.scalingMatrixLabel.HorizontalAlignment;
+            testCase.verifyEqual( ...
+                string(compactLabelAlignment), "left");
+
+            detailed = testCase.createDialog( ...
+                display, "add_solvent_layer", struct());
+            detailedCleanup = onCleanup(@()delete(detailed));
+            detailedPosition = detailed.getWidget().Position;
+            testCase.verifyEqual(detailedPosition(3), 560);
+            testCase.verifyGreaterThan( ...
+                detailedPosition(4), compactPosition(4));
+
+            vacancy = testCase.createDialog( ...
+                display, "create_point_defects", ...
+                struct("defectType", "vacancy"));
+            vacancyCleanup = onCleanup(@()delete(vacancy));
+            vacancyPosition = vacancy.getWidget().Position;
+            vacancyCenter = vacancyPosition(1:2) + ...
+                vacancyPosition(3:4) / 2;
+            vacancy.Widgets.defectType.Value = "interstitial";
+            conditionCallback = ...
+                vacancy.Widgets.defectType.ValueChangedFcn;
+            conditionCallback([], []);
+            interstitialPosition = vacancy.getWidget().Position;
+            interstitialCenter = interstitialPosition(1:2) + ...
+                interstitialPosition(3:4) / 2;
+            testCase.verifyLessThan( ...
+                vacancyPosition(4), interstitialPosition(4));
+            testCase.verifyEqual( ...
+                interstitialCenter, vacancyCenter, "AbsTol", 1e-12);
+
+            clear vacancyCleanup detailedCleanup compactCleanup cleanup
+        end
+
         function defectAndQuantumPresetsControlVisibleFields(testCase)
             [app, display] = testCase.createDisplay();
             cleanup = onCleanup(@()testCase.cleanupDisplay(app));
@@ -306,6 +358,8 @@ classdef ModelingCommandDialogTest < matlab.unittest.TestCase
                 "KSSOLV:Modeling:ParameterRange");
             testCase.verifyEqual( ...
                 string(dialog.Widgets.StatusLabel.Visible), "on");
+            testCase.verifyEqual(string( ...
+                dialog.Widgets.ButtonLayout.RowHeight{1}), "fit");
             testCase.verifyTrue(dialog.Cancelled);
             clear dialogCleanup cleanup
         end

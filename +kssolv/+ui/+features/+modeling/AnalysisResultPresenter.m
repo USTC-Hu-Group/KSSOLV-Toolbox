@@ -10,7 +10,8 @@ classdef AnalysisResultPresenter
                         plotAdsorptionSites(model, result, titleText);
                 case "wigner_seitz_cell"
                     kssolv.ui.features.modeling.AnalysisResultPresenter. ...
-                        plotWignerSeitz(model, result, titleText);
+                        plotWignerSeitz( ...
+                        model, result, titleText, varargin{:});
                 otherwise
                     if isempty(varargin)
                         msgbox(result.message, titleText, "help", "modal");
@@ -45,10 +46,18 @@ classdef AnalysisResultPresenter
                 "Interpreter", "none");
         end
 
-        function plotWignerSeitz(model, result, titleText)
+        function plotWignerSeitz(model, result, titleText, varargin)
+            appContainer = [];
+            if ~isempty(varargin)
+                appContainer = varargin{1};
+            end
+            embedInDocument = ~isempty(appContainer) && ...
+                isvalid(appContainer);
             figureHandle = figure( ...
                 "Name", titleText, "NumberTitle", "off", ...
-                "Color", "white");
+                "Color", "white", ...
+                "Visible", matlab.lang.OnOffSwitchState( ...
+                ~embedInDocument));
             axesHandle = axes(figureHandle);
             view(axesHandle, 3);
             axis(axesHandle, "equal");
@@ -60,6 +69,21 @@ classdef AnalysisResultPresenter
             zlabel(axesHandle, "z (angstrom)");
             title(axesHandle, result.message, ...
                 "Interpreter", "none");
+            if embedInDocument
+                documentTag = "ModelingWignerSeitzCell";
+                existing = appContainer.getDocument( ...
+                    "Plot", documentTag);
+                if ~isempty(existing)
+                    existing.close();
+                end
+                dataPlot = ...
+                    kssolv.ui.components.figuredocument.DataPlot( ...
+                    figureHandle, documentTag);
+                dataPlot.Display(char(titleText), false);
+                if isvalid(figureHandle)
+                    delete(figureHandle);
+                end
+            end
         end
     end
 end

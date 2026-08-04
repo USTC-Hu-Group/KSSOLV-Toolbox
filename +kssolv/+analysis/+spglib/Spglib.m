@@ -27,7 +27,7 @@ classdef Spglib
 
         function error_code = getErrorCode()
             error_code = kssolv.analysis.spglib.symspg('spg_get_error_code');
-            kssolv.analysis.spglib.SpglibError(error_code);
+            error_code = kssolv.analysis.spglib.SpglibError(error_code);
         end
 
         function error_message = getErrorMessage(error_code)
@@ -53,6 +53,7 @@ classdef Spglib
             else
                 dataset = kssolv.analysis.spglib.symspg('spgat_get_dataset', lattice', position, types, num_atom, symprec, angle_tolerance);
             end
+            dataset = kssolv.analysis.spglib.Spglib.normalizeDatasetLattices(dataset);
         end
 
         function dataset = getMagneticDataset(lattice, position, types, tensors, tensor_rank, num_atom, is_axial, symprec, angle_tolerance, mag_symprec)
@@ -79,6 +80,7 @@ classdef Spglib
                     dataset = kssolv.analysis.spglib.symspg('spgms_get_magnetic_dataset', lattice', position, types, tensors, tensor_rank, num_atom, is_axial, symprec, angle_tolerance, mag_symprec);
                 end
             end
+            dataset = kssolv.analysis.spglib.Spglib.normalizeDatasetLattices(dataset);
         end
 
         function dataset = getDatasetWithHallNumber(lattice, position, types, num_atom, hall_number, symprec, angle_tolerance)
@@ -97,6 +99,7 @@ classdef Spglib
             else
                 dataset = kssolv.analysis.spglib.symspg('spgat_get_dataset_with_hall_number', lattice', position, types, num_atom, hall_number, symprec, angle_tolerance);
             end
+            dataset = kssolv.analysis.spglib.Spglib.normalizeDatasetLattices(dataset);
         end
 
         function [rotations, translations, equivalent_atoms, num_operations] = getSymmetryWithCollinearSpin(max_size, lattice, position, types, spins, num_atom, symprec, angle_tolerance, mag_symprec)
@@ -149,6 +152,7 @@ classdef Spglib
                     [rotations, translations, equivalent_atoms, primitive_lattice, spin_flips, num_operations] = kssolv.analysis.spglib.symspg('spgms_get_symmetry_with_site_tensors', max_size, lattice', position, types, tensors, tensor_rank, num_atom, with_time_reversal, is_axial, symprec, angle_tolerance, mag_symprec);
                 end
             end
+            primitive_lattice = primitive_lattice';
         end
 
         function spacegroup_type = getSpacegroupTypeFromSymmetry(rotation, translation, num_operations, lattice, symprec)
@@ -235,6 +239,7 @@ classdef Spglib
             else
                 [lattice, position, types, num_primitive_atom] = kssolv.analysis.spglib.symspg('spgat_standardize_cell', lattice', position, types, num_atom, to_primitive, no_idealize, symprec, angle_tolerance);
             end
+            lattice = lattice';
         end
     
         function [lattice, position, types, num_primitive_atom] = findPrimitive(lattice, position, types, num_atom, symprec, angle_tolerance)
@@ -252,6 +257,7 @@ classdef Spglib
             else
                 [lattice, position, types, num_primitive_atom] = kssolv.analysis.spglib.symspg('spgat_find_primitive', lattice', position, types, num_atom, symprec, angle_tolerance);
             end
+            lattice = lattice';
         end
     
         function [lattice, position, types, num_atom_bravais] = refineCell(lattice, position, types, num_atom, symprec, angle_tolerance)
@@ -269,6 +275,7 @@ classdef Spglib
             else
                 [lattice, position, types, num_atom_bravais] = kssolv.analysis.spglib.symspg('spgat_refine_cell', lattice', position, types, num_atom, symprec, angle_tolerance);
             end
+            lattice = lattice';
         end
     
         function [lattice, result] = delaunayReduce(lattice, symprec)
@@ -278,6 +285,7 @@ classdef Spglib
             end
 
             [lattice, result] = kssolv.analysis.spglib.symspg('spg_delaunay_reduce', lattice', symprec);
+            lattice = lattice';
         end
     
         function grid_point_index = getGridPointFromAddress(grid_address, mesh)
@@ -375,7 +383,7 @@ classdef Spglib
 
             grid_points = kssolv.analysis.spglib.symspg('spg_get_dense_grid_points_by_rotations', address_orig, num_rot, rot_reciprocal, mesh, is_shift);
         end
-    
+
         function rot_grid_points = getDenseBZGridPointsByRotations(address_orig, num_rot, rot_reciprocal, mesh, is_shift, bz_map)
             arguments
                 address_orig (1, 3) int32
@@ -383,11 +391,11 @@ classdef Spglib
                 rot_reciprocal (:, 3, 3) int32
                 mesh (1, 3) int32 {mustBePositive}
                 is_shift (1, 3) int32 {mustBeMember(is_shift, [0, 1])}
-                bz_map (:, 1) int32
+                bz_map (:, 1) uint64
             end
 
             assert(size(rot_reciprocal, 1) == num_rot, 'The size of rot_reciprocal does not match num_rot.');
-            assert(numel(bz_map) == prod(mesh), 'The size of bz_map does not match the number of grid points.');
+            assert(numel(bz_map) == prod(mesh * 2), 'The size of bz_map does not match prod(mesh * 2).');
 
             rot_grid_points = kssolv.analysis.spglib.symspg('spg_get_dense_BZ_grid_points_by_rotations', address_orig, num_rot, rot_reciprocal, mesh, is_shift, bz_map);
         end
@@ -425,6 +433,14 @@ classdef Spglib
             end
 
             [lattice, result] = kssolv.analysis.spglib.symspg('spg_niggli_reduce', lattice', symprec);
+            lattice = lattice';
+        end
+    end
+
+    methods(Static, Access=private)
+        function dataset = normalizeDatasetLattices(dataset)
+            dataset.std_lattice = dataset.std_lattice';
+            dataset.primitive_lattice = dataset.primitive_lattice';
         end
     end
 end

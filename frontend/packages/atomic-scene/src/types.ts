@@ -5,16 +5,16 @@ export type RgbTuple = [number, number, number];
 export type ImageOffset = [number, number, number];
 
 export type BondAlgorithm =
-  | 'CrystalNN'
-  | 'CutOffDictNN'
-  | 'JmolNN'
-  | 'MinimumDistanceNN'
-  | 'MinimumOKeeffeNN'
-  | 'EconNN'
-  | 'BrunnerNNReciprocal';
-export type MoleculeBondAlgorithm = 'Auto' | 'Source' | 'OpenBabelNN' | 'None';
+  | "CrystalNN"
+  | "CutOffDictNN"
+  | "JmolNN"
+  | "MinimumDistanceNN"
+  | "MinimumOKeeffeNN"
+  | "EconNN"
+  | "BrunnerNNReciprocal";
+export type MoleculeBondAlgorithm = "Auto" | "Source" | "OpenBabelNN" | "None";
 export type AtomicBondAlgorithm = BondAlgorithm | MoleculeBondAlgorithm;
-export type AtomVisibility = 'base' | 'boundary' | 'bonded' | 'repeat';
+export type AtomVisibility = "base" | "boundary" | "bonded" | "repeat";
 
 export interface SpeciesComponent {
   symbol: string;
@@ -52,7 +52,7 @@ export interface BondRelationSpec {
   distance: number;
   weight: number | null;
   order?: number;
-  origin?: 'source' | 'OpenBabelNN';
+  origin?: "source" | "OpenBabelNN";
 }
 
 export interface BondInstanceSpec {
@@ -65,9 +65,9 @@ export interface BondInstanceSpec {
   start: Vector3Tuple;
   end: Vector3Tuple;
   distance: number;
-  visibility: 'base' | 'bonded';
+  visibility: "base" | "bonded";
   order?: number;
-  origin?: 'source' | 'OpenBabelNN';
+  origin?: "source" | "OpenBabelNN";
 }
 
 export interface PolyhedronSpec {
@@ -76,18 +76,18 @@ export interface PolyhedronSpec {
   center: Vector3Tuple;
   vertices: Vector3Tuple[];
   color: RgbTuple;
-  visibility: 'base' | 'bonded';
+  visibility: "base" | "bonded";
 }
 
 export interface SceneWarning {
   code: string;
   message: string;
-  severity: 'info' | 'warning' | 'error';
+  severity: "info" | "warning" | "error";
 }
 
 export interface AtomicSceneBase {
-  schemaVersion: '2.0';
-  kind: 'crystal' | 'molecule';
+  schemaVersion: "2.0";
+  kind: "crystal" | "molecule";
   requestId: string;
   sites: SiteSpec[];
   atomInstances: AtomInstanceSpec[];
@@ -97,7 +97,7 @@ export interface AtomicSceneBase {
   analysis: {
     algorithm: AtomicBondAlgorithm;
     parameters: Record<string, unknown>;
-    source: 'matgenlab';
+    source: "matgenlab";
     sourceVersion: string;
     elapsedMilliseconds: number;
   };
@@ -105,7 +105,7 @@ export interface AtomicSceneBase {
 }
 
 export interface CrystalSceneSpec extends AtomicSceneBase {
-  kind: 'crystal';
+  kind: "crystal";
   structure: {
     formula: string;
     lattice: Matrix3Tuple;
@@ -117,7 +117,7 @@ export interface CrystalSceneSpec extends AtomicSceneBase {
 }
 
 export interface MoleculeSceneSpec extends AtomicSceneBase {
-  kind: 'molecule';
+  kind: "molecule";
   molecule: {
     formula: string;
     atomCount: number;
@@ -132,11 +132,11 @@ export interface MoleculeSceneSpec extends AtomicSceneBase {
 
 export type AtomicSceneSpec = CrystalSceneSpec | MoleculeSceneSpec;
 
-export type ThemeId = 'pretty' | 'materials';
-export type RadiusMode = 'uniform' | 'atomic';
-export type ColorMode = 'vesta' | 'jmol';
-export type RenderMode = 'fast' | 'quality';
-export type RenderQualityLevel = 'balanced' | 'high' | 'ultra';
+export type ThemeId = "pretty" | "materials";
+export type RadiusMode = "uniform" | "atomic";
+export type ColorMode = "vesta" | "jmol";
+export type RenderMode = "fast" | "quality";
+export type RenderQualityLevel = "balanced" | "high" | "ultra";
 
 export interface ViewerOptions {
   theme: ThemeId;
@@ -156,6 +156,7 @@ export interface ViewerOptions {
   hideIncompleteBonds: boolean;
   showMagmoms: boolean;
   showStatistics: boolean;
+  continuousMeasurement: boolean;
   atomScale: number;
   bondRadius: number;
   polyhedronOpacity: number;
@@ -163,11 +164,11 @@ export interface ViewerOptions {
 }
 
 export const defaultViewerOptions = (): ViewerOptions => ({
-  theme: 'materials',
-  colorMode: 'vesta',
-  radiusMode: 'atomic',
-  renderMode: 'fast',
-  renderQuality: 'high',
+  theme: "materials",
+  colorMode: "vesta",
+  radiusMode: "atomic",
+  renderMode: "fast",
+  renderQuality: "high",
   showAtoms: true,
   showBonds: true,
   showHydrogens: true,
@@ -180,6 +181,7 @@ export const defaultViewerOptions = (): ViewerOptions => ({
   hideIncompleteBonds: true,
   showMagmoms: true,
   showStatistics: false,
+  continuousMeasurement: false,
   atomScale: 0.44,
   bondRadius: 0.1,
   polyhedronOpacity: 0.28,
@@ -187,7 +189,7 @@ export const defaultViewerOptions = (): ViewerOptions => ({
 });
 
 export interface SelectionInfo {
-  kind: 'atom' | 'bond';
+  kind: "atom" | "bond";
   id: string;
   site?: SiteSpec;
   atom?: AtomInstanceSpec;

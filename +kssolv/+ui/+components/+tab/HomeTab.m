@@ -65,6 +65,8 @@ classdef HomeTab < handle
                 'ButtonPushed', @(src, data) callbackFileCloseButton(this));
             % Project Section
             addlistener(this.Widgets.ProjectSection.ProjectStructureButton.Popup.getChildByIndex(1), ...
+                'ItemPushed', @(src, data) callbackNewBlankStructure(this));
+            addlistener(this.Widgets.ProjectSection.ProjectStructureButton.Popup.getChildByIndex(2), ...
                 'ItemPushed', @(src, data) callbackImportStructureFromFile(this));
             addlistener(this.Widgets.ProjectSection.ProjectWorkflowButton, ...
                 'ButtonPushed', @(src, data) callbackProjectWorkflowButton(this));
@@ -107,9 +109,9 @@ classdef HomeTab < handle
             this.Widgets.RunningSection.RunningStopButton.Enabled = false;
 
             % 禁用尚未实现功能的按钮
-            this.Widgets.ProjectSection.ProjectStructureButton.Popup.getChildByIndex(2).Enabled = false;
             this.Widgets.ProjectSection.ProjectStructureButton.Popup.getChildByIndex(3).Enabled = false;
             this.Widgets.ProjectSection.ProjectStructureButton.Popup.getChildByIndex(4).Enabled = false;
+            this.Widgets.ProjectSection.ProjectStructureButton.Popup.getChildByIndex(5).Enabled = false;
             this.Widgets.ProjectSection.ProjectVariableButton.Popup.getChildByIndex(1).Enabled = false;
             this.Widgets.EnvironmentSection.EnvironmentRemoteButton.Popup.getChildByIndex(1).Enabled = false;
             this.Widgets.EnvironmentSection.EnvironmentExtraButton.Popup.getChildByIndex(1).Enabled = false;
@@ -189,6 +191,7 @@ classdef HomeTab < handle
 
             % 创建并组装 PopupList(下拉菜单)
             ProjectStructureButtonPopup = PopupList();
+            NewStructureListItem = CreateListItem('default', 'NewStructure', section.Tag, 0, 'add_class');
             ImportStructureFromFileListItem = CreateListItem('default', 'ImportStructureFromFile', section.Tag, 0, 'importDiagram');
             ImportStructureFromLinkListItem = CreateListItem('default', 'ImportStructureFromLink', section.Tag, 0, 'link_project');
             ImportStructureFromLibraryListItem = CreateListItem('default', 'ImportStructureFromLibrary', section.Tag, 0, 'database_projectYellow');
@@ -204,6 +207,7 @@ classdef HomeTab < handle
             NewVariableListItem = CreateListItem('default', 'NewVariable', section.Tag, 0, 'new_sectionHighlighted');
             ExportVariabletoMATLABListItem = CreateListItem('default', 'ExportVariabletoMATLAB', section.Tag, 0, 'matlabWorkspaceFile');
 
+            ProjectStructureButtonPopup.add(NewStructureListItem);
             ProjectStructureButtonPopup.add(ImportStructureFromFileListItem)
             ProjectStructureButtonPopup.add(ImportStructureFromLinkListItem);
             ProjectStructureButtonPopup.add(ImportStructureFromLibraryListItem);
@@ -552,6 +556,22 @@ classdef HomeTab < handle
                     projectBrowser.updateTreetable('PATCH', item.name, item.encodeToJSON(1));
                 end
             end
+        end
+
+        function callbackNewBlankStructure(~, ~, ~)
+            project = kssolv.ui.util.DataStorage.getData('Project');
+            item = project.findChildrenItem("Structure");
+            if isempty(item)
+                return
+            end
+
+            structure = item.createBlankStructure();
+            projectBrowser = ...
+                kssolv.ui.util.DataStorage.getData('ProjectBrowser');
+            projectBrowser.updateTreetable( ...
+                'ADD', item.name, structure.encodeToJSON(1));
+            projectBrowser.updateTreetable( ...
+                'PATCH', item.name, item.encodeToJSON(1));
         end
 
         function callbackProjectWorkflowButton(~, ~, ~)

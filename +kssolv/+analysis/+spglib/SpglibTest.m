@@ -1,38 +1,34 @@
 classdef SpglibTest < matlab.unittest.TestCase
+    %SPGLIBTEST Unit tests and usage examples for kssolv.analysis.spglib.
 
     methods (Test)
-        function getVersionTest(~)
+        function getVersionTest(testCase)
             version = kssolv.analysis.spglib.Spglib.getVersion();
-            disp(version);
+            testCase.verifyNotEmpty(regexp(version, '^\d+\.\d+\.\d+', 'once'));
         end
 
-        function getVersionFullTest(~)
+        function getVersionFullTest(testCase)
             versionFull = kssolv.analysis.spglib.Spglib.getVersion("full");
-            disp(versionFull);
+            version = kssolv.analysis.spglib.Spglib.getVersion();
+            testCase.verifyTrue(startsWith(versionFull, version));
         end
 
-        function getMajorVersionTest(~)
-            version = kssolv.analysis.spglib.Spglib.getVersion("major");
-            disp(version);
+        function getNumericVersionTest(testCase)
+            version = sscanf(kssolv.analysis.spglib.Spglib.getVersion(), '%d.%d.%d');
+            testCase.verifyEqual(kssolv.analysis.spglib.Spglib.getVersion("major"), version(1));
+            testCase.verifyEqual(kssolv.analysis.spglib.Spglib.getVersion("minor"), version(2));
+            testCase.verifyEqual(kssolv.analysis.spglib.Spglib.getVersion("micro"), version(3));
         end
 
-        function getMinorVersionTest(~)
-            version = kssolv.analysis.spglib.Spglib.getVersion("minor");
-            disp(version);
-        end
-
-        function getMicroVersionTest(~)
-            version = kssolv.analysis.spglib.Spglib.getVersion("micro");
-            disp(version);
-        end
-
-        function getCommitTest(~)
+        function getCommitTest(testCase)
             commit = kssolv.analysis.spglib.Spglib.getCommit();
-            disp(commit);
+            testCase.verifyNotEmpty(commit);
         end
 
-        function getErrorCodeTest(~)
-            disp(kssolv.analysis.spglib.Spglib.getErrorCode());
+        function getErrorCodeTest(testCase)
+            errorCode = kssolv.analysis.spglib.Spglib.getErrorCode();
+            testCase.verifyClass(errorCode, 'kssolv.analysis.spglib.SpglibError');
+            testCase.verifyEqual(errorCode, kssolv.analysis.spglib.SpglibError.SPGLIB_SUCCESS);
         end
 
         function getErrorMessageTest(testCase)
@@ -84,6 +80,9 @@ classdef SpglibTest < matlab.unittest.TestCase
 
             dataset = kssolv.analysis.spglib.Spglib.getDataset(lattice, position, types, num_atom, symprec, angle_tolerance);
             testCase.assertEqual(dataset.spacegroup_number, 186);
+            testCase.verifyEqual(dataset.std_lattice, lattice, 'AbsTol', 1e-12);
+            testCase.verifyEqual(dataset.primitive_lattice, lattice, 'AbsTol', 1e-12);
+
         end
 
         function getMagneticDatasetTest1(testCase)
@@ -137,6 +136,100 @@ classdef SpglibTest < matlab.unittest.TestCase
 
             dataset = kssolv.analysis.spglib.Spglib.getMagneticDataset(lattice, positions, types, tensors, tensor_rank, num_atoms, is_axial, symprec, angle_tolerance, mag_symprec);
             testCase.assertEqual(dataset.msg_type, 1);
+        end
+
+        function datasetConversionSchemaTest(testCase)
+            [lattice, position, types, numAtom, symprec] = testCase.simpleCell();
+            dataset = kssolv.analysis.spglib.Spglib.getDataset( ...
+                lattice, position, types, numAtom, symprec);
+
+            requiredFields = { ...
+                'spacegroup_number', 'hall_number', 'international_symbol', ...
+                'hall_symbol', 'choice', 'transformation_matrix', ...
+                'origin_shift', 'n_operations', 'rotations', 'translations', ...
+                'n_atoms', 'wyckoffs', 'site_symmetry_symbols', ...
+                'equivalent_atoms', 'crystallographic_orbits', ...
+                'primitive_lattice', 'mapping_to_primitive', 'n_std_atoms', ...
+                'std_lattice', 'std_types', 'std_positions', ...
+                'std_rotation_matrix', 'std_mapping_to_primitive', ...
+                'pointgroup_symbol'};
+            testCase.verifyTrue(all(isfield(dataset, requiredFields)));
+            testCase.verifyClass(dataset.rotations, 'int32');
+            testCase.verifyClass(dataset.translations, 'double');
+            testCase.verifyClass(dataset.std_types, 'int32');
+            testCase.verifySize(dataset.rotations, [dataset.n_operations, 3, 3]);
+            testCase.verifySize(dataset.translations, [dataset.n_operations, 3]);
+            testCase.verifySize(dataset.primitive_lattice, [3, 3]);
+            testCase.verifySize(dataset.std_lattice, [3, 3]);
+            testCase.verifySize(dataset.std_positions, [dataset.n_std_atoms, 3]);
+            testCase.verifyEqual(size(dataset.site_symmetry_symbols, 1), dataset.n_atoms);
+            testCase.verifyClass(dataset.site_symmetry_symbols, 'char');
+        end
+
+        function magneticDatasetConversionSchemaTest(testCase)
+            [lattice, position, types, numAtom, symprec] = testCase.simpleCell();
+            spins = [1; -1];
+            dataset = kssolv.analysis.spglib.Spglib.getMagneticDataset( ...
+                lattice, position, types, spins, 0, numAtom, false, symprec);
+
+            requiredFields = { ...
+                'uni_number', 'msg_type', 'hall_number', 'tensor_rank', ...
+                'n_operations', 'rotations', 'translations', ...
+                'time_reversals', 'n_atoms', 'equivalent_atoms', ...
+                'transformation_matrix', 'origin_shift', 'n_std_atoms', ...
+                'std_lattice', 'std_types', 'std_positions', 'std_tensors', ...
+                'std_rotation_matrix', 'primitive_lattice'};
+            testCase.verifyTrue(all(isfield(dataset, requiredFields)));
+            testCase.verifyClass(dataset.rotations, 'int32');
+            testCase.verifyClass(dataset.time_reversals, 'int32');
+            testCase.verifySize(dataset.rotations, [dataset.n_operations, 3, 3]);
+            testCase.verifySize(dataset.translations, [dataset.n_operations, 3]);
+            testCase.verifySize(dataset.std_lattice, [3, 3]);
+            testCase.verifySize(dataset.primitive_lattice, [3, 3]);
+            testCase.verifyEqual(numel(dataset.std_tensors), dataset.n_std_atoms);
+        end
+
+        function mexInputValidationTest(testCase)
+            mexFunction = @kssolv.analysis.spglib.symspg;
+            testCase.verifyError(@() mexFunction('unknown_function'), ...
+                'Spglib:invalidFunction');
+            testCase.verifyError(@() mexFunction('spg_get_version', 1), ...
+                'Spglib:invalidNumInputs');
+            testCase.verifyError(@() mexFunction('spg_get_dataset', eye(2), ...
+                zeros(1, 3), 1, 1, 1e-5), 'Spglib:invalidLattice');
+            testCase.verifyError(@() mexFunction('spg_get_dataset', eye(3), ...
+                zeros(2, 3), 1, 2, 1e-5), 'Spglib:invalidTypes');
+            testCase.verifyError(@() mexFunction('spg_standardize_cell', ...
+                eye(3), zeros(1, 3), int32(1), int32(2), false, false, ...
+                1e-5), 'Spglib:invalidNumAtoms');
+        end
+
+        function publicInputValidationTest(testCase)
+            testCase.verifyError( ...
+                @() kssolv.analysis.spglib.Spglib.getSpacegroupType(int32(0)), ...
+                'MATLAB:validators:mustBeGreaterThanOrEqual');
+            testCase.verifyError( ...
+                @() kssolv.analysis.spglib.Spglib.getMagneticSpacegroupType(int32(1652)), ...
+                'MATLAB:validators:mustBeLessThanOrEqual');
+        end
+
+        function spglibFailurePropagationTest(testCase)
+            lattice = eye(3);
+            position = zeros(2, 3);
+            types = [1; 1];
+            caughtError = false;
+            try
+                kssolv.analysis.spglib.Spglib.getDataset( ...
+                    lattice, position, types, 2, 1e-5);
+            catch exception
+                caughtError = true;
+                testCase.verifyEqual(exception.identifier, 'Spglib:spglibError');
+                testCase.verifyNotEmpty(strfind(exception.message, ...
+                    'too close distance between atoms')); %#ok<STRIFCND>
+            end
+            testCase.verifyTrue(caughtError);
+            testCase.verifyEqual(kssolv.analysis.spglib.Spglib.getErrorCode(), ...
+                kssolv.analysis.spglib.SpglibError.SPGERR_ATOMS_TOO_CLOSE);
         end
 
         function getDatasetWithHallNumberTest1(testCase)
@@ -307,8 +400,25 @@ classdef SpglibTest < matlab.unittest.TestCase
             max_size = num_atom * 96;
             symprec = 1e-5;
 
-            [~, ~, ~, ~, ~, num_operations]  = kssolv.analysis.spglib.Spglib.getSymmetryWithSiteTensors(max_size, lattice, position, types, tensors, 1, num_atom, true, true, symprec);
+            [rotations, translations, ~, primitiveLattice, spinFlips, num_operations] = ...
+                kssolv.analysis.spglib.Spglib.getSymmetryWithSiteTensors(max_size, lattice, position, types, tensors, 1, num_atom, true, true, symprec);
             testCase.assertEqual(num_operations, 8);
+
+            [rotationsAt, translationsAt, ~, primitiveLatticeAt, spinFlipsAt, numOperationsAt] = ...
+                kssolv.analysis.spglib.Spglib.getSymmetryWithSiteTensors(max_size, lattice, position, types, tensors, 1, num_atom, true, true, symprec, -1);
+            [rotationsMs, translationsMs, ~, primitiveLatticeMs, spinFlipsMs, numOperationsMs] = ...
+                kssolv.analysis.spglib.Spglib.getSymmetryWithSiteTensors(max_size, lattice, position, types, tensors, 1, num_atom, true, true, symprec, -1, symprec);
+
+            testCase.verifyEqual(numOperationsAt, num_operations);
+            testCase.verifyEqual(numOperationsMs, num_operations);
+            testCase.verifyEqual(rotationsAt, rotations);
+            testCase.verifyEqual(rotationsMs, rotations);
+            testCase.verifyEqual(translationsAt, translations, 'AbsTol', 1e-12);
+            testCase.verifyEqual(translationsMs, translations, 'AbsTol', 1e-12);
+            testCase.verifyEqual(primitiveLatticeAt, primitiveLattice, 'AbsTol', 1e-12);
+            testCase.verifyEqual(primitiveLatticeMs, primitiveLattice, 'AbsTol', 1e-12);
+            testCase.verifyEqual(spinFlipsAt, spinFlips);
+            testCase.verifyEqual(spinFlipsMs, spinFlips);
         end
 
         function getSpacegroupTypeFromSymmetryTest(testCase)
@@ -406,8 +516,12 @@ classdef SpglibTest < matlab.unittest.TestCase
             testCase.assertEqual(trans_mat, int32(eye(3)));
         end
 
-        function getSymmetryFromDatabaseTest(~)
-            kssolv.analysis.spglib.Spglib.getSymmetryFromDatabase(460);
+        function getSymmetryFromDatabaseTest(testCase)
+            [rotations, translations] = kssolv.analysis.spglib.Spglib.getSymmetryFromDatabase(460);
+            testCase.verifyGreaterThan(size(rotations, 1), 0);
+            testCase.verifySize(translations, [size(rotations, 1), 3]);
+            testCase.verifyClass(rotations, 'int32');
+            testCase.verifyClass(translations, 'double');
         end
 
         function getMagneticSymmetryFromDatabaseTest(testCase)
@@ -418,6 +532,18 @@ classdef SpglibTest < matlab.unittest.TestCase
         function getSpacegroupTypeTest(testCase)
             spacegroup = kssolv.analysis.spglib.Spglib.getSpacegroupType(446);
             testCase.assertEqual(spacegroup.number, 156);
+        end
+
+        function arithmeticCrystalClassesTest(testCase)
+            % Regression test for the spglib 2.7.1 fix for space groups
+            % 187--190 (Hall numbers 481--484).
+            expectedNumbers = [56, 56, 57, 57];
+            expectedSymbols = ["-6m2P", "-6m2P", "-62mP", "-62mP"];
+            for index = 1:4
+                spacegroup = kssolv.analysis.spglib.Spglib.getSpacegroupType(480 + index);
+                testCase.verifyEqual(spacegroup.arithmetic_crystal_class_number, expectedNumbers(index));
+                testCase.verifyEqual(strtrim(string(spacegroup.arithmetic_crystal_class_symbol)), expectedSymbols(index));
+            end
         end
 
         function getMagneticSpacegroupType(testCase)
@@ -475,9 +601,29 @@ classdef SpglibTest < matlab.unittest.TestCase
             [~, ~, ~, num_primitive_atom] = kssolv.analysis.spglib.Spglib.standardizeCell( ...
                 lattice, position, types, num_atom, to_primitive, no_idealize, symprec);
             testCase.assertEqual(num_primitive_atom, 10);
+
+            [~, ~, ~, numPrimitiveAtomAt] = kssolv.analysis.spglib.Spglib.standardizeCell( ...
+                lattice, position, types, num_atom, to_primitive, no_idealize, symprec, -1);
+            testCase.verifyEqual(numPrimitiveAtomAt, num_primitive_atom);
         end
 
-        function findPrimitiveCellTest1(~)
+        function standardizeCellExpansionTest(testCase)
+            primitiveLattice = [0, 2, 2; 2, 0, 2; 2, 2, 0];
+            position = [0, 0, 0];
+            types = int32(1);
+
+            [lattice, positions, standardizedTypes, numAtoms] = ...
+                kssolv.analysis.spglib.Spglib.standardizeCell( ...
+                    primitiveLattice, position, types, int32(1), ...
+                    false, false, 1e-5);
+
+            testCase.verifyEqual(numAtoms, 4);
+            testCase.verifyEqual(lattice, 4 * eye(3), 'AbsTol', 1e-12);
+            testCase.verifySize(positions, [4, 3]);
+            testCase.verifyEqual(standardizedTypes, int32(ones(4, 1)));
+        end
+
+        function findPrimitiveCellTest1(testCase)
             lattice = [
                 4, 0, 0;
                 0, 4, 0;
@@ -495,9 +641,9 @@ classdef SpglibTest < matlab.unittest.TestCase
             symprec = 1e-5;
 
             [~, ~, ~, num_primitive_atom] = kssolv.analysis.spglib.Spglib.findPrimitive(lattice, position, types, num_atom, symprec);
-            if num_primitive_atom == 0
-                disp(kssolv.analysis.spglib.Spglib.getErrorMessage(kssolv.analysis.spglib.Spglib.getErrorCode()));
-            end
+            testCase.verifyEqual(num_primitive_atom, 0);
+            testCase.verifyEqual(kssolv.analysis.spglib.Spglib.getErrorCode(), ...
+                kssolv.analysis.spglib.SpglibError.SPGERR_ATOMS_TOO_CLOSE);
         end
 
         function findPrimitiveCellTest2(testCase)
@@ -524,19 +670,24 @@ classdef SpglibTest < matlab.unittest.TestCase
         end
     
         function refineCellTest(testCase)
-            lattice = [0, 2, 2; 2, 0, 2; 2, 2, 0];
+            inputLattice = [0, 2, 2; 2, 0, 2; 2, 2, 0];
             position = [0, 0, 0];
             types = 1;
             num_atom = 1;
             symprec = 1e-5;
 
             [lattice, ~, ~, num_atom_bravais] = ...
-                kssolv.analysis.spglib.Spglib.refineCell(lattice, position, types, num_atom, symprec);
+                kssolv.analysis.spglib.Spglib.refineCell(inputLattice, position, types, num_atom, symprec);
             testCase.assertEqual(lattice, 4 * eye(3));
             testCase.assertEqual(num_atom_bravais, 4);
+
+            [latticeAt, ~, ~, numAtomBravaisAt] = ...
+                kssolv.analysis.spglib.Spglib.refineCell(inputLattice, position, types, num_atom, symprec, -1);
+            testCase.verifyEqual(latticeAt, lattice, 'AbsTol', 1e-12);
+            testCase.verifyEqual(numAtomBravaisAt, num_atom_bravais);
         end
     
-        function delaunayReduceTest(~)
+        function delaunayReduceTest(testCase)
             lattice = [
                 3.0, 0.1, 0.2;
                 0.1, 3.5, 0.3;
@@ -544,23 +695,26 @@ classdef SpglibTest < matlab.unittest.TestCase
                 ];
             symprec = 1e-5;
 
-            kssolv.analysis.spglib.Spglib.delaunayReduce(lattice, symprec);
+            [reducedLattice, result] = kssolv.analysis.spglib.Spglib.delaunayReduce(lattice, symprec);
+            testCase.verifyEqual(result, 1);
+            testCase.verifySize(reducedLattice, [3, 3]);
+            testCase.verifyEqual(abs(det(reducedLattice)), abs(det(lattice)), 'RelTol', 1e-12);
         end
 
-        function getGridPointFromAddressTest(~)
+        function getGridPointFromAddressTest(testCase)
             grid_address = [1, 2, 3];
             mesh = [10, 10, 10];
 
             grid_point_index = kssolv.analysis.spglib.Spglib.getGridPointFromAddress(grid_address, mesh);
-            disp(['Grid point index: ', num2str(grid_point_index)]);
+            testCase.verifyEqual(grid_point_index, 321);
         end
 
-        function getDenseGridPointFromAddressTest(~)
+        function getDenseGridPointFromAddressTest(testCase)
             grid_address = [2, 3, 5];
             mesh = [10, 10, 10];
 
             dense_grid_point_index = kssolv.analysis.spglib.Spglib.getDenseGridPointFromAddress(grid_address, mesh);
-            disp(['Grid point index: ', num2str(dense_grid_point_index)]);
+            testCase.verifyEqual(dense_grid_point_index, 532);
         end
     
         function getIrReciprocalMeshTest(testCase)
@@ -587,6 +741,24 @@ classdef SpglibTest < matlab.unittest.TestCase
 
             [~, ~, num_ir_kpoints] = kssolv.analysis.spglib.Spglib.getIrReciprocalMesh(mesh, is_shift, 1, lattice, position, types, num_atom, symprec);
             testCase.assertEqual(num_ir_kpoints, 4200);
+        end
+
+        function getDenseIrReciprocalMeshTest(testCase)
+            [lattice, position, types, numAtom, symprec] = testCase.simpleCell();
+            mesh = int32([6, 6, 6]);
+            isShift = int32([0, 0, 0]);
+
+            [gridAddress, mapping, numIr] = ...
+                kssolv.analysis.spglib.Spglib.getIrReciprocalMesh( ...
+                    mesh, isShift, true, lattice, position, types, numAtom, symprec);
+            [denseGridAddress, denseMapping, denseNumIr] = ...
+                kssolv.analysis.spglib.Spglib.getDenseIrReciprocalMesh( ...
+                    mesh, isShift, true, lattice, position, types, numAtom, symprec);
+
+            testCase.verifyEqual(denseNumIr, numIr);
+            testCase.verifyEqual(denseGridAddress, gridAddress);
+            testCase.verifyEqual(denseMapping, uint64(mapping));
+            testCase.verifyClass(denseMapping, 'uint64');
         end
 
         function getStabilizedReciprocalMeshTest(testCase)
@@ -634,6 +806,51 @@ classdef SpglibTest < matlab.unittest.TestCase
                 num_rotations, rotations, num_qpoints, qpoints);
 
             testCase.assertTrue(num_ir_kpoints > 0);
+        end
+
+        function denseGridPointsByRotationsTest(testCase)
+            mesh = int32([4, 4, 4]);
+            isShift = int32([0, 0, 0]);
+            address = int32([1, 0, 0]);
+            rotations = zeros(2, 3, 3, 'int32');
+            rotations(1, :, :) = int32(eye(3));
+            rotations(2, :, :) = -int32(eye(3));
+
+            denseGridPoints = ...
+                kssolv.analysis.spglib.Spglib.getDenseGridPointsByRotations( ...
+                    address, int32(2), rotations, mesh, isShift);
+
+            testCase.verifyClass(denseGridPoints, 'uint64');
+            expected = uint64([ ...
+                kssolv.analysis.spglib.Spglib.getDenseGridPointFromAddress(address, mesh); ...
+                kssolv.analysis.spglib.Spglib.getDenseGridPointFromAddress(-address, mesh)]);
+            testCase.verifyEqual(denseGridPoints, expected);
+        end
+
+        function denseBZGridPointsByRotationsTest(testCase)
+            mesh = int32([4, 4, 4]);
+            isShift = int32([0, 0, 0]);
+            address = int32([1, 0, 0]);
+            rotations = zeros(2, 3, 3, 'int32');
+            rotations(1, :, :) = int32(eye(3));
+            rotations(2, :, :) = -int32(eye(3));
+            identityRotation = rotations(1, :, :);
+            qpoint = [0, 0, 0];
+
+            [denseGridAddress, ~, ~] = ...
+                kssolv.analysis.spglib.Spglib.getDenseStabilizedReciprocalMesh( ...
+                    mesh, isShift, true, int32(1), identityRotation, int32(1), qpoint);
+            [~, denseBzMap, numBzGridPoints] = ...
+                kssolv.analysis.spglib.Spglib.relocateDenseBZGridAddress( ...
+                    int32(denseGridAddress), mesh, eye(3), isShift);
+
+            denseBzGridPoints = ...
+                kssolv.analysis.spglib.Spglib.getDenseBZGridPointsByRotations( ...
+                    address, int32(2), rotations, mesh, isShift, denseBzMap);
+
+            testCase.verifyClass(denseBzGridPoints, 'uint64');
+            testCase.verifySize(denseBzGridPoints, [2, 1]);
+            testCase.verifyTrue(all(denseBzGridPoints < uint64(numBzGridPoints)));
         end
     
         function relocateBZGridAddressTest(testCase)
@@ -684,8 +901,19 @@ classdef SpglibTest < matlab.unittest.TestCase
             lattice = [2 0 1; 1 2 0; 0 1 2];
             symprec = 1e-5;
 
-            [~, result] = kssolv.analysis.spglib.Spglib.niggliReduce(lattice, symprec);
+            [reducedLattice, result] = kssolv.analysis.spglib.Spglib.niggliReduce(lattice, symprec);
             testCase.assertEqual(result, 1);
+            testCase.verifyEqual(abs(det(reducedLattice)), abs(det(lattice)), 'RelTol', 1e-12);
+        end
+    end
+
+    methods (Static, Access = private)
+        function [lattice, position, types, numAtom, symprec] = simpleCell()
+            lattice = 4 * eye(3);
+            position = [0, 0, 0; 0.5, 0.5, 0.5];
+            types = int32([1; 1]);
+            numAtom = int32(2);
+            symprec = 1e-5;
         end
     end
 end

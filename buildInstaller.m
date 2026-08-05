@@ -2,7 +2,7 @@ function buildInstaller(runtimeDelivery)
 %BUILDINSTALLER 编译 KSSOLV Toolbox 为独立应用程序，并生成安装包
 
 % 开发者：杨柳
-% 版权 2025 合肥瀚海量子科技有限公司
+% 版权 2025-2026 合肥瀚海量子科技有限公司
 
 arguments
     runtimeDelivery {mustBeMember(runtimeDelivery, ["web", "installer", "none"])} = "web"
@@ -44,7 +44,8 @@ if ~any(addOnIndex)
 end
 addOn = installedAddOns(find(addOnIndex, 1, 'last'));
 addOnPath = string(addOn.registrationRoot);
-additionalFiles = [additionalFiles addOnPath];
+addOnRuntimeFiles = getAddOnRuntimeFiles(addOnPath);
+additionalFiles = [additionalFiles addOnRuntimeFiles];
 
 % 设置编译属性
 buildOptions = compiler.build.StandaloneApplicationOptions(fullfile(toolboxFolder, "kssolvStart.m"));
@@ -103,4 +104,37 @@ end
 
 % 生成独立应用程序安装包
 compiler.package.installer(buildResult, "Options", packageOptions);
+end
+
+function runtimeFiles = getAddOnRuntimeFiles(addOnPath)
+% 收集 Add-On 运行文件，排除测试、示例、文档和仓库开发内容。
+entries = dir(fullfile(addOnPath, "**", "*"));
+entries = entries(~[entries.isdir]);
+allFiles = string(fullfile({entries.folder}, {entries.name}));
+
+excludedDirectories = fullfile(addOnPath, [ ...
+    "tests", ...
+    "examples", ...
+    "doc", ...
+    ".git", ...
+    ".github", ...
+    ".githooks"]);
+excludedFiles = fullfile(addOnPath, [ ...
+    ".gitattributes", ...
+    ".gitignore", ...
+    "CONTRIBUTING.md", ...
+    "DEVELOPMENT.md", ...
+    "SECURITY.md"]);
+
+isExcluded = ismember(allFiles, excludedFiles);
+for directory = excludedDirectories
+    isExcluded = isExcluded | ...
+        startsWith(allFiles, directory + string(filesep));
+end
+runtimeFiles = allFiles(~isExcluded);
+
+if isempty(runtimeFiles)
+    error('KSSOLV:Deployment:LLMAddonFilesNotFound', ...
+        'No deployable LLM Add-On files were found in: %s', addOnPath);
+end
 end

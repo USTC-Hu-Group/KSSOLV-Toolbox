@@ -93,7 +93,7 @@ filteredConditions = ~contains(options.ToolboxFiles, 'buildfile.m') & ...
     ~endsWith(options.ToolboxFiles, '.gitattributes') & ...
     ~(contains(options.ToolboxFiles, '+kssolv/') & endsWith(options.ToolboxFiles, '.m'));
 options.ToolboxFiles = options.ToolboxFiles(filteredConditions);
-% options.ToolboxFiles(end+1) = fullfile(toolboxFolder, "ks.ks");
+options.ToolboxFiles(end+1) = fullfile(toolboxFolder, "ks.ks");
 
 matlab.addons.toolbox.packageToolbox(options);
 end

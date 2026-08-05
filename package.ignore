@@ -29,6 +29,7 @@ Release
 **/docs/**/*
 
 *.ks
+!ks.ks
 .env
 
 dev

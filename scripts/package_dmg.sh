@@ -1,70 +1,82 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPTS_DIR"/../Release/StandaloneDesktopApp/
-
-# 查找经 sign_and_notarize_app.sh 脚本得到的 .app 文件
-APP_FULL_PATH=$(find . -name "KSSOLV_Toolbox_V*.app" -maxdepth 1 -print | head -n 1)
-APP_NAME=${APP_FULL_PATH#./}
-APP_BASENAME="${APP_NAME%.app}"
-
-# 定义 DMG 输出名称和挂载时的卷标名称
-DMG_NAME="${APP_BASENAME}.dmg"
-VOL_NAME="${APP_BASENAME}"
-
-# 开发者 ID 与 Keychain Profile
+RELEASE_DIR="$SCRIPTS_DIR/../Release/StandaloneDesktopApp"
 DEV_ID="Developer ID Application: Liu Yang (T3ML58STY8)"
 NOTARY_PROFILE="AC_PASSWORD"
+
+fail() {
+    echo "错误: $*" >&2
+    exit 1
+}
+
+[[ -d "$RELEASE_DIR" ]] || fail "找不到发布目录: $RELEASE_DIR"
+cd "$RELEASE_DIR"
+
+shopt -s nullglob
+APP_CANDIDATES=(KSSOLV_Toolbox_V*.app)
+shopt -u nullglob
+(( ${#APP_CANDIDATES[@]} == 1 )) || \
+    fail "发布目录中应当恰好有一个 KSSOLV_Toolbox_V*.app，实际找到 ${#APP_CANDIDATES[@]} 个"
+
+APP_NAME="${APP_CANDIDATES[0]}"
+APP_BASENAME="${APP_NAME%.app}"
+DMG_NAME="${APP_BASENAME}.dmg"
+VOL_NAME="$APP_BASENAME"
+DMG_INSTALLER_NAME="Install KSSOLV Toolbox.app"
 
 echo "=== 开始 DMG 打包流程 ==="
 echo "目标应用: $APP_NAME"
 echo "输出文件: $DMG_NAME"
 
-# 准备构建目录
-STAGING_DIR="./dmg_staging"
-rm -rf "$STAGING_DIR" "$DMG_NAME"
-mkdir -p "$STAGING_DIR"
+codesign --verify --deep --strict --verbose=2 "$APP_NAME"
+xcrun stapler validate "$APP_NAME"
 
-# 复制已签名的 App 到构建目录
-cp -R "$APP_NAME" "$STAGING_DIR/"
-
-# 生成 DMG 文件 (使用 create-dmg)
-if ! command -v create-dmg &> /dev/null; then
-    brew install create-dmg
+if ! command -v create-dmg >/dev/null 2>&1; then
+    fail "未安装 create-dmg，请先执行: brew install create-dmg"
 fi
+
+STAGING_DIR=$(mktemp -d "${TMPDIR:-/tmp}/kssolv-dmg.XXXXXX")
+cleanup() {
+    rm -rf "$STAGING_DIR"
+}
+trap cleanup EXIT
+
+# 这是会下载 Runtime 并释放真正应用的一次性安装器，不是可拖入
+# Applications 直接运行的应用。将它以明确的安装器名称放在只读 DMG
+# 中，用户直接双击即可，安装完毕后不会在 /Applications 留下这一层。
+# ditto 能保留 app bundle 的符号链接、权限和扩展属性。
+ditto "$APP_NAME" "$STAGING_DIR/$DMG_INSTALLER_NAME"
+codesign --verify --deep --strict --verbose=2 \
+    "$STAGING_DIR/$DMG_INSTALLER_NAME"
+rm -f "$DMG_NAME"
+
 create-dmg \
-  --volname "$VOL_NAME" \
-  --window-pos 400 280 \
-  --window-size 400 300 \
-  --icon-size 100 \
-  --text-size 12 \
-  --icon "$APP_NAME" 200 110 \
-  --hide-extension "$APP_NAME" \
-  "$DMG_NAME" \
-  "$STAGING_DIR/"
-rm -rf "$STAGING_DIR"
+    --volname "$VOL_NAME" \
+    --window-pos 400 280 \
+    --window-size 520 340 \
+    --icon-size 112 \
+    --text-size 12 \
+    --icon "$DMG_INSTALLER_NAME" 260 145 \
+    --hide-extension "$DMG_INSTALLER_NAME" \
+    "$DMG_NAME" \
+    "$STAGING_DIR"
 
-# 签名 DMG 文件
-codesign --sign "$DEV_ID" \
-  --timestamp \
-  --options runtime \
-  -v "$DMG_NAME"
+[[ -f "$DMG_NAME" ]] || fail "create-dmg 未生成目标文件: $DMG_NAME"
 
-# 公证 DMG 文件
-if xcrun notarytool submit "$DMG_NAME" \
-  --keychain-profile "$NOTARY_PROFILE" \
-  --wait; then
+echo "=== 签名并公证 DMG ==="
+codesign --force --sign "$DEV_ID" --timestamp --verbose \
+    "$DMG_NAME"
+codesign --verify --verbose=2 "$DMG_NAME"
 
-  echo "DMG 公证成功"
+xcrun notarytool submit "$DMG_NAME" \
+    --keychain-profile "$NOTARY_PROFILE" \
+    --wait
 
-  # 装订票据 (Staple) 到 DMG
-  xcrun stapler staple "$DMG_NAME"
-  
-  # 验证装订结果
-  spctl -a -t open --context context:primary-signature -v "$DMG_NAME"
-  echo "全部完成！最终文件: $(pwd)/$DMG_NAME"
-else
-  echo "DMG 公证失败"
-  exit 1
-fi
+xcrun stapler staple "$DMG_NAME"
+xcrun stapler validate "$DMG_NAME"
+spctl --assess --type open --context context:primary-signature \
+    --verbose=2 "$DMG_NAME"
+
+echo "全部完成！最终文件: $(pwd)/$DMG_NAME"

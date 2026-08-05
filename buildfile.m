@@ -7,7 +7,11 @@ function plan = buildfile
 import matlab.buildtool.tasks.CodeIssuesTask
 
 plan = buildplan(localfunctions);
-plan("check") = CodeIssuesTask(WarningThreshold = Inf, ...
+sourceFiles = plan.files("**/*.m");
+coreFolder = string(filesep) + "+kssolv" + string(filesep) + ...
+    "+core" + string(filesep);
+sourceFiles = sourceFiles.select(@(path) ~contains(path, coreFolder));
+plan("check") = CodeIssuesTask(sourceFiles, WarningThreshold = 0, ...
     Results = ".buildtool/code-issues/results.sarif");
 plan("check").Dependencies = "init";
 
@@ -96,6 +100,15 @@ end
 
 function cleanPcodeTask(context)
 % 删除生成的 .p 文件
+% 先释放由 .p 文件定义的持久对象。否则在对应 .p 文件删除后再触发
+% 析构，MATLAB 将无法解析类的 delete 方法。
+registry = kssolv.ui.util.DataStorage.getData( ...
+    "ModelingSessionRegistry");
+if ~isempty(registry) && isvalid(registry)
+    delete(registry);
+end
+clear registry
+
 filePaths = context.Task.Inputs.paths;
 for i = 1:length(filePaths)
     if isfile(filePaths{i})

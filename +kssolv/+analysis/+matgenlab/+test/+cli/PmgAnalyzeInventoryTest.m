@@ -3,7 +3,7 @@ classdef PmgAnalyzeInventoryTest < matlab.unittest.TestCase
 
     methods (Test)
         function detailedEnergyAndCacheMatchFrozenOutput(testCase)
-            [work, cleanup, oracle] = testCase.preparedWork();
+            [work, cleanup, oracle] = testCase.preparedWork(); %#ok<ASGLU>
             cd(work);
             [output, status, result] = testCase.capture(@() ...
                 kssolv.analysis.matgenlab.cli.pmg_analyze. ...
@@ -35,7 +35,7 @@ classdef PmgAnalyzeInventoryTest < matlab.unittest.TestCase
         end
 
         function quickEnergyMatchesFrozenOutput(testCase)
-            [work, cleanup, oracle] = testCase.preparedWork();
+            [work, cleanup, oracle] = testCase.preparedWork(); %#ok<ASGLU>
             cd(work);
             [output, status, result] = testCase.capture(@() ...
                 kssolv.analysis.matgenlab.cli.pmg_analyze. ...
@@ -53,7 +53,7 @@ classdef PmgAnalyzeInventoryTest < matlab.unittest.TestCase
         end
 
         function magnetizationsMatchFrozenOutput(testCase)
-            [work, cleanup, oracle] = testCase.preparedWork();
+            [work, cleanup, oracle] = testCase.preparedWork(); %#ok<ASGLU>
             cd(work);
             [selectedOutput, selectedStatus, selected] = ...
                 testCase.capture(@() ...
@@ -82,7 +82,7 @@ classdef PmgAnalyzeInventoryTest < matlab.unittest.TestCase
         end
 
         function dispatcherUsesUpstreamPriorityAndRange(testCase)
-            [work, cleanup, oracle] = testCase.preparedWork();
+            [work, cleanup, oracle] = testCase.preparedWork(); %#ok<ASGLU>
             cd(work);
             energyArgs = struct("directories", "run", ...
                 "get_energies", false, "ion_list", [], ...
@@ -118,7 +118,7 @@ classdef PmgAnalyzeInventoryTest < matlab.unittest.TestCase
         end
 
         function nativeFormatsAndFailuresAreExplicit(testCase)
-            [work, cleanup] = testCase.preparedWork();
+            [work, cleanup] = testCase.preparedWork(); %#ok<ASGLU>
             cd(work);
             rows = {"run/vasprun.xml.gz", "Li1H1", ...
                 "-6.82078", "-3.41039", "0.00"};
@@ -156,7 +156,7 @@ classdef PmgAnalyzeInventoryTest < matlab.unittest.TestCase
     end
 
     methods (Static, Access = private)
-        function [output, status, result] = capture(functionHandle)
+        function [output, status, result] = capture(functionHandle) %#ok<INUSD>
             status = [];
             result = [];
             output = string(evalc( ...

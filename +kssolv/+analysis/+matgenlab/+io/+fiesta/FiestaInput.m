@@ -119,7 +119,7 @@ classdef FiestaInput < kssolv.analysis.matgenlab.util.MSONable
             end
         end
 
-        function set_gw_options(obj, nvBand, ncBand, nIteration, ...
+        function obj = set_gw_options(obj, nvBand, ncBand, nIteration, ...
                 nGrid, dEGrid)
             if nargin < 2, nvBand = 10; end
             if nargin < 3, ncBand = 10; end
@@ -137,7 +137,7 @@ classdef FiestaInput < kssolv.analysis.matgenlab.util.MSONable
             obj.correlation_grid = grid;
         end
 
-        function set_bse_options(obj, nExcitations, nitBse)
+        function obj = set_bse_options(obj, nExcitations, nitBse)
             if nargin < 2, nExcitations = 10; end
             if nargin < 3, nitBse = 200; end
             options = obj.bse_tddft_options;
@@ -146,7 +146,7 @@ classdef FiestaInput < kssolv.analysis.matgenlab.util.MSONable
             obj.bse_tddft_options = options;
         end
 
-        function dump_bse_data_in_gw_run(obj, bseDump)
+        function obj = dump_bse_data_in_gw_run(obj, bseDump)
             if nargin < 2, bseDump = true; end
             options = obj.bse_tddft_options;
             options.do_bse = double(logical(bseDump));
@@ -154,7 +154,7 @@ classdef FiestaInput < kssolv.analysis.matgenlab.util.MSONable
             obj.bse_tddft_options = options;
         end
 
-        function dump_tddft_data_in_gw_run(obj, tddftDump)
+        function obj = dump_tddft_data_in_gw_run(obj, tddftDump)
             if nargin < 2, tddftDump = true; end
             options = obj.bse_tddft_options;
             options.do_bse = "0";

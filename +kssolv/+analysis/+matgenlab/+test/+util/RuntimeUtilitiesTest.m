@@ -15,7 +15,7 @@ classdef RuntimeUtilitiesTest < matlab.unittest.TestCase
         function scopedRuntimeGuardsRestoreState(testCase)
             original=getenv("PYTHONWARNINGS");
             cleanup=kssolv.analysis.matgenlab.util. ...
-                set_python_warnings("ignore");
+                set_python_warnings("ignore"); %#ok<NASGU>
             testCase.verifyEqual(getenv("PYTHONWARNINGS"),'ignore');
             clear cleanup
             testCase.verifyEqual(getenv("PYTHONWARNINGS"),original);
@@ -23,7 +23,7 @@ classdef RuntimeUtilitiesTest < matlab.unittest.TestCase
             marker=string(tempname);
             markerCleanup=onCleanup(@()deleteIfPresent(marker));
             cleanup=kssolv.analysis.matgenlab.util. ...
-                tqdm_joblib(@()touch(marker));
+                tqdm_joblib(@()touch(marker)); %#ok<NASGU>
             testCase.verifyFalse(isfile(marker));
             clear cleanup
             testCase.verifyTrue(isfile(marker));

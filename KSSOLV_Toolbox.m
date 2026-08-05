@@ -6,8 +6,8 @@ classdef KSSOLV_Toolbox
 
     properties (Constant)
         Name string = 'KSSOLV Toolbox'
-        Version string = '0.2.7'
-        ReleaseDate string = '2026.1.5'
+        Version string = '0.3.0'
+        ReleaseDate string = '2026.8.5'
         License char = 'Business Source License 1.1 (BUSL-1.1)'
         CodeRepository char = 'https://github.com/USTC-Hu-Group/KSSOLV-Toolbox'
 
@@ -18,8 +18,8 @@ classdef KSSOLV_Toolbox
         Description string = "A MATLAB-Based Plane Wave Basis Set First-Principles Calculation Toolbox."
         Summary string = "Plane Wave Basis, First-Principles Calculation"
 
-        MinimumMATLABVersion char = 'R2024a'
-        RecommendedMinimumMATLABVersion char = 'R2025b'
+        MinimumMATLABVersion char = 'R2025a'
+        RecommendedMinimumMATLABVersion char = 'R2026b'
 
         RootDirectory char = fileparts(mfilename('fullpath'))
     end

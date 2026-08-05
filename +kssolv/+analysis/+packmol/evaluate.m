@@ -13,7 +13,6 @@ cartesianGradient = zeros(system.atom_count, 3);
 atomRestraint = zeros(system.atom_count, 1);
 atomDistance = zeros(system.atom_count, 1);
 restraintObjective = 0;
-maximumRestraint = 0;
 activeStructures = options.ActiveStructures;
 if isempty(activeStructures)
     activeStructures = 1:numel(system.structures);

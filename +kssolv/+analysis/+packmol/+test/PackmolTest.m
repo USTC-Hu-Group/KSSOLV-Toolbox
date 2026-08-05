@@ -86,7 +86,7 @@ classdef PackmolTest < matlab.unittest.TestCase
         end
 
         function rigidObjectiveGradientMatchesFiniteDifference(testCase)
-            [folder, cleanup] = fixtureFolder();
+            [folder, cleanup] = fixtureFolder(); %#ok<ASGLU>
             writeText(fullfile(folder, "water.xyz"), ...
                 "3" + newline + "water" + newline + ...
                 "H -0.8 0 0" + newline + ...
@@ -110,7 +110,7 @@ classdef PackmolTest < matlab.unittest.TestCase
         end
 
         function fixedPdbOutputIsByteIdenticalToUpstreamOracle(testCase)
-            [folder, cleanup] = fixtureFolder();
+            [folder, cleanup] = fixtureFolder(); %#ok<ASGLU>
             water = [ ...
                 "HEADER    water"; ...
                 "COMPND"; ...
@@ -166,7 +166,7 @@ classdef PackmolTest < matlab.unittest.TestCase
         end
 
         function xyzAndTinkerOutputsAreByteIdenticalToUpstream(testCase)
-            [folder, cleanup] = fixtureFolder();
+            [folder, cleanup] = fixtureFolder(); %#ok<ASGLU>
             writeText(fullfile(folder, "dimer.xyz"), ...
                 "2" + newline + "dimer" + newline + ...
                 "H 1 2 3" + newline + "O 4 5 6" + newline);
@@ -216,7 +216,7 @@ classdef PackmolTest < matlab.unittest.TestCase
         end
 
         function restartCheckPdbIsByteIdenticalToUpstream(testCase)
-            [folder, cleanup] = fixtureFolder();
+            [folder, cleanup] = fixtureFolder(); %#ok<ASGLU>
             template = [ ...
                 "HETATM    1  H   MOL     1      -0.500   0.000   0.000  1.00  0.00           H  "; ...
                 "HETATM    2  O   MOL     1       0.500   0.000   0.000  1.00  0.00           O  "; ...
@@ -266,7 +266,7 @@ classdef PackmolTest < matlab.unittest.TestCase
         end
 
         function nativePackingAndExecutorMeetRequestedTolerance(testCase)
-            [folder, cleanup] = fixtureFolder();
+            [folder, cleanup] = fixtureFolder(); %#ok<ASGLU>
             writeText(fullfile(folder, "helium.xyz"), ...
                 "1" + newline + "helium" + newline + ...
                 "He 0 0 0" + newline);
@@ -293,7 +293,7 @@ classdef PackmolTest < matlab.unittest.TestCase
         end
 
         function singleMovableMoleculeEscapesFixedSymmetricTrap(testCase)
-            [folder, cleanup] = fixtureFolder();
+            [folder, cleanup] = fixtureFolder(); %#ok<ASGLU>
             writeText(fullfile(folder, "ion.xyz"), ...
                 "1" + newline + "ion" + newline + "Na 0 0 0" + newline);
             input = "tolerance 2" + newline + ...
@@ -326,7 +326,7 @@ classdef PackmolTest < matlab.unittest.TestCase
         end
 
         function impossibleRestraintsReturnUpstreamConvergenceCode(testCase)
-            [folder, cleanup] = fixtureFolder();
+            [folder, cleanup] = fixtureFolder(); %#ok<ASGLU>
             writeText(fullfile(folder, "long.xyz"), ...
                 "2" + newline + "long" + newline + ...
                 "H -5 0 0" + newline + "H 5 0 0" + newline);
@@ -349,7 +349,7 @@ classdef PackmolTest < matlab.unittest.TestCase
         end
 
         function periodicPairObjectiveEqualsMinimumImageFormula(testCase)
-            [folder, cleanup] = fixtureFolder();
+            [folder, cleanup] = fixtureFolder(); %#ok<ASGLU>
             writeText(fullfile(folder, "one.xyz"), ...
                 "1" + newline + "one" + newline + "He 0 0 0" + newline);
             input = "tolerance 2" + newline + ...
@@ -377,7 +377,7 @@ classdef PackmolTest < matlab.unittest.TestCase
         end
 
         function restartRoundTripPreservesEveryRigidVariable(testCase)
-            [folder, cleanup] = fixtureFolder();
+            [folder, cleanup] = fixtureFolder(); %#ok<ASGLU>
             writeText(fullfile(folder, "one.xyz"), ...
                 "1" + newline + "one" + newline + "He 0 0 0" + newline);
             input = "tolerance 2" + newline + ...
@@ -404,7 +404,7 @@ classdef PackmolTest < matlab.unittest.TestCase
         end
 
         function chkgradWritesAuditAndDoesNotWriteCoordinates(testCase)
-            [folder, cleanup] = fixtureFolder();
+            [folder, cleanup] = fixtureFolder(); %#ok<ASGLU>
             writeText(fullfile(folder, "one.xyz"), ...
                 "1" + newline + "one" + newline + "He 0 0 0" + newline);
             input = "tolerance 2" + newline + ...
@@ -428,7 +428,7 @@ classdef PackmolTest < matlab.unittest.TestCase
         end
 
         function commandLineSignatureAcceptsEitherFlagOrder(testCase)
-            [folder, cleanup] = fixtureFolder();
+            [folder, cleanup] = fixtureFolder(); %#ok<ASGLU>
             structurePath = fullfile(folder, "one.xyz");
             inputPath = fullfile(folder, "input.inp");
             outputPath = fullfile(folder, "cli.xyz");

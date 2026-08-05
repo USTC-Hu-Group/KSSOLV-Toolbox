@@ -46,7 +46,7 @@ classdef BoltztrapRunner < kssolv.analysis.matgenlab.util.MSONable
                 obj.doping = [levels(:).', 1e22];
             end
             if any(obj.run_type == ["DOS", "BANDS"])
-                obj.autoEnergyRange();
+                obj = obj.autoEnergyRange();
             end
         end
 
@@ -353,7 +353,7 @@ classdef BoltztrapRunner < kssolv.analysis.matgenlab.util.MSONable
     end
 
     methods (Access = private)
-        function autoEnergyRange(obj)
+        function obj = autoEnergyRange(obj)
             values = [];
             names = fieldnames(obj.bs.bands);
             for index = 1:numel(names)

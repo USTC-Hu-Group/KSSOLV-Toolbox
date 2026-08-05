@@ -31,7 +31,6 @@ sMemory = zeros(numel(x), 0);
 yMemory = zeros(numel(x), 0);
 rhoMemory = zeros(0, 1);
 status = "maximum iterations reached";
-iteration = 0;
 
 for iteration = 1:options.MaxIterations
     projected = projectedGradient(x, g, lower, upper);

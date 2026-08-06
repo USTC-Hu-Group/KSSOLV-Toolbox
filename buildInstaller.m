@@ -19,33 +19,17 @@ end
 % 设定代码依赖自动推断无法正确判断的、必须要包含的文件夹
 toolboxFolder = fileparts(mfilename('fullpath'));
 [dialogFrameworkFiles, dialogFrameworkCleanup] = stageDialogFrameworkFiles(toolboxFolder);
-additionalFiles = [dialogFrameworkFiles, ...
-    fullfile(toolboxFolder, "ks.ks")
-    fullfile(toolboxFolder, "+kssolv", "+ui"), ...
-    fullfile(toolboxFolder, "+kssolv", "+settings"), ...
-    fullfile(toolboxFolder, "+kssolv", "+services"), ...
-    fullfile(toolboxFolder, "+kssolv", "+analysis", "+seekpath", "+data"), ...
+additionalFiles = [dialogFrameworkFiles(:).', ...
+    string(fullfile(toolboxFolder, "ks.ks")), ...
+    string(fullfile(toolboxFolder, "+kssolv", "+ui")), ...
+    string(fullfile(toolboxFolder, "+kssolv", "+settings")), ...
+    string(fullfile(toolboxFolder, "+kssolv", "+services")), ...
+    string(fullfile(toolboxFolder, "+kssolv", "+analysis", "+seekpath", "+data")), ...
     getMatgenlabRuntimeData(), ...
     getKssolvRuntimeFiles()];
 
 % 包含第三方 Add-Ons
-installedAddOns = matlab.internal.addons.registry.getInstalledAddOnsMetadata;
-addOnIndex = strcmp(string({installedAddOns.name}), ...
-    kssolv.services.llm.Addon.Name);
-if isfield(installedAddOns, 'version')
-    supportedVersion = arrayfun(@(addon) ...
-        kssolv.services.llm.Addon.isVersionSupported( ...
-        string(addon.version)), installedAddOns);
-    supportedVersion = reshape(supportedVersion, size(addOnIndex));
-    addOnIndex = addOnIndex & supportedVersion;
-end
-if ~any(addOnIndex)
-    error('KSSOLV:Deployment:LLMAddonFilesNotFound', ...
-        'Unable to locate the supported LLM Add-On files for packaging.');
-end
-addOn = installedAddOns(find(addOnIndex, 1, 'last'));
-addOnPath = string(addOn.registrationRoot);
-addOnRuntimeFiles = getAddOnRuntimeFiles(addOnPath);
+addOnRuntimeFiles = getRequiredLLMAddonRuntimeFiles();
 additionalFiles = [additionalFiles addOnRuntimeFiles];
 
 % 设置编译属性
@@ -108,6 +92,26 @@ compiler.package.installer(buildResult, "Options", packageOptions);
 delete(dialogFrameworkCleanup)
 end
 
+function runtimeFiles = getRequiredLLMAddonRuntimeFiles()
+installedAddOns = matlab.internal.addons.registry.getInstalledAddOnsMetadata;
+addOnIndex = strcmp(string({installedAddOns.name}), ...
+    kssolv.services.llm.Addon.Name);
+if isfield(installedAddOns, 'version')
+    supportedVersion = arrayfun(@(addon) ...
+        kssolv.services.llm.Addon.isVersionSupported( ...
+        string(addon.version)), installedAddOns);
+    supportedVersion = reshape(supportedVersion, size(addOnIndex));
+    addOnIndex = addOnIndex & supportedVersion;
+end
+if ~any(addOnIndex)
+    error('KSSOLV:Deployment:LLMAddonFilesNotFound', ...
+        'Unable to locate the supported LLM Add-On files for packaging.');
+end
+
+addOn = installedAddOns(find(addOnIndex, 1, 'last'));
+runtimeFiles = getAddOnRuntimeFiles(string(addOn.registrationRoot));
+end
+
 function [runtimeFiles, cleanup] = stageDialogFrameworkFiles(toolboxFolder)
 % 编译器无法推断仅作为父类使用的 controllib 包类，也会过滤直接加入的 MATLAB 自带源码。
 % 因此先按原包层级暂存未修改的原生对话框框架，再将其加入运行时资源。
@@ -167,6 +171,7 @@ isTest = startsWith(relativeFiles, ...
     "+simulator", "+tests") + filesep);
 runtimeFiles = [runtimeFiles(~isTest), ...
     string(fullfile(kssolvHome, ["+example", "ppdata"]))];
+runtimeFiles = reshape(runtimeFiles, 1, []);
 end
 
 function runtimeFiles = getMatgenlabRuntimeData()
@@ -200,8 +205,10 @@ runtimeFiles = strings(1, 0);
 for pattern = resourcePatterns
     entries = dir(pattern);
     if isempty(entries)
-        error('KSSOLV:Deployment:MatgenlabRuntimeDataNotFound', ...
-            'No Matgenlab runtime resources matched: %s', pattern);
+        warning('KSSOLV:Deployment:OptionalMatgenlabRuntimeDataNotFound', ...
+            'No optional Matgenlab runtime resources matched: %s', ...
+            pattern);
+        continue
     end
     runtimeFiles = [runtimeFiles, ...
         string(fullfile({entries.folder}, {entries.name}))]; %#ok<AGROW>
@@ -226,7 +233,8 @@ if ~isempty(missingFiles)
         'Required Matgenlab runtime resources were not found:\n%s', ...
         char(join(missingFiles, newline)));
 end
-runtimeFiles = unique([runtimeFiles, requiredFiles], "stable");
+runtimeFiles = reshape(unique([runtimeFiles, requiredFiles], "stable"), ...
+    1, []);
 end
 
 function runtimeFiles = getAddOnRuntimeFiles(addOnPath)
@@ -255,6 +263,7 @@ for directory = excludedDirectories
         startsWith(allFiles, directory + string(filesep));
 end
 runtimeFiles = allFiles(~isExcluded);
+runtimeFiles = reshape(runtimeFiles, 1, []);
 
 if isempty(runtimeFiles)
     error('KSSOLV:Deployment:LLMAddonFilesNotFound', ...

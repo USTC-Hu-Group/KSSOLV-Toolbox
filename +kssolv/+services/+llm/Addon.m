@@ -68,6 +68,7 @@ classdef Addon
             end
 
             try
+                %#exclude matlab.addons.installedAddons
                 addons = matlab.addons.installedAddons;
             catch
                 return

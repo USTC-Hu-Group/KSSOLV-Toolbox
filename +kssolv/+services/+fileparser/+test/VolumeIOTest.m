@@ -728,10 +728,7 @@ if file < 0, error("Unable to open fixture for hashing."); end
 cleanup = onCleanup(@() fclose(file));
 bytes = fread(file, Inf, "*uint8");
 clear cleanup
-engine = java.security.MessageDigest.getInstance("SHA-256");
-engine.update(typecast(bytes, "int8"));
-digest = typecast(engine.digest(), "uint8");
-value = lower(join(compose("%02x", digest), ""));
+value = string(kssolv.ui.util.Hash.sha256Bytes(bytes));
 end
 
 function exception = captureException(callback)

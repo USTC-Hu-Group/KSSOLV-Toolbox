@@ -75,11 +75,6 @@ classdef MoleculeSceneCache
         end
 
         function value = scientificKey(molecule, options)
-            engine = java.security.MessageDigest.getInstance("SHA-256");
-            updateText("AtomicSceneSpec-2.0" + newline + ...
-                string(options.algorithm));
-            updateNumbers([molecule.num_sites, molecule.charge, ...
-                molecule.spin_multiplicity]);
             sites = molecule.sites;
             species = strings(1, molecule.num_sites);
             coordinates = zeros(molecule.num_sites, 3);
@@ -87,31 +82,30 @@ classdef MoleculeSceneCache
                 species(index) = string(sites{index}.specie);
                 coordinates(index, :) = sites{index}.coords;
             end
-            updateText(join(species, char(31)));
-            updateNumbers(coordinates);
+
+            topologyKey = struct();
             properties = molecule.properties;
             if isfield(properties, "topology") && ...
                     isstruct(properties.topology)
                 topology = properties.topology;
                 if isfield(topology, "origin")
-                    updateText(string(topology.origin));
+                    topologyKey.origin = string(topology.origin);
                 end
                 if isfield(topology, "bonds")
-                    updateNumbers(double(topology.bonds));
+                    topologyKey.bonds = double(topology.bonds);
                 end
             end
-            digest = typecast(engine.digest(), "uint8");
-            value = lower(reshape(dec2hex(digest, 2).', 1, []));
 
-            function updateText(text)
-                engine.update(unicode2native(char(text), "UTF-8"));
-            end
-
-            function updateNumbers(numbers)
-                numbers = double(numbers);
-                engine.update(typecast( ...
-                    [double(size(numbers)), numbers(:).'], "uint8"));
-            end
+            keyData = struct( ...
+                "builderVersion", "AtomicSceneSpec-2.0", ...
+                "algorithm", string(options.algorithm), ...
+                "numSites", molecule.num_sites, ...
+                "charge", molecule.charge, ...
+                "spinMultiplicity", molecule.spin_multiplicity, ...
+                "species", species, ...
+                "coordinates", coordinates, ...
+                "topology", topologyKey);
+            value = kssolv.ui.util.Hash.sha256Text(jsonencode(keyData));
         end
     end
 end

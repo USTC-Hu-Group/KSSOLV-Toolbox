@@ -13,8 +13,7 @@ classdef CrystalSceneCache
                 "builderVersion", "crystal-visible-set-2", ...
                 "structure", structure.as_dict(), ...
                 "options", options);
-            key = kssolv.ui.scene.atomic.CrystalSceneCache. ...
-                sha256(jsonencode(keyData));
+            key = kssolv.ui.util.Hash.sha256Text(jsonencode(keyData));
             if isKey(cache, key)
                 started = tic;
                 entry = cache(key);
@@ -85,12 +84,5 @@ classdef CrystalSceneCache
             totalBytes = cacheBytes;
         end
 
-        function value = sha256(text)
-            engine = java.security.MessageDigest.getInstance("SHA-256");
-            bytes = unicode2native(char(text), "UTF-8");
-            engine.update(bytes);
-            digest = typecast(engine.digest(), "uint8");
-            value = lower(reshape(dec2hex(digest, 2).', 1, []));
-        end
     end
 end

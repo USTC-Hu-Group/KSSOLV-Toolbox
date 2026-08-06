@@ -71,8 +71,8 @@
       "source": "materialsproject/pymatgen-core:test-files/io/xcrysden/datagrid_3d.xsf@c71faa7a95df9bbcd20cb3d14ff112d0f72d8e39",
       "license": "MIT",
       "redistributable": true,
-      "bytes": 437,
-      "sha256": "c0a8ec512661c1ffa4c20fb922f52972ee825c01078976e2ee076729b60972c5",
+      "bytes": 459,
+      "sha256": "d3cc2bc183b48fdbaf894b9ba9d051d32dd238d7cef455618f81a519d0e97dff",
       "oracle": {
         "dimensions": [2, 2, 2],
         "origin": [0, 0, 0],

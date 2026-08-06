@@ -5,11 +5,13 @@ import { matlabBridge } from './bridge/matlabBridge';
 import AtomContextMenu from './components/AtomContextMenu.vue';
 import ElementLegend from './components/ElementLegend.vue';
 import FractionalCoordinatesPanel from './components/FractionalCoordinatesPanel.vue';
+import HeroToolbar from './components/HeroToolbar.vue';
 import SelectionInspector from './components/SelectionInspector.vue';
 import SettingsPanel from './components/SettingsPanel.vue';
 import ViewerToolbar from './components/ViewerToolbar.vue';
 import WarningStack from './components/WarningStack.vue';
 import { atomIdsForElement, siteSpeciesLabel } from './elementSelection';
+import { ImageSaveCoordinator, type ImageSaveDestination } from './imageSave';
 import { viewerShortcutFor } from './keyboard';
 import {
   expectedSelectionCount,
@@ -26,12 +28,18 @@ import {
   type ContextModelingRequest,
 } from './modeling';
 import { buildOfflineHtml, offlineHtmlBlob } from './offlineExport';
-import { CrystalRenderer, type CrystalRendererCallbacks } from './renderer/CrystalRenderer';
+import {
+  CrystalRenderer,
+  type CrystalRendererCallbacks,
+  type RenderExportProgress,
+} from './renderer/CrystalRenderer';
 import type { CrystalCameraAxis } from './renderer/cameraAxis';
 import type { ImageExportFormat } from './renderer/imageExport';
+import type { HeroExportScale } from './renderer/quality';
 import type {
   AtomHoverInfo,
   AtomInstanceSpec,
+  CameraSnapshot,
   RendererStatistics,
   SiteSpec,
   ViewerOptions,
@@ -46,7 +54,14 @@ const settingsOpen = ref(false);
 const informationOpen = ref(false);
 const minimalUi = ref(false);
 const autoRotating = ref(false);
+const heroShotActive = ref(false);
+const heroExportScale = ref<HeroExportScale>(2.5);
 const imageExporting = ref(false);
+const rasterExporting = ref(false);
+const exportProgress = shallowRef<RenderExportProgress>();
+const viewerWorkMessage = ref('');
+const heroExportStatus = ref<'idle' | 'rendering' | 'saved' | 'error'>('idle');
+const heroRetainedFrameUrl = ref('');
 const structureExporting = ref(false);
 const structureExportFormats = ref<StructureExportFormat[]>([]);
 const structureExportError = ref('');
@@ -64,11 +79,15 @@ const atomContextMenu = shallowRef<{
 const modelingPending = ref(false);
 const modelingError = ref('');
 let measurementSerial = 0;
+let rendererWorkSerial = 0;
+let heroRestoreState:
+  { options: ViewerOptions; camera: CameraSnapshot; minimalUi: boolean } | undefined;
 // Three.js owns mutable, non-configurable matrix properties and must never be
 // wrapped in Vue's deep reactive proxy.
 const renderer = shallowRef<CrystalRenderer>();
 const statistics = ref<RendererStatistics>();
 const store = useViewerStore();
+const imageSaver = new ImageSaveCoordinator(matlabBridge);
 const hasModelingBackend = modelingBackendAvailable();
 const informationAvailable = computed(
   () => store.scene.value?.kind === 'crystal' && store.scene.value.sites.length > 0,
@@ -163,30 +182,185 @@ const downloadBlob = (blob: Blob, filename: string): void => {
   window.setTimeout(() => URL.revokeObjectURL(href), 0);
 };
 
+const updateExportProgress = (progress: RenderExportProgress): void => {
+  exportProgress.value = { ...progress, value: Math.min(progress.value * 0.94, 0.94) };
+};
+
+const saveExportBlob = async (blob: Blob, destination: ImageSaveDestination): Promise<void> => {
+  const savedDirectly = await imageSaver.save(blob, destination, (progress) => {
+    exportProgress.value = {
+      stage: 'encoding',
+      value: 0.94 + progress.progress * 0.06,
+      label: 'Saving image…',
+      detail: `Writing block ${progress.completedChunks} of ${progress.totalChunks}`,
+    };
+  });
+  if (!savedDirectly) downloadBlob(blob, destination.filename);
+};
+
+const showProgressBeforeBlockingWork = async (): Promise<void> => {
+  await nextTick();
+  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  // MATLAB's uihtml compositor may defer a frame produced in the same event
+  // turn as an HTMLEvent callback. A short macrotask lets the progress layer
+  // reach the screen before scene rebuilding or path tracing monopolizes WebGL.
+  await new Promise<void>((resolve) => window.setTimeout(resolve, 32));
+};
+
+const clearHeroRetainedFrame = (): void => {
+  if (!heroRetainedFrameUrl.value) return;
+  URL.revokeObjectURL(heroRetainedFrameUrl.value);
+  heroRetainedFrameUrl.value = '';
+  if (heroExportStatus.value === 'saved') heroExportStatus.value = 'idle';
+};
+
+const retainHeroFrame = (blob: Blob): void => {
+  clearHeroRetainedFrame();
+  heroRetainedFrameUrl.value = URL.createObjectURL(blob);
+};
+
 const exportImage = async (format: ImageExportFormat): Promise<void> => {
   if (!renderer.value || imageExporting.value) return;
+  const extension =
+    format === 'jpeg'
+      ? 'jpg'
+      : format === 'tiff'
+        ? 'tif'
+        : format.startsWith('pdf-')
+          ? 'pdf'
+          : format;
+  const suffix = format === 'pdf-vector' ? '-vector' : format === 'pdf-raster' ? '-raster' : '';
+  const filename = `${store.formula.value || 'crystal'}${suffix}.${extension}`;
+  let destination: ImageSaveDestination | undefined;
   imageExporting.value = true;
   try {
-    const blob = await renderer.value.exportImage(format);
-    const extension =
-      format === 'jpeg'
-        ? 'jpg'
-        : format === 'tiff'
-          ? 'tif'
-          : format.startsWith('pdf-')
-            ? 'pdf'
-            : format;
-    const suffix = format === 'pdf-vector' ? '-vector' : format === 'pdf-raster' ? '-raster' : '';
-    downloadBlob(blob, `${store.formula.value || 'crystal'}${suffix}.${extension}`);
+    destination = await imageSaver.choose(filename, format);
+    if (!destination) return;
+    rasterExporting.value = format !== 'svg' && format !== 'pdf-vector';
+    if (rasterExporting.value) {
+      exportProgress.value = {
+        stage: 'preparing',
+        value: 0.01,
+        label: 'Starting high-quality export…',
+        detail: 'Preparing the renderer',
+      };
+      await showProgressBeforeBlockingWork();
+    }
+    const blob = await renderer.value.exportImage(
+      format,
+      rasterExporting.value ? updateExportProgress : undefined,
+    );
+    await saveExportBlob(blob, destination);
   } catch (error) {
+    imageSaver.cancel(destination);
     matlabBridge.emit('viewer:error', {
       requestId: store.scene.value?.requestId ?? '',
       code: 'IMAGE_EXPORT',
       message: error instanceof Error ? error.message : String(error),
     });
   } finally {
+    rasterExporting.value = false;
+    exportProgress.value = undefined;
     imageExporting.value = false;
   }
+};
+
+const exportHeroShot = async (scale: HeroExportScale = heroExportScale.value): Promise<void> => {
+  if (
+    !renderer.value ||
+    imageExporting.value ||
+    !heroShotActive.value ||
+    store.options.theme !== 'gleamoe-premiror'
+  ) {
+    return;
+  }
+  heroExportScale.value = scale;
+  const filename = `${store.formula.value || 'crystal'}-hero.png`;
+  let destination: ImageSaveDestination | undefined;
+  imageExporting.value = true;
+  rasterExporting.value = true;
+  heroExportStatus.value = 'rendering';
+  exportProgress.value = {
+    stage: 'preparing',
+    value: 0.01,
+    label: 'Choose where to save the Hero Shot…',
+    detail: 'Rendering starts after the location is selected',
+  };
+  try {
+    // Paint before asking MATLAB to open its blocking native file dialog. The
+    // overlay is therefore already composited when the dialog closes.
+    await showProgressBeforeBlockingWork();
+    destination = await imageSaver.choose(filename, 'png');
+    if (!destination) {
+      heroExportStatus.value = 'idle';
+      return;
+    }
+    matlabBridge.emit('viewer:bringToFront', { reason: 'hero-export' });
+    exportProgress.value = {
+      stage: 'preparing',
+      value: 0.015,
+      label: 'Starting Hero Shot export…',
+      detail: 'Preparing the cinematic renderer',
+    };
+    await showProgressBeforeBlockingWork();
+    const blob = await renderer.value.exportHeroShot(scale, updateExportProgress);
+    await saveExportBlob(blob, destination);
+    retainHeroFrame(blob);
+    heroExportStatus.value = 'saved';
+  } catch (error) {
+    imageSaver.cancel(destination);
+    heroExportStatus.value = 'error';
+    matlabBridge.emit('viewer:error', {
+      requestId: store.scene.value?.requestId ?? '',
+      code: 'HERO_SHOT_EXPORT',
+      message: error instanceof Error ? error.message : String(error),
+    });
+  } finally {
+    rasterExporting.value = false;
+    exportProgress.value = undefined;
+    imageExporting.value = false;
+    if (heroExportStatus.value === 'rendering') heroExportStatus.value = 'idle';
+    window.setTimeout(() => {
+      if (heroExportStatus.value !== 'rendering') heroExportStatus.value = 'idle';
+    }, 15_000);
+  }
+};
+
+const toggleHeroShot = async (): Promise<void> => {
+  if (!renderer.value || !store.scene.value || imageExporting.value) return;
+  if (heroShotActive.value) {
+    heroShotActive.value = false;
+    clearHeroRetainedFrame();
+    await renderer.value.setHeroShot(false, false);
+    const restore = heroRestoreState;
+    heroRestoreState = undefined;
+    if (restore) {
+      store.updateOptions(restore.options);
+      await nextTick();
+      renderer.value?.setCameraSnapshot(restore.camera);
+      minimalUi.value = restore.minimalUi;
+    }
+    return;
+  }
+
+  heroRestoreState = {
+    options: { ...store.options },
+    camera: renderer.value.cameraSnapshot(),
+    minimalUi: minimalUi.value,
+  };
+  clearHeroRetainedFrame();
+  settingsOpen.value = false;
+  informationOpen.value = false;
+  minimalUi.value = true;
+  store.updateOptions({
+    ...store.options,
+    theme: 'gleamoe-premiror',
+    renderMode: 'fast',
+    renderQuality: 'balanced',
+  });
+  await nextTick();
+  heroShotActive.value = true;
+  await renderer.value?.setHeroShot(true, true);
 };
 
 const exportScene = (): void => {
@@ -471,12 +645,38 @@ const applyOptions = (options: ViewerOptions): void => {
   store.updateOptions(options);
 };
 
+const runRendererWorkAfterPaint = async (message: string, work: () => void): Promise<void> => {
+  rendererWorkSerial += 1;
+  const serial = rendererWorkSerial;
+  viewerWorkMessage.value = message;
+  await nextTick();
+  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  if (serial !== rendererWorkSerial) return;
+  try {
+    work();
+  } finally {
+    if (serial === rendererWorkSerial) viewerWorkMessage.value = '';
+  }
+};
+
 const handleShortcut = (event: KeyboardEvent): void => {
   const shortcut = viewerShortcutFor(event);
   if (!shortcut) return;
   event.preventDefault();
-  if (shortcut === 'center-view') renderer.value?.centerView();
-  else minimalUi.value = !minimalUi.value;
+  if (shortcut === 'center-view') {
+    clearHeroRetainedFrame();
+    renderer.value?.centerView();
+  } else minimalUi.value = !minimalUi.value;
+};
+
+const resetHeroCamera = (): void => {
+  clearHeroRetainedFrame();
+  renderer.value?.resetView();
+};
+
+const setHeroCameraAxis = (axis: CrystalCameraAxis): void => {
+  clearHeroRetainedFrame();
+  renderer.value?.setCameraAxis(axis);
 };
 
 onMounted(async () => {
@@ -491,7 +691,10 @@ onMounted(async () => {
         onSelection: handleRendererSelection,
         onAtomContextMenu: handleAtomContextMenu,
         onAtomHover: handleAtomHover,
-        onCameraSettled: store.setCamera,
+        onCameraSettled: (snapshot) => {
+          store.setCamera(snapshot);
+          if (heroShotActive.value && !imageExporting.value) clearHeroRetainedFrame();
+        },
         onStatistics: (value) => {
           statistics.value = value;
         },
@@ -523,15 +726,22 @@ const stopSceneWatch = watch(
       modelingPending.value = false;
       modelingError.value = '';
       stopMeasurement();
-      renderer.value.setScene(scene, true);
-      resetMeasurementResult();
+      void runRendererWorkAfterPaint('Building structure graphics…', () => {
+        renderer.value?.setScene(scene, true);
+        resetMeasurementResult();
+      });
     }
   },
 );
 
 const stopOptionsWatch = watch(
   store.options,
-  () => renderer.value?.setOptions({ ...store.options }),
+  () => {
+    const nextOptions = { ...store.options };
+    void runRendererWorkAfterPaint('Updating interactive preview…', () =>
+      renderer.value?.setOptions(nextOptions),
+    );
+  },
   { deep: true },
 );
 
@@ -578,12 +788,15 @@ const removeModelingResultListener = matlabBridge.on('modeling:result', (payload
 });
 
 onBeforeUnmount(() => {
+  rendererWorkSerial += 1;
   stopSceneWatch();
   stopOptionsWatch();
   removeCommandListener();
   removeExportFormatsListener();
   removeExportResultListener();
   removeModelingResultListener();
+  imageSaver.dispose();
+  clearHeroRetainedFrame();
   window.removeEventListener('keydown', handleShortcut);
   renderer.value?.dispose();
 });
@@ -593,7 +806,10 @@ onBeforeUnmount(() => {
   <main
     ref="root"
     class="crystal-viewer"
-    :class="[`theme-${store.options.theme}`, { 'minimal-ui': minimalUi }]"
+    :class="[
+      `theme-${store.options.theme}`,
+      { 'minimal-ui': minimalUi, 'hero-shot': heroShotActive },
+    ]"
     :data-minimal-ui="minimalUi ? 'true' : 'false'"
     :style="themeStyle"
   >
@@ -604,6 +820,15 @@ onBeforeUnmount(() => {
           ? 'Interactive molecule viewport'
           : 'Interactive crystal structure viewport'
       "
+      @pointerdown="clearHeroRetainedFrame"
+      @wheel.passive="clearHeroRetainedFrame"
+    />
+
+    <img
+      v-if="heroShotActive && heroRetainedFrameUrl && !rasterExporting"
+      class="hero-retained-frame"
+      :src="heroRetainedFrameUrl"
+      alt="Completed Hero Shot preview"
     />
 
     <AtomContextMenu
@@ -631,7 +856,20 @@ onBeforeUnmount(() => {
       </div>
     </section>
 
+    <HeroToolbar
+      v-if="heroShotActive"
+      :crystal="store.scene.value?.kind === 'crystal'"
+      :export-scale="heroExportScale"
+      :exporting="imageExporting"
+      @reset="resetHeroCamera"
+      @axis="setHeroCameraAxis"
+      @update:export-scale="heroExportScale = $event"
+      @export="exportHeroShot"
+      @exit="toggleHeroShot"
+    />
+
     <ViewerToolbar
+      v-else
       :settings-open="settingsOpen"
       :information-open="informationOpen"
       :information-available="informationAvailable"
@@ -660,13 +898,19 @@ onBeforeUnmount(() => {
     />
 
     <SettingsPanel
-      v-if="settingsOpen"
+      v-if="settingsOpen && !heroShotActive"
       :model-value="{ ...store.options }"
       :scene="store.scene.value"
       :rebuild-phase="store.status.activityPhase"
       :rebuild-message="store.status.activityMessage"
       :rebuilding="store.status.loading"
+      :hero-shot-active="heroShotActive"
+      :hero-export-scale="heroExportScale"
+      :image-exporting="imageExporting"
+      :scene-available="!!store.scene.value && !store.isBlankStructure.value"
       @update:model-value="applyOptions"
+      @update:hero-export-scale="heroExportScale = $event"
+      @toggle-hero-shot="toggleHeroShot"
       @rebuild="store.requestAnalysis"
       @close="settingsOpen = false"
     />
@@ -678,6 +922,48 @@ onBeforeUnmount(() => {
     />
 
     <ElementLegend :scene="store.scene.value" :color-mode="store.options.colorMode" />
+    <div
+      v-if="viewerWorkMessage && !rasterExporting"
+      class="viewer-work-progress"
+      role="status"
+      aria-live="polite"
+    >
+      <span>{{ viewerWorkMessage }}</span>
+      <progress :aria-label="viewerWorkMessage"></progress>
+    </div>
+    <div
+      v-if="rasterExporting && exportProgress"
+      class="render-progress-overlay"
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+    >
+      <div class="render-progress">
+        <div class="render-progress-kicker">
+          {{ heroExportStatus === 'rendering' ? 'HERO SHOT' : 'HIGH QUALITY EXPORT' }}
+        </div>
+        <div class="render-progress-heading">
+          <span>{{ exportProgress.label }}</span>
+          <strong>{{ Math.round(exportProgress.value * 100) }}%</strong>
+        </div>
+        <progress
+          :value="exportProgress.value"
+          max="1"
+          :aria-label="`${exportProgress.label} ${Math.round(exportProgress.value * 100)}%`"
+        ></progress>
+        <span class="render-progress-detail">{{ exportProgress.detail }}</span>
+        <span class="render-progress-note">Keep this window open while rendering completes</span>
+      </div>
+    </div>
+    <div
+      v-if="heroExportStatus === 'saved' || heroExportStatus === 'error'"
+      class="hero-export-status"
+      :class="`is-${heroExportStatus}`"
+      role="status"
+      aria-live="polite"
+    >
+      {{ heroExportStatus === 'saved' ? 'Hero Shot PNG saved' : 'Hero Shot export failed' }}
+    </div>
     <SelectionInspector
       :selection="store.selection.value"
       :measurement="activeMeasurement"
@@ -687,9 +973,7 @@ onBeforeUnmount(() => {
       @close-measurement="closeMeasurementResult"
     />
     <div
-      v-if="
-        (store.options.theme === 'materials' || activeMeasurementKind) && atomHover && !minimalUi
-      "
+      v-if="atomHover && !minimalUi"
       class="atom-hover-tooltip"
       :style="atomHoverStyle"
       role="tooltip"

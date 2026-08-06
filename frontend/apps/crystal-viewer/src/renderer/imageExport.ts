@@ -105,7 +105,7 @@ const siteColor = (
   component
     ? saturate(
         input.options.colorMode === 'vesta' ? component.colorVesta : component.colorJmol,
-        input.theme.id === 'materials',
+        true,
       )
     : fallback;
 
@@ -200,11 +200,12 @@ const radialGradient = (
   input: VectorExportInput,
 ): string => {
   const light = lightDirection2d(input.camera);
-  const focus = input.theme.id === 'materials' ? 0.34 : 0.29;
-  const highlight = mixHex(base, [255, 255, 255], input.theme.id === 'materials' ? 0.82 : 0.67);
-  const softHighlight = mixHex(base, [255, 255, 255], input.theme.id === 'materials' ? 0.32 : 0.22);
-  const shadow = mixHex(base, [0, 0, 0], input.theme.id === 'materials' ? 0.26 : 0.31);
-  const rim = mixHex(base, [0, 0, 0], input.theme.id === 'materials' ? 0.48 : 0.54);
+  const premium = input.theme.id === 'gleamoe-premiror';
+  const focus = 0.34;
+  const highlight = mixHex(base, [255, 255, 255], premium ? 0.9 : 0.82);
+  const softHighlight = mixHex(base, [255, 255, 255], 0.32);
+  const shadow = mixHex(base, [0, 0, 0], premium ? 0.38 : 0.26);
+  const rim = mixHex(base, [0, 0, 0], premium ? 0.62 : 0.48);
   return `<radialGradient id="${id}" gradientUnits="userSpaceOnUse" cx="${number(center.x)}" cy="${number(center.y)}" r="${number(radius)}" fx="${number(center.x + light.x * radius * focus)}" fy="${number(center.y + light.y * radius * focus)}"><stop offset="0" stop-color="${highlight}"/><stop offset="0.24" stop-color="${softHighlight}"/><stop offset="0.56" stop-color="${base}"/><stop offset="0.83" stop-color="${shadow}"/><stop offset="1" stop-color="${rim}"/></radialGradient>`;
 };
 
@@ -415,7 +416,8 @@ const addCell = (input: VectorExportInput, items: SvgItem[]): void => {
 const addPolyhedra = (input: VectorExportInput, items: SvgItem[]): void => {
   if (!input.options.showPolyhedra) return;
   const opacity = Math.min(
-    input.options.polyhedronOpacity * (input.theme.id === 'materials' ? 1.3 : 1),
+    input.options.polyhedronOpacity *
+      (input.theme.id === 'materials' ? 1.3 : input.theme.id === 'gleamoe-premiror' ? 1.2 : 1),
     1,
   );
   for (const polyhedron of input.scene.polyhedra) {
@@ -503,10 +505,7 @@ const orientationAxes = (input: VectorExportInput): string => {
   const cy = input.height - 18 - size / 2;
   const length = size * 0.31;
   const inverse = input.camera.quaternion.clone().invert();
-  const colors =
-    input.theme.id === 'materials'
-      ? ['#f01818', '#00b82e', '#143cff']
-      : ['#ff5c5c', '#57cf72', '#4d8cff'];
+  const colors = ['#f01818', '#00b82e', '#143cff'];
   const labels = ['a', 'b', 'c'];
   const arrows = input.axisDirections.flatMap((direction, index) => {
     const view = direction.clone().normalize().applyQuaternion(inverse);

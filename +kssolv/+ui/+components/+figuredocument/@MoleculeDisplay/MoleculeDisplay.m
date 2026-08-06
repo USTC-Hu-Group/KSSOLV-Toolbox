@@ -29,6 +29,13 @@ classdef MoleculeDisplay < handle
         UndoStack cell = {}
         RedoStack cell = {}
         MaximumHistory (1,1) double = 50
+        PendingImageExportRequestId string = ""
+        PendingImageExportPath string = ""
+        PendingImageExportTempPath string = ""
+        PendingImageExportNextChunk (1,1) double = 0
+        HTMLSourcePath string = ""
+        ImageExportDestinationTimer = []
+        BridgeEventSerial (1,1) double = 0
     end
 
     events
@@ -109,7 +116,16 @@ classdef MoleculeDisplay < handle
             g.ColumnWidth = {'1x'};
             htmlFile = fullfile(fileparts(mfilename('fullpath')), ...
                 'CrystalViewer', 'index.html');
-            this.HTMLComponent = uihtml(g, "HTMLSource", htmlFile);
+            % uihtml/CEF can retain a local HTML document under the same path
+            % after Toolbox updates.  A unique source path guarantees that the
+            % current embedded viewer (including render progress UI) is loaded.
+            this.HTMLSourcePath = string(tempname) + ".html";
+            [copied, copyMessage] = copyfile(htmlFile, this.HTMLSourcePath, 'f');
+            if ~copied
+                error("KSSOLV:CrystalViewer:HTMLSource", ...
+                    "Unable to stage the crystal viewer: %s", copyMessage);
+            end
+            this.HTMLComponent = uihtml(g, "HTMLSource", this.HTMLSourcePath);
             this.HTMLComponent.HTMLEventReceivedFcn = @this.eventReceiver;
             if isempty(this.ParsedModel)
                 this.ParsedModel = this.parseTextInput();
@@ -222,6 +238,18 @@ classdef MoleculeDisplay < handle
                     indices <= this.ParsedModel.num_sites);
             end
         end
+
+        function delete(this)
+            %DELETE Remove the cache-busting viewer copy when the display closes.
+            this.cancelImageExportDestinationTimer();
+            if this.HTMLSourcePath ~= "" && isfile(this.HTMLSourcePath)
+                try
+                    delete(this.HTMLSourcePath);
+                catch
+                    % Temporary files are also reclaimed by the operating system.
+                end
+            end
+        end
     end
 
     methods (Access = private)
@@ -299,8 +327,34 @@ classdef MoleculeDisplay < handle
                     this.applyModelingRequest(event.HTMLEventData);
                 case "viewer:exportStructure"
                     this.exportStructure(event.HTMLEventData);
+                case "viewer:chooseImageExport"
+                    this.chooseImageExport(event.HTMLEventData);
+                case "viewer:imageExportChunk"
+                    this.writeImageExportChunk(event.HTMLEventData);
+                case "viewer:cancelImageExport"
+                    this.cancelImageExport(event.HTMLEventData);
+                case "viewer:bringToFront"
+                    this.bringToolboxToFront();
                 case "viewer:error"
                     this.reportViewerError(event.HTMLEventData);
+            end
+        end
+
+        function bringToolboxToFront(this)
+            % Restore focus to the Toolbox once the native save panel closes.
+            try
+                if ~isempty(this.Document) && isvalid(this.Document)
+                    this.Document.Selected = true;
+                end
+                appContainer = kssolv.ui.util.DataStorage.getData('AppContainer');
+                if ~isempty(appContainer) && isvalid(appContainer)
+                    appContainer.bringToFront();
+                end
+                drawnow
+            catch exception
+                warning("KSSOLV:CrystalViewer:BringToFront", ...
+                    "Unable to bring KSSOLV Toolbox to front: %s", ...
+                    exception.message);
             end
         end
 
@@ -606,6 +660,223 @@ classdef MoleculeDisplay < handle
                 "message", string(message));
             this.HTMLComponent.sendEventToHTMLSource( ...
                 "structure:exportResult", payload);
+        end
+
+        function chooseImageExport(this, data)
+            requestId = "";
+            try
+                if ischar(data) || (isstring(data) && isscalar(data))
+                    data = jsondecode(data);
+                end
+                if ~isstruct(data) || ~isscalar(data) || ...
+                        ~isfield(data, "requestId") || ...
+                        ~isfield(data, "filename") || ...
+                        ~isfield(data, "format")
+                    error("KSSOLV:CrystalViewer:ImageExportRequest", ...
+                        "The image export request is invalid.");
+                end
+                requestId = string(data.requestId);
+                filename = string(data.filename);
+                format = lower(string(data.format));
+                switch format
+                    case "png"
+                        filter = {'*.png', 'PNG image (*.png)'};
+                    case "jpeg"
+                        filter = {'*.jpg;*.jpeg', 'JPEG image (*.jpg, *.jpeg)'};
+                    case "tiff"
+                        filter = {'*.tif;*.tiff', 'TIFF image (*.tif, *.tiff)'};
+                    case "svg"
+                        filter = {'*.svg', 'SVG image (*.svg)'};
+                    case {"pdf-vector", "pdf-raster"}
+                        filter = {'*.pdf', 'PDF document (*.pdf)'};
+                    otherwise
+                        error("KSSOLV:CrystalViewer:ImageExportFormat", ...
+                            "Unsupported image export format '%s'.", format);
+                end
+                this.clearPendingImageExport(true);
+                [file, location] = uiputfile(filter, ...
+                    "Export rendered image", char(filename));
+                if isequal(file, 0) || isequal(location, 0)
+                    this.scheduleImageExportDestination(requestId, ...
+                        "cancelled", "");
+                    return
+                end
+                this.PendingImageExportRequestId = requestId;
+                this.PendingImageExportPath = string(fullfile(location, file));
+                this.PendingImageExportTempPath = string(tempname(location));
+                this.PendingImageExportNextChunk = 0;
+                this.scheduleImageExportDestination(requestId, "ready", "");
+            catch exception
+                this.clearPendingImageExport(true);
+                this.scheduleImageExportDestination(requestId, "error", ...
+                    string(exception.message));
+                warning("KSSOLV:CrystalViewer:ImageExport", ...
+                    "Unable to choose an image export location: %s", ...
+                    exception.message);
+            end
+        end
+
+        function writeImageExportChunk(this, data)
+            requestId = "";
+            index = -1;
+            try
+                if ischar(data) || (isstring(data) && isscalar(data))
+                    data = jsondecode(data);
+                end
+                required = {'requestId', 'index', 'totalChunks', ...
+                    'final', 'data'};
+                if ~isstruct(data) || ~isscalar(data) || ...
+                        ~all(isfield(data, required))
+                    error("KSSOLV:CrystalViewer:ImageExportChunk", ...
+                        "The image export data block is invalid.");
+                end
+                requestId = string(data.requestId);
+                index = double(data.index);
+                totalChunks = double(data.totalChunks);
+                final = logical(data.final);
+                if requestId ~= this.PendingImageExportRequestId || ...
+                        this.PendingImageExportTempPath == ""
+                    error("KSSOLV:CrystalViewer:ImageExportSession", ...
+                        "The image export session is no longer active.");
+                end
+                if ~isscalar(index) || ~isfinite(index) || ...
+                        index ~= this.PendingImageExportNextChunk || ...
+                        ~isscalar(totalChunks) || totalChunks < 1 || ...
+                        index >= totalChunks || final ~= (index == totalChunks - 1)
+                    error("KSSOLV:CrystalViewer:ImageExportOrder", ...
+                        "Image export data blocks arrived out of order.");
+                end
+                bytes = uint8(matlab.net.base64decode( ...
+                    char(string(data.data))));
+                permission = 'ab';
+                if index == 0
+                    permission = 'wb';
+                end
+                [fileId, message] = fopen( ...
+                    char(this.PendingImageExportTempPath), permission);
+                if fileId < 0
+                    error("KSSOLV:CrystalViewer:ImageExportWrite", ...
+                        "Unable to open the image export file: %s", message);
+                end
+                cleanup = onCleanup(@() fclose(fileId));
+                written = fwrite(fileId, bytes, 'uint8');
+                if written ~= numel(bytes)
+                    error("KSSOLV:CrystalViewer:ImageExportWrite", ...
+                        "The complete image data block could not be written.");
+                end
+                clear cleanup
+                this.PendingImageExportNextChunk = index + 1;
+                if final
+                    [success, message] = movefile( ...
+                        char(this.PendingImageExportTempPath), ...
+                        char(this.PendingImageExportPath), 'f');
+                    if ~success
+                        error("KSSOLV:CrystalViewer:ImageExportMove", ...
+                            "Unable to finish the image export: %s", message);
+                    end
+                    this.clearPendingImageExport(false);
+                end
+                this.sendImageExportChunkResult( ...
+                    requestId, index, "success", "");
+            catch exception
+                this.clearPendingImageExport(true);
+                this.sendImageExportChunkResult(requestId, index, ...
+                    "error", string(exception.message));
+                warning("KSSOLV:CrystalViewer:ImageExport", ...
+                    "Unable to write the rendered image: %s", ...
+                    exception.message);
+            end
+        end
+
+        function cancelImageExport(this, data)
+            if ischar(data) || (isstring(data) && isscalar(data))
+                data = jsondecode(data);
+            end
+            if ~isstruct(data) || ~isscalar(data) || ...
+                    ~isfield(data, "requestId")
+                return
+            end
+            if string(data.requestId) == this.PendingImageExportRequestId
+                this.clearPendingImageExport(true);
+            end
+        end
+
+        function clearPendingImageExport(this, deleteTemporaryFile)
+            if deleteTemporaryFile && this.PendingImageExportTempPath ~= "" && ...
+                    isfile(this.PendingImageExportTempPath)
+                delete(this.PendingImageExportTempPath);
+            end
+            this.PendingImageExportRequestId = "";
+            this.PendingImageExportPath = "";
+            this.PendingImageExportTempPath = "";
+            this.PendingImageExportNextChunk = 0;
+        end
+
+        function sendImageExportDestination(this, requestId, status, message)
+            if isempty(this.HTMLComponent)
+                return
+            end
+            payload = struct( ...
+                "requestId", string(requestId), ...
+                "status", string(status), ...
+                "message", string(message));
+            this.sendBridgeDataEvent("image:exportDestination", payload);
+        end
+
+        function scheduleImageExportDestination(this, requestId, status, message)
+            % uiputfile runs a nested native event loop. Sending back into
+            % uihtml before its callback fully unwinds is unreliable on macOS
+            % and can leave the JavaScript promise waiting forever. Deliver the
+            % response from the next MATLAB event-loop turn instead.
+            this.cancelImageExportDestinationTimer();
+            this.ImageExportDestinationTimer = timer( ...
+                "ExecutionMode", "singleShot", ...
+                "StartDelay", 0.05, ...
+                "TimerFcn", @(~, ~) this.deliverImageExportDestination( ...
+                    requestId, status, message));
+            start(this.ImageExportDestinationTimer);
+        end
+
+        function deliverImageExportDestination(this, requestId, status, message)
+            this.sendImageExportDestination(requestId, status, message);
+            this.cancelImageExportDestinationTimer();
+        end
+
+        function cancelImageExportDestinationTimer(this)
+            timerObject = this.ImageExportDestinationTimer;
+            this.ImageExportDestinationTimer = [];
+            if isempty(timerObject)
+                return
+            end
+            try
+                if isvalid(timerObject)
+                    stop(timerObject);
+                    delete(timerObject);
+                end
+            catch
+            end
+        end
+
+        function sendImageExportChunkResult(this, requestId, index, status, message)
+            if isempty(this.HTMLComponent)
+                return
+            end
+            payload = struct( ...
+                "requestId", string(requestId), ...
+                "index", double(index), ...
+                "status", string(status), ...
+                "message", string(message));
+            this.sendBridgeDataEvent("image:exportChunkResult", payload);
+        end
+
+        function sendBridgeDataEvent(this, eventName, payload)
+            % DataChanged retains the response state across native dialog
+            % event-loop transitions, unlike a transient custom HTML event.
+            this.BridgeEventSerial = this.BridgeEventSerial + 1;
+            this.HTMLComponent.Data = struct( ...
+                "kssolvEvent", string(eventName), ...
+                "payload", payload, ...
+                "serial", this.BridgeEventSerial);
         end
 
         function sendModelingResult(this, commandId, status, message)

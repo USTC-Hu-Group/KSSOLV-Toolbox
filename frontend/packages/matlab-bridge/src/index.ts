@@ -11,22 +11,40 @@ export interface MatlabHtmlComponent {
 
 type EventHandler = (data: unknown) => void;
 
+interface BridgeDataEnvelope {
+  kssolvEvent: string;
+  payload?: unknown;
+}
+
 const unwrapEventData = (event: MatlabEvent | unknown): unknown => {
-  if (typeof event === 'object' && event !== null && 'Data' in event) {
+  if (typeof event === "object" && event !== null && "Data" in event) {
     return (event as MatlabEvent).Data;
   }
   return event;
 };
 
 const decodeLegacyJson = (value: unknown): unknown => {
-  if (typeof value !== 'string') return value;
+  if (typeof value !== "string") return value;
   const trimmed = value.trim();
-  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) return value;
+  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) return value;
   try {
     return JSON.parse(trimmed) as unknown;
   } catch {
     return value;
   }
+};
+
+const bridgeDataEnvelope = (value: unknown): BridgeDataEnvelope | undefined => {
+  const decoded = decodeLegacyJson(value);
+  if (
+    typeof decoded !== "object" ||
+    decoded === null ||
+    !("kssolvEvent" in decoded) ||
+    typeof decoded.kssolvEvent !== "string"
+  ) {
+    return undefined;
+  }
+  return decoded as BridgeDataEnvelope;
 };
 
 export class MatlabBridge {
@@ -41,6 +59,13 @@ export class MatlabBridge {
   attach(component: MatlabHtmlComponent): void {
     if (this.component === component) return;
     this.component = component;
+    this.registeredEvents.clear();
+    component.addEventListener("DataChanged", (event) => {
+      const envelope = bridgeDataEnvelope(
+        unwrapEventData(event) ?? component.Data,
+      );
+      if (envelope) this.dispatch(envelope.kssolvEvent, envelope.payload);
+    });
     for (const eventName of this.handlers.keys()) {
       this.register(eventName);
     }

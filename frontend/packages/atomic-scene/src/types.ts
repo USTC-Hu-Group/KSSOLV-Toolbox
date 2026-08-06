@@ -132,7 +132,7 @@ export interface MoleculeSceneSpec extends AtomicSceneBase {
 
 export type AtomicSceneSpec = CrystalSceneSpec | MoleculeSceneSpec;
 
-export type ThemeId = "pretty" | "materials";
+export type ThemeId = "materials" | "gleamoe-premiror";
 export type RadiusMode = "uniform" | "atomic";
 export type ColorMode = "vesta" | "jmol";
 export type RenderMode = "fast" | "quality";

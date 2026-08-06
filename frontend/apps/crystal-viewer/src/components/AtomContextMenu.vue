@@ -277,6 +277,10 @@ onBeforeUnmount(() => {
       <p v-if="validationError || error" class="atom-modeling-error" role="alert">
         {{ validationError || error }}
       </p>
+      <div v-if="pending" class="atom-modeling-progress" role="status" aria-live="polite">
+        <span>Applying structure edit…</span>
+        <progress aria-label="Structure edit progress"></progress>
+      </div>
       <div class="atom-modeling-buttons">
         <button type="button" :disabled="pending" @click="activeDialog = undefined">Back</button>
         <button

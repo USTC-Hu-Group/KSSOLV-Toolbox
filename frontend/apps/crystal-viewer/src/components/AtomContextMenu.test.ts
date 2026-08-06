@@ -86,6 +86,18 @@ describe('atom context modeling menu', () => {
     deletion.unmount();
   });
 
+  it('shows indeterminate progress while MATLAB applies a structure edit', async () => {
+    const wrapper = mountMenu();
+    await wrapper.findAll('[role="menuitem"]')[1].trigger('click');
+    await wrapper.setProps({ pending: true });
+    expect(wrapper.get('.atom-modeling-progress').text()).toContain('Applying structure edit');
+    expect(wrapper.get('progress').attributes('aria-label')).toBe('Structure edit progress');
+    expect(
+      wrapper.findAll('button').every((button) => button.attributes('disabled') !== undefined),
+    ).toBe(true);
+    wrapper.unmount();
+  });
+
   it('requires one atom for moving while allowing the entire structure to be deleted', async () => {
     const wrapper = mountMenu({ selectionCount: 2, selectedSiteCount: 2 });
     const actions = wrapper.findAll('[role="menuitem"]');

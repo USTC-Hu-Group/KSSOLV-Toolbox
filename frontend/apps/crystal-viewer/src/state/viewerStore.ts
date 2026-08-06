@@ -106,6 +106,15 @@ const updateOptions = (patch: Partial<ViewerOptions>): void => {
   Object.assign(options, patch);
 };
 
+const updateTheme = (theme: ThemeId): void => {
+  updateOptions({
+    theme,
+    ...(theme === 'gleamoe-premiror'
+      ? { renderMode: 'fast' as const, renderQuality: 'balanced' as const }
+      : {}),
+  });
+};
+
 const installBridge = (): void => {
   if (bridgeInstalled) return;
   bridgeInstalled = true;
@@ -144,7 +153,12 @@ const installBridge = (): void => {
   });
   matlabBridge.on('theme:set', (payload) => {
     const theme = typeof payload === 'string' ? payload : '';
-    if (theme === 'pretty' || theme === 'materials') updateOptions({ theme });
+    if (theme === 'pretty') {
+      // Migrate commands and saved state from versions that exposed Pretty Lattice.
+      updateTheme('materials');
+    } else if (theme === 'materials' || theme === 'gleamoe-premiror') {
+      updateTheme(theme);
+    }
   });
 };
 
@@ -296,7 +310,7 @@ export const useViewerStore = () => {
       status.activityMessage = '';
     },
     setTheme(theme: ThemeId): void {
-      updateOptions({ theme });
+      updateTheme(theme);
     },
     markReady(): void {
       status.ready = true;
@@ -305,7 +319,10 @@ export const useViewerStore = () => {
         capabilities: {
           batchedMesh: true,
           webgl2: true,
-          themes: ['pretty', 'materials'],
+          themes: ['materials', 'gleamoe-premiror'],
+          pathTracing: true,
+          cinematicDepthOfField: true,
+          heroShot: true,
         },
       });
     },

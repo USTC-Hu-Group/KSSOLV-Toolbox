@@ -13,6 +13,13 @@ classdef DataStorage < handle
         DataMap
     end
 
+    properties (Constant, Access = private)
+        % Root graphics app data survives `clear` and function reloads.  A
+        % persistent variable alone does not, which used to orphan the
+        % Project while the AppContainer was still open.
+        RootAppDataKey = 'KSSOLVToolbox_DataStorage'
+    end
+
     methods (Access = private)
         function this = DataStorage()
             % 私有构造函数，防止外部直接构造实例
@@ -24,8 +31,31 @@ classdef DataStorage < handle
         function this = getInstance()
             % 静态方法，用于获取类的唯一实例
             persistent instance;
-            if isempty(instance)
-                instance = kssolv.ui.util.DataStorage();
+            if isempty(instance) || ~isvalid(instance)
+                key = kssolv.ui.util.DataStorage.RootAppDataKey;
+                try
+                    root = groot;
+                catch
+                    % During MATLAB shutdown, component destructors can run
+                    % after the root graphics object has already gone away.
+                    instance = kssolv.ui.util.DataStorage();
+                    this = instance;
+                    return
+                end
+                if isappdata(root, key)
+                    storedInstance = getappdata(root, key);
+                else
+                    storedInstance = [];
+                end
+
+                if isa(storedInstance, ...
+                        'kssolv.ui.util.DataStorage') && ...
+                        isvalid(storedInstance)
+                    instance = storedInstance;
+                else
+                    instance = kssolv.ui.util.DataStorage();
+                    setappdata(root, key, instance);
+                end
             end
 
             this = instance;
@@ -64,4 +94,3 @@ classdef DataStorage < handle
         end
     end
 end
-

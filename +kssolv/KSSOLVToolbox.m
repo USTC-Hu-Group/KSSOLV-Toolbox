@@ -210,8 +210,19 @@ classdef KSSOLVToolbox < handle
             import kssolv.ui.util.Localizer.*
 
             status = false;
-            project = kssolv.ui.util.DataStorage.getData('Project');
-            projectFilename = kssolv.ui.util.DataStorage.getData('ProjectFilename');
+            try
+                [project, projectFilename] = ...
+                    this.projectBrowser.getCurrentProject();
+            catch exception
+                % CanCloseFcn must never trap the user in a window that can
+                % no longer reach its project.  Log the recovery failure and
+                % permit shutdown; there is no valid object left to save.
+                warning('KSSOLV:Toolbox:ProjectUnavailableOnClose', ...
+                    'Unable to recover the current project while closing: %s', ...
+                    exception.message);
+                status = true;
+                return
+            end
 
             if ~project.isDirty
                 % 如果 project 没有进行任何修改，则直接关闭已有的 project

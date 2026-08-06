@@ -24,10 +24,9 @@ describe('renderer geometry helpers', () => {
     expect(orthographicFitHeight(5, 0.5)).toBe(25);
   });
 
-  it('fits Materials scenes more tightly while preserving the Pretty camera profile', () => {
-    expect(fittedViewHeight(5, 2, 8, 'pretty')).toBe(12.5);
-    expect(fittedViewHeight(5, 2, 8, 'materials')).toBeCloseTo(10.6);
-    expect(fittedViewHeight(0.4, 2, 0.6, 'materials')).toBe(2.2);
+  it('uses the Materials camera profile for supported themes', () => {
+    expect(fittedViewHeight(5, 2, 8)).toBeCloseTo(10.6);
+    expect(fittedViewHeight(0.4, 2, 0.6)).toBe(2.2);
   });
 
   it('includes atom radii when tightly fitting the current camera projection', () => {

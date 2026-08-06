@@ -18,8 +18,9 @@ Known third-party or separately licensed components include:
 - `+kssolv/+ui/+components/+databrowser/@CommandWindow/html/`: separate
   notices for Highlight.js, markdown-it, and KaTeX.
 - `+kssolv/+ui/+components/+figuredocument/@MoleculeDisplay/CrystalViewer/`:
-  the bundled Vue.js and three.js application. Both projects use the MIT
-  License; the distributable notice is included as
+  the bundled Vue.js and three.js application, including the MIT-licensed
+  three-gpu-pathtracer, three-mesh-bvh, and xatlas-web rendering components.
+  The distributable notices are included as
   `THIRD-PARTY-NOTICES.txt`.
 - `+kssolv/+ui/+components/+figuredocument/@VolumeDisplay/VolumeViewer/`:
   the bundled Vue.js and three.js volume application. Both projects use the
@@ -50,7 +51,8 @@ KSSOLV Toolbox 原创部分，不替代或覆盖任何第三方组件自身的�
 - `+kssolv/+ui/+components/+databrowser/@CommandWindow/html/`：包含
   Highlight.js、markdown-it 和 KaTeX 的独立权利声明。
 - `+kssolv/+ui/+components/+figuredocument/@MoleculeDisplay/CrystalViewer/`：
-  内含使用 MIT 许可证的 Vue.js 与 three.js 应用，发行版权声明见其中的
+  内含使用 MIT 许可证的 Vue.js 与 three.js 应用，以及 three-gpu-pathtracer、
+  three-mesh-bvh 与 xatlas-web 渲染组件；发行版权声明见其中的
   `THIRD-PARTY-NOTICES.txt`。
 - `+kssolv/+ui/+components/+figuredocument/@VolumeDisplay/VolumeViewer/`：
   内含使用 MIT 许可证的 Vue.js 与 three.js 体数据应用，发行版权声明见其中的

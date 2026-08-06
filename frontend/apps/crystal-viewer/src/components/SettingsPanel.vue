@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 
+import type { HeroExportScale } from '../renderer/quality';
 import type { AtomicBondAlgorithm, AtomicSceneSpec, ViewerOptions } from '../scene/types';
 import type { SceneActivityPhase } from '../state/viewerStore';
 
@@ -11,12 +12,20 @@ const props = withDefaults(
     rebuildPhase?: SceneActivityPhase;
     rebuildMessage?: string;
     rebuilding?: boolean;
+    heroShotActive?: boolean;
+    heroExportScale?: HeroExportScale;
+    imageExporting?: boolean;
+    sceneAvailable?: boolean;
   }>(),
   {
     scene: undefined,
     rebuildPhase: 'idle',
     rebuildMessage: '',
     rebuilding: false,
+    heroShotActive: false,
+    heroExportScale: 2.5,
+    imageExporting: false,
+    sceneAvailable: false,
   },
 );
 
@@ -31,6 +40,8 @@ const emit = defineEmits<{
     },
   ];
   close: [];
+  toggleHeroShot: [];
+  'update:heroExportScale': [value: HeroExportScale];
 }>();
 
 const algorithm = ref<AtomicBondAlgorithm>('CrystalNN');
@@ -89,8 +100,8 @@ const isBlankStructure = computed(
             update('theme', ($event.target as HTMLSelectElement).value as ViewerOptions['theme'])
           "
         >
-          <option value="pretty">Pretty Lattice</option>
           <option value="materials">Materials Project</option>
+          <option value="gleamoe-premiror">Gleamoe Noir</option>
         </select>
       </label>
       <label>
@@ -319,44 +330,57 @@ const isBlankStructure = computed(
         <span v-else class="feedback-icon" aria-hidden="true">
           {{ rebuildPhase === 'success' ? '✓' : '!' }}
         </span>
-        {{ rebuildMessage }}
+        <span class="rebuild-feedback-copy">{{ rebuildMessage }}</span>
+        <progress
+          v-if="rebuildPhase === 'queued' || rebuildPhase === 'building'"
+          aria-label="Scientific scene progress"
+        ></progress>
       </p>
     </section>
 
-    <section>
-      <h3>High-quality exporting</h3>
+    <section v-if="modelValue.theme === 'gleamoe-premiror'" class="hero-settings">
+      <h3>Hero Shot</h3>
       <label>
-        Rendering path
+        Export resolution
         <select
-          :value="modelValue.renderMode"
+          :value="heroExportScale"
           @change="
-            update(
-              'renderMode',
-              ($event.target as HTMLSelectElement).value as ViewerOptions['renderMode'],
+            emit(
+              'update:heroExportScale',
+              Number(($event.target as HTMLSelectElement).value) as HeroExportScale,
             )
           "
         >
-          <option value="fast">Fast interactive · Phong</option>
-          <option value="quality">High quality · Physical</option>
+          <option :value="2.5">2.5× · High</option>
+          <option :value="3">3× · Ultra</option>
+          <option :value="4">4× · Poster</option>
         </select>
       </label>
-      <label>
-        Quality level
-        <select
-          :value="modelValue.renderQuality"
-          :disabled="modelValue.renderMode === 'fast'"
-          @change="
-            update(
-              'renderQuality',
-              ($event.target as HTMLSelectElement).value as ViewerOptions['renderQuality'],
-            )
-          "
+      <dl class="hero-parameter-list">
+        <div>
+          <dt>Output</dt>
+          <dd>PNG · {{ heroExportScale }}× viewport</dd>
+        </div>
+        <div>
+          <dt>Sampling</dt>
+          <dd>128 path-traced samples</dd>
+        </div>
+        <div>
+          <dt>Lighting</dt>
+          <dd>Cinematic adaptive</dd>
+        </div>
+      </dl>
+      <div class="hero-setting-actions">
+        <button
+          type="button"
+          class="hero-mode-button"
+          :aria-pressed="heroShotActive"
+          :disabled="!sceneAvailable || imageExporting"
+          @click="emit('toggleHeroShot')"
         >
-          <option value="balanced">Balanced</option>
-          <option value="high">High</option>
-          <option value="ultra">Ultra</option>
-        </select>
-      </label>
+          {{ heroShotActive ? 'Exit Hero mode' : 'Enter Hero mode' }}
+        </button>
+      </div>
     </section>
   </aside>
 </template>

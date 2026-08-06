@@ -265,7 +265,12 @@ const closeFileMenuOnFocusOut = (event: FocusEvent): void => {
 </script>
 
 <template>
-  <nav class="viewer-toolbar" aria-label="Crystal viewer tools" @keydown.esc="closeAllMenus">
+  <nav
+    class="viewer-toolbar"
+    :class="{ 'has-open-export-menu': imageExportMenuOpen || fileExportMenuOpen }"
+    aria-label="Crystal viewer tools"
+    @keydown.esc="closeAllMenus"
+  >
     <button
       class="toolbar-reset"
       type="button"

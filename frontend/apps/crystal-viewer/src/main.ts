@@ -94,6 +94,13 @@ window.debug = (): void => {
         });
         return;
       }
+      if (name === 'viewer:chooseImageExport') {
+        matlabBridge.dispatchForTesting('image:exportDestination', {
+          ...(typeof data === 'object' && data !== null ? data : {}),
+          status: 'download',
+        });
+        return;
+      }
       if (name === 'viewer:modelingCommandRequested') {
         window.setTimeout(() => {
           matlabBridge.dispatchForTesting('modeling:result', {
@@ -132,7 +139,18 @@ if (offline) {
     addEventListener: (name, handler) => {
       listeners.set(name, handler);
     },
-    sendEventToMATLAB: (name) => {
+    sendEventToMATLAB: (name, data) => {
+      if (name === 'viewer:chooseImageExport') {
+        window.setTimeout(() => {
+          listeners.get('image:exportDestination')?.({
+            Data: {
+              ...(typeof data === 'object' && data !== null ? data : {}),
+              status: 'download',
+            },
+          });
+        }, 0);
+        return;
+      }
       if (name !== 'viewer:analysisRequested') return;
       window.setTimeout(() => {
         listeners.get('scene:error')?.({

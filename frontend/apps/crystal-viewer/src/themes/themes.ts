@@ -25,6 +25,11 @@ export interface ViewerTheme {
     transmission: number;
     thickness: number;
     opacity: number;
+    anisotropy: number;
+    iridescence: number;
+    iridescenceIOR: number;
+    attenuationColor: string;
+    attenuationDistance: number;
   };
   bond: {
     metalness: number;
@@ -35,39 +40,6 @@ export interface ViewerTheme {
 }
 
 export const themes: Record<ThemeId, ViewerTheme> = {
-  pretty: {
-    id: 'pretty',
-    label: 'Pretty Lattice',
-    background: '#fafafa',
-    foreground: '#202124',
-    muted: '#70757a',
-    panel: 'rgba(255, 255, 255, 0.88)',
-    panelBorder: 'rgba(30, 34, 40, 0.12)',
-    accent: '#246bfd',
-    selection: '#e6b800',
-    cell: '#44474d',
-    atom: {
-      model: 'phong',
-      shininess: 110,
-      metalness: 0.08,
-      roughness: 0.28,
-      clearcoat: 0.75,
-      clearcoatRoughness: 0.18,
-      ior: 1.5,
-      reflectivity: 0.5,
-      specularIntensity: 1,
-      sheen: 0,
-      transmission: 0,
-      thickness: 0,
-      opacity: 1,
-    },
-    bond: {
-      metalness: 0.04,
-      roughness: 0.38,
-      clearcoat: 0,
-      clearcoatRoughness: 0,
-    },
-  },
   materials: {
     id: 'materials',
     label: 'Materials Project',
@@ -93,12 +65,55 @@ export const themes: Record<ThemeId, ViewerTheme> = {
       transmission: 0.045,
       thickness: 0.32,
       opacity: 1,
+      anisotropy: 0,
+      iridescence: 0,
+      iridescenceIOR: 1.3,
+      attenuationColor: '#ffffff',
+      attenuationDistance: Infinity,
     },
     bond: {
       metalness: 0,
       roughness: 0.28,
       clearcoat: 0.45,
       clearcoatRoughness: 0.2,
+    },
+  },
+  'gleamoe-premiror': {
+    id: 'gleamoe-premiror',
+    label: 'Gleamoe Noir',
+    background: '#07101d',
+    foreground: '#f1f7ff',
+    muted: '#9eb0c5',
+    panel: 'rgba(8, 18, 32, 0.82)',
+    panelBorder: 'rgba(150, 207, 255, 0.2)',
+    accent: '#66d9ff',
+    selection: '#ffd166',
+    cell: '#85bde7',
+    atom: {
+      model: 'physical',
+      shininess: 190,
+      metalness: 0.16,
+      roughness: 0.11,
+      clearcoat: 1,
+      clearcoatRoughness: 0.045,
+      ior: 1.62,
+      reflectivity: 1,
+      specularIntensity: 1.15,
+      sheen: 0.12,
+      transmission: 0.035,
+      thickness: 0.45,
+      opacity: 1,
+      anisotropy: 0.18,
+      iridescence: 0.08,
+      iridescenceIOR: 1.42,
+      attenuationColor: '#d8efff',
+      attenuationDistance: 3.5,
+    },
+    bond: {
+      metalness: 0.12,
+      roughness: 0.2,
+      clearcoat: 0.85,
+      clearcoatRoughness: 0.08,
     },
   },
 };

@@ -11,6 +11,7 @@ import {
 import { defaultViewerOptions } from '../scene/types';
 import ElementLegend from './ElementLegend.vue';
 import FractionalCoordinatesPanel from './FractionalCoordinatesPanel.vue';
+import HeroToolbar from './HeroToolbar.vue';
 import SelectionInspector from './SelectionInspector.vue';
 import SettingsPanel from './SettingsPanel.vue';
 import ViewerToolbar from './ViewerToolbar.vue';
@@ -51,56 +52,95 @@ describe('viewer controls', () => {
     expect(wrapper.text()).toContain("O'Keeffe's algorithm");
     expect(wrapper.text()).toContain("Hoppe's ECoN algorithm");
     expect(wrapper.text()).toContain("Brunner's reciprocal algorithm");
-    expect(wrapper.text()).toContain('High-quality exporting');
-    expect(wrapper.text()).toContain('Fast interactive · Phong');
-    const sectionHeadings = wrapper.findAll('h3').map((heading) => heading.text());
-    expect(sectionHeadings.indexOf('High-quality exporting')).toBeGreaterThan(
-      sectionHeadings.indexOf('Scientific scene'),
-    );
-    const qualityControl = wrapper
-      .findAll('label')
-      .find((control) => control.text().includes('Quality level'));
-    expect(qualityControl!.get('select').attributes('disabled')).toBeDefined();
+    expect(wrapper.text()).not.toContain('Preview rendering');
+    expect(wrapper.text()).not.toContain('High quality · Physical');
     expect(wrapper.text()).toContain('Unit-cell representation');
     expect(wrapper.text()).toContain('Repeat cell');
   });
 
-  it('emits a complete immutable option update', async () => {
+  it('offers only Materials Project and Gleamoe Noir with Materials selected by default', () => {
     const options = defaultViewerOptions();
     const wrapper = mount(SettingsPanel, {
       props: { modelValue: options, scene: createDebugScene() },
     });
-    await wrapper.get('select').setValue('pretty');
-    const emitted = wrapper.emitted('update:modelValue');
-    expect(emitted).toHaveLength(1);
-    expect((emitted?.[0][0] as typeof options).theme).toBe('pretty');
-    expect(options.theme).toBe('materials');
+    const theme = wrapper.get('select');
+    expect(theme.element.value).toBe('materials');
+    expect(theme.findAll('option').map((option) => option.text())).toEqual([
+      'Materials Project',
+      'Gleamoe Noir',
+    ]);
+    expect(wrapper.text()).not.toContain('Pretty Lattice');
+    expect(wrapper.text()).not.toContain('Ray traced');
   });
 
-  it('enables selectable physical-rendering quality without changing the fast default', async () => {
+  it('changes to Gleamoe without exposing preview-rendering presets', async () => {
     const options = defaultViewerOptions();
-    expect(options.renderMode).toBe('fast');
-    expect(options.renderQuality).toBe('high');
     const wrapper = mount(SettingsPanel, {
-      props: { modelValue: options, scene: createDebugScene() },
+      props: { modelValue: options, scene: createDebugScene(), sceneAvailable: true },
     });
-    const renderingPath = wrapper
-      .findAll('label')
-      .find((control) => control.text().includes('Rendering path'));
-    await renderingPath!.get('select').setValue('quality');
+
+    await wrapper.get('select').setValue('gleamoe-premiror');
+
     const next = wrapper.emitted('update:modelValue')?.[0][0] as typeof options;
-    expect(next.renderMode).toBe('quality');
-    expect(next.renderQuality).toBe('high');
-    expect(options.renderMode).toBe('fast');
+    expect(next.theme).toBe('gleamoe-premiror');
+    expect(next.renderMode).toBe(options.renderMode);
+    expect(next.renderQuality).toBe(options.renderQuality);
+    expect(wrapper.text()).not.toContain('Quality level');
+    expect(wrapper.text()).not.toContain('Hero Shot');
 
     await wrapper.setProps({ modelValue: next });
-    const qualityControl = wrapper
-      .findAll('label')
-      .find((control) => control.text().includes('Quality level'));
-    expect(qualityControl!.get('select').attributes('disabled')).toBeUndefined();
-    await qualityControl!.get('select').setValue('ultra');
-    const ultra = wrapper.emitted('update:modelValue')?.[1][0] as typeof options;
-    expect(ultra.renderQuality).toBe('ultra');
+    const hero = wrapper.get('.hero-settings');
+    expect(hero.text()).toContain('Export resolution');
+    expect(hero.text()).toContain('128 path-traced samples');
+    expect(hero.get('select').element.value).toBe('2.5');
+    expect(hero.findAll('option').map((option) => option.text())).toEqual([
+      '2.5× · High',
+      '3× · Ultra',
+      '4× · Poster',
+    ]);
+    await hero.get('select').setValue('4');
+    expect(wrapper.emitted('update:heroExportScale')).toEqual([[4]]);
+    await hero.get('.hero-mode-button').trigger('click');
+    expect(wrapper.emitted('toggleHeroShot')).toHaveLength(1);
+    expect(hero.find('.hero-export-button').exists()).toBe(false);
+  });
+
+  it('provides Hero composition axes, resolution export, and exit controls', async () => {
+    const toolbar = mount(HeroToolbar, {
+      props: { crystal: true, exportScale: 2.5 },
+    });
+
+    expect(toolbar.attributes('aria-label')).toBe('Hero mode tools');
+    expect(toolbar.findAll('.axis-button').map((button) => button.text().trim())).toEqual([
+      'a',
+      'b',
+      'c',
+      'a*',
+      'b*',
+      'c*',
+    ]);
+    await toolbar.get('[aria-label="Reset camera"]').trigger('click');
+    expect(toolbar.emitted('reset')).toHaveLength(1);
+    await toolbar.get('[data-toolbar-axis="b*"]').trigger('click');
+    expect(toolbar.emitted('axis')).toEqual([['b*']]);
+
+    const exportButton = toolbar.get('[aria-label="Export Hero Shot"]');
+    await exportButton.trigger('click');
+    expect(exportButton.attributes('aria-expanded')).toBe('true');
+    const resolutionMenu = toolbar.get('[aria-label="Hero export resolution"]');
+    expect(resolutionMenu.findAll('[role="menuitemradio"]')).toHaveLength(3);
+    expect(resolutionMenu.text()).toContain('2.5× viewport · PNG');
+    expect(resolutionMenu.text()).toContain('4× viewport · PNG');
+    const poster = resolutionMenu
+      .findAll('[role="menuitemradio"]')
+      .find((option) => option.text().includes('Poster'))!;
+    await poster.trigger('click');
+    expect(toolbar.emitted('update:exportScale')).toEqual([[4]]);
+    expect(toolbar.emitted('export')).toEqual([[4]]);
+    expect(toolbar.find('[aria-label="Hero export resolution"]').exists()).toBe(false);
+
+    await toolbar.get('[aria-label="Exit Hero mode"]').trigger('click');
+    expect(toolbar.emitted('exit')).toHaveLength(1);
   });
 
   it('shows molecule controls without crystal-only settings', () => {
@@ -159,6 +199,7 @@ describe('viewer controls', () => {
     expect(feedback.text()).toContain('Computing bonds');
     expect(feedback.classes()).toContain('is-building');
     expect(feedback.find('.feedback-spinner').exists()).toBe(true);
+    expect(feedback.get('progress').attributes('aria-label')).toBe('Scientific scene progress');
 
     await wrapper.setProps({
       rebuildPhase: 'success',
@@ -169,6 +210,7 @@ describe('viewer controls', () => {
     expect(feedback.text()).toContain('Scene rebuilt');
     expect(feedback.classes()).toContain('is-success');
     expect(feedback.find('.feedback-spinner').exists()).toBe(false);
+    expect(feedback.find('progress').exists()).toBe(false);
   });
 
   it('rebuilds immediately from scientific controls with MATLAB-serializable payloads', async () => {
@@ -269,6 +311,8 @@ describe('viewer controls', () => {
     expect(stopRotation.attributes('aria-pressed')).toBe('true');
     await stopRotation.trigger('click');
     expect(toolbar.emitted('toggleAutoRotation')).toHaveLength(2);
+    expect(toolbar.find('.toolbar-hero').exists()).toBe(false);
+    expect(toolbar.find('[aria-label="Hero Shot preview"]').exists()).toBe(false);
     expect(
       toolbar.findAll('.reciprocal-axis-button').map((button) => button.text().trim()),
     ).toEqual(['a*', 'b*', 'c*']);
@@ -310,7 +354,9 @@ describe('viewer controls', () => {
     expect(imageExportButton.attributes('aria-expanded')).toBe('false');
     await imageExportButton.trigger('click');
     expect(imageExportButton.attributes('aria-expanded')).toBe('true');
+    expect(toolbar.classes()).toContain('has-open-export-menu');
     expect(toolbar.findAll('[role="menuitem"]')).toHaveLength(6);
+    expect(toolbar.text()).not.toContain('Hero Shot PNG');
     expect(toolbar.text()).toContain('Lossless high-resolution image');
     expect(toolbar.text()).toContain('Lossless TIFF image (.tif)');
     expect(toolbar.text()).toContain('PDF (Vector)');
@@ -320,6 +366,7 @@ describe('viewer controls', () => {
     await imageFormatButton('TIFF').trigger('click');
     expect(toolbar.emitted('exportImage')).toEqual([['tiff']]);
     expect(toolbar.find('[role="menu"]').exists()).toBe(false);
+    expect(toolbar.classes()).not.toContain('has-open-export-menu');
 
     await imageExportButton.trigger('click');
     await imageFormatButton('SVG').trigger('click');
@@ -337,6 +384,7 @@ describe('viewer controls', () => {
     const fileExportButton = toolbar.get('[aria-label="Export file"]');
     await fileExportButton.trigger('click');
     expect(fileExportButton.attributes('aria-expanded')).toBe('true');
+    expect(toolbar.classes()).toContain('has-open-export-menu');
     expect(toolbar.findAll('[role="menuitem"]')).toHaveLength(3);
     const structureSubmenu = toolbar.get('.toolbar-export-submenu');
     const structureExportButton = structureSubmenu.get('button');

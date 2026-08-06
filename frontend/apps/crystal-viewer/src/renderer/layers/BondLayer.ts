@@ -19,8 +19,11 @@ export class BondLayer {
     private options: ViewerOptions,
     theme: ViewerTheme,
   ) {
-    const geometry = new CylinderGeometry(1, 1, 1, scene.bondInstances.length > 5000 ? 8 : 16);
-    const capacity = geometryCapacity([geometry]);
+    const radialSegments = scene.bondInstances.length > 5000 ? 8 : 16;
+    // Each colored half narrows toward the bond midpoint and blends slightly beneath its atom.
+    const fromGeometry = new CylinderGeometry(0.86, 1.16, 1, radialSegments);
+    const toGeometry = new CylinderGeometry(1.16, 0.86, 1, radialSegments);
+    const capacity = geometryCapacity([fromGeometry, toGeometry]);
     const material = new MeshPhysicalMaterial({
       color: 0xffffff,
       metalness: theme.bond.metalness,
@@ -36,8 +39,10 @@ export class BondLayer {
     );
     this.mesh.name = 'crystal-bonds';
     this.mesh.sortObjects = false;
-    const geometryId = this.mesh.addGeometry(geometry);
-    geometry.dispose();
+    const fromGeometryId = this.mesh.addGeometry(fromGeometry);
+    const toGeometryId = this.mesh.addGeometry(toGeometry);
+    fromGeometry.dispose();
+    toGeometry.dispose();
     const sites = new Map(scene.sites.map((site) => [site.siteIndex, site]));
     for (const bond of scene.bondInstances) {
       const hydrogen =
@@ -53,7 +58,7 @@ export class BondLayer {
           (entry, index) => (entry + end[index]) * 0.5,
         ) as BondInstanceSpec['start'];
         this.addHalf(
-          geometryId,
+          fromGeometryId,
           bond,
           'from',
           start,
@@ -62,7 +67,7 @@ export class BondLayer {
           hydrogen,
         );
         this.addHalf(
-          geometryId,
+          toGeometryId,
           bond,
           'to',
           midpoint,

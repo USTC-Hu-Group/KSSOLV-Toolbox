@@ -51,4 +51,18 @@ describe('MatlabBridge', () => {
       schemaVersion: '1.0',
     });
   });
+
+  it('receives reliable DataChanged bridge envelopes', () => {
+    const bridge = new MatlabBridge();
+    const component = new MockComponent();
+    const handler = vi.fn();
+    bridge.on('image:exportDestination', handler);
+    bridge.attach(component);
+    component.dispatch('DataChanged', {
+      kssolvEvent: 'image:exportDestination',
+      payload: { requestId: 'export-1', status: 'ready' },
+      serial: 1,
+    });
+    expect(handler).toHaveBeenCalledWith({ requestId: 'export-1', status: 'ready' });
+  });
 });

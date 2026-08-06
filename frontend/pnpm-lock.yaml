@@ -28,12 +28,21 @@ importers:
       three:
         specifier: 0.185.1
         version: 0.185.1
+      three-gpu-pathtracer:
+        specifier: 0.0.24
+        version: 0.0.24(three-mesh-bvh@0.9.9(three@0.185.1))(three@0.185.1)(xatlas-web@0.1.0)
+      three-mesh-bvh:
+        specifier: 0.9.9
+        version: 0.9.9(three@0.185.1)
       utif:
         specifier: 3.1.0
         version: 3.1.0
       vue:
         specifier: ^3.5.40
         version: 3.5.40(typescript@6.0.3)
+      xatlas-web:
+        specifier: 0.1.0
+        version: 0.1.0
     devDependencies:
       '@eslint/js':
         specifier: ^10.0.1
@@ -1461,6 +1470,18 @@ packages:
   text-segmentation@1.0.3:
     resolution: {integrity: sha512-iOiPUo/BGnZ6+54OsWxZidGCsdU8YbE4PSpdPinp7DeMtUJNJBoJ/ouUSTJjHkh1KntHaltHl/gDs2FC4i5+Nw==}
 
+  three-gpu-pathtracer@0.0.24:
+    resolution: {integrity: sha512-fHQ7g7ywvSwRAQywhsfech2/kspQKinfFNOcNDTJS2Q34CzcF1kpESlOVvJH8kX/bGlCnxMI+Qo16kWGAy7zCA==}
+    peerDependencies:
+      three: '>=0.180.0'
+      three-mesh-bvh: '>=0.7.4'
+      xatlas-web: ^0.1.0
+
+  three-mesh-bvh@0.9.9:
+    resolution: {integrity: sha512-FJKitcjvbALmeQRK+Sc+nLGorCpkrZBrbgJZFzhdyWboak37DZikn46hvQkNqSbJPm227ahYmS6k3N/GXaAyXw==}
+    peerDependencies:
+      three: '>= 0.159.0'
+
   three@0.185.1:
     resolution: {integrity: sha512-5aojFCXKwnjBRZvUnt3WFfEcvUJgkN5LlijRFN95hMy8WVkG4I0QNcJE+OuWvuJ0bOdStrbfXn0pkd6/QyiAlg==}
 
@@ -1698,6 +1719,9 @@ packages:
         optional: true
       utf-8-validate:
         optional: true
+
+  xatlas-web@0.1.0:
+    resolution: {integrity: sha512-PprVfuXbaIskxLTLBUQRaWfgSy9xUQqAMIRooOw0P6NYqwgh6T0voeer6+Z5M7AFt5SGXUybuww/uDGs1yw8vQ==}
 
   xml-name-validator@5.0.0:
     resolution: {integrity: sha512-EvGK8EJ3DhaHfbRlETOWAS5pO9MZITeauHKJyb8wyajUfQUenkIg2MvLDTZ4T/TgIcm3HU0TFBgWWboAZ30UHg==}
@@ -2904,6 +2928,16 @@ snapshots:
       utrie: 1.0.2
     optional: true
 
+  three-gpu-pathtracer@0.0.24(three-mesh-bvh@0.9.9(three@0.185.1))(three@0.185.1)(xatlas-web@0.1.0):
+    dependencies:
+      three: 0.185.1
+      three-mesh-bvh: 0.9.9(three@0.185.1)
+      xatlas-web: 0.1.0
+
+  three-mesh-bvh@0.9.9(three@0.185.1):
+    dependencies:
+      three: 0.185.1
+
   three@0.185.1: {}
 
   tinybench@2.9.0: {}
@@ -3073,5 +3107,7 @@ snapshots:
   wrappy@1.0.2: {}
 
   ws@8.21.1: {}
+
+  xatlas-web@0.1.0: {}
 
   xml-name-validator@5.0.0: {}

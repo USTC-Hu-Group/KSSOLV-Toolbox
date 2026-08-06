@@ -14,6 +14,7 @@ classdef ProjectBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser
 
     properties (Access = private)
         CurrentProject
+        CurrentProjectFilename (1, 1) string = ""
         CurrentAppContainer
     end
 
@@ -67,6 +68,11 @@ classdef ProjectBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser
             % 触发监听 currentSelectedItem 变化的监听器
             this.resolveCurrentProject();
             this.currentSelectedItem = this.currentSelectedItem;
+        end
+
+        function [project, projectFilename] = getCurrentProject(this)
+            %GETCURRENTPROJECT Return the live project and repair its cache.
+            [project, projectFilename] = this.resolveCurrentProject();
         end
     end
 
@@ -197,15 +203,31 @@ classdef ProjectBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser
             this.updateTreetable('PATCH', parentItem.name, parentItem.encodeToJSON(1));
         end
 
-        function project = resolveCurrentProject(this)
+        function [project, projectFilename] = resolveCurrentProject(this)
             % ProjectBrowser 保留一份当前 Project 句柄。若执行 clear 等
             % 操作重置了 DataStorage 的 persistent 状态，仍可从可见的
-            % Project Browser 恢复项目，继续处理点击和双击事件。
+            % Project Browser 恢复项目和文件名，供所有 UI 路径继续使用。
             this.restoreAppContainer();
             project = kssolv.ui.util.DataStorage.getData('Project');
+            projectFilename = ...
+                kssolv.ui.util.DataStorage.getData('ProjectFilename');
             if isa(project, 'kssolv.services.filemanager.Project') && ...
                     isvalid(project)
+                isSameProject = isequal(project, this.CurrentProject);
                 this.CurrentProject = project;
+
+                if this.isValidProjectFilename(projectFilename)
+                    this.CurrentProjectFilename = string(projectFilename);
+                elseif isSameProject
+                    projectFilename = this.CurrentProjectFilename;
+                    kssolv.ui.util.DataStorage.setData( ...
+                        'ProjectFilename', projectFilename);
+                else
+                    projectFilename = "";
+                    this.CurrentProjectFilename = projectFilename;
+                    kssolv.ui.util.DataStorage.setData( ...
+                        'ProjectFilename', projectFilename);
+                end
                 return
             end
 
@@ -216,6 +238,14 @@ classdef ProjectBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser
                     'The current project is unavailable.');
             end
             kssolv.ui.util.DataStorage.setData('Project', project);
+            projectFilename = this.CurrentProjectFilename;
+            kssolv.ui.util.DataStorage.setData( ...
+                'ProjectFilename', projectFilename);
+        end
+
+        function status = isValidProjectFilename(~, value)
+            status = (isstring(value) && isscalar(value)) || ...
+                (ischar(value) && (isrow(value) || isempty(value)));
         end
 
         function restoreAppContainer(this)

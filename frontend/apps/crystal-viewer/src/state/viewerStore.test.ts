@@ -42,11 +42,23 @@ describe('viewer store event ordering', () => {
     });
     const materialsSettings = { ...store.options };
 
-    store.setTheme('pretty');
+    matlabBridge.dispatchForTesting('theme:set', 'pretty');
     expect({ ...store.options, theme: materialsSettings.theme }).toEqual(materialsSettings);
 
     matlabBridge.dispatchForTesting('theme:set', 'materials');
     expect({ ...store.options }).toEqual(materialsSettings);
+  });
+
+  it('accepts Gleamoe Noir from MATLAB and keeps the live preview fast', async () => {
+    const { matlabBridge } = await import('../bridge/matlabBridge');
+    const { useViewerStore } = await import('./viewerStore');
+    const store = useViewerStore();
+
+    matlabBridge.dispatchForTesting('theme:set', 'gleamoe-premiror');
+
+    expect(store.options.theme).toBe('gleamoe-premiror');
+    expect(store.options.renderMode).toBe('fast');
+    expect(store.options.renderQuality).toBe('balanced');
   });
 
   it('reports invalid scenes', async () => {

@@ -3,7 +3,6 @@ import {
   BufferGeometry,
   CircleGeometry,
   Color,
-  DoubleSide,
   FrontSide,
   Matrix4,
   MeshPhongMaterial,
@@ -22,6 +21,7 @@ import type {
   ViewerOptions,
 } from '../../scene/types';
 import type { ViewerTheme } from '../../themes/themes';
+import { encodeElementMaterialColor, installElementMaterialShader } from '../artDirection';
 import { color, geometryCapacity, vector } from '../geometry';
 import { renderQualityProfile } from '../quality';
 
@@ -63,6 +63,7 @@ const sphereSegmentGeometry = (
 export class AtomLayer {
   readonly mesh: BatchedMesh;
   private readonly saturateColors: boolean;
+  private readonly artDirectedMaterials: boolean;
   private readonly records = new Map<number, SegmentRecord>();
   private readonly transforms = new Map<number, Matrix4>();
 
@@ -73,6 +74,7 @@ export class AtomLayer {
     private readonly materialsEnvironment?: Texture,
   ) {
     this.saturateColors = theme.id === 'materials';
+    this.artDirectedMaterials = theme.id === 'gleamoe-premiror' && options.renderMode === 'quality';
     const siteByIndex = new Map(scene.sites.map((site) => [site.siteIndex, site]));
     const records: SegmentRecord[] = [];
     for (const atom of scene.atomInstances) {
@@ -138,12 +140,21 @@ export class AtomLayer {
           sheenRoughness: 0.18,
           transmission: theme.atom.transmission,
           thickness: theme.atom.thickness,
+          anisotropy: theme.atom.anisotropy,
+          iridescence: theme.atom.iridescence,
+          iridescenceIOR: theme.atom.iridescenceIOR,
+          attenuationColor: theme.atom.attenuationColor,
+          attenuationDistance: theme.atom.attenuationDistance,
           transparent: theme.atom.opacity < 1,
           opacity: theme.atom.opacity,
-          envMap: theme.id === 'materials' ? materialsEnvironment : null,
-          envMapIntensity: theme.id === 'materials' ? 0.34 : 1,
-          side: theme.id === 'materials' ? FrontSide : DoubleSide,
+          envMap: materialsEnvironment,
+          envMapIntensity:
+            theme.id === 'gleamoe-premiror' ? 1.35 : theme.id === 'materials' ? 0.34 : 1,
+          side: FrontSide,
         });
+    if (material instanceof MeshPhysicalMaterial && this.artDirectedMaterials) {
+      installElementMaterialShader(material);
+    }
     this.mesh = new BatchedMesh(
       Math.max(records.length, 1),
       capacity.vertices,
@@ -234,12 +245,25 @@ export class AtomLayer {
       material.sheen = theme.atom.sheen;
       material.transmission = theme.atom.transmission;
       material.thickness = theme.atom.thickness;
+      material.anisotropy = theme.atom.anisotropy;
+      material.iridescence = theme.atom.iridescence;
+      material.iridescenceIOR = theme.atom.iridescenceIOR;
+      material.attenuationColor.set(theme.atom.attenuationColor);
+      material.attenuationDistance = theme.atom.attenuationDistance;
       material.transparent = theme.atom.opacity < 1;
       material.opacity = theme.atom.opacity;
-      material.envMap = theme.id === 'materials' ? (this.materialsEnvironment ?? null) : null;
-      material.envMapIntensity = theme.id === 'materials' ? 0.34 : 1;
-      material.side = theme.id === 'materials' ? FrontSide : DoubleSide;
+      material.envMap = this.materialsEnvironment ?? null;
+      material.envMapIntensity =
+        theme.id === 'gleamoe-premiror' ? 1.35 : theme.id === 'materials' ? 0.34 : 1;
+      material.side = FrontSide;
     }
+    material.needsUpdate = true;
+  }
+
+  setCinematicFocus(active: boolean): void {
+    const material = this.mesh.material;
+    if (!(material instanceof MeshPhysicalMaterial) || !this.artDirectedMaterials) return;
+    material.envMapIntensity = active ? 0.38 : 1.35;
     material.needsUpdate = true;
   }
 
@@ -267,6 +291,8 @@ export class AtomLayer {
         atomColor.setHSL(hsl.h, Math.min(1, hsl.s * 1.35 + 0.04), hsl.l);
       }
     }
-    return atomColor;
+    return this.artDirectedMaterials
+      ? encodeElementMaterialColor(atomColor, record.component)
+      : atomColor;
   }
 }

@@ -1,4 +1,4 @@
-import { Color, FrontSide, MeshPhongMaterial, MeshPhysicalMaterial } from 'three';
+import { FrontSide, MeshPhongMaterial, MeshPhysicalMaterial } from 'three';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -19,9 +19,9 @@ describe('batched crystal layers', () => {
   it('constructs empty atom, bond, and cell layers without errors', () => {
     const scene = createBlankDebugScene();
     const options = defaultViewerOptions();
-    const atoms = new AtomLayer(scene, options, themes.pretty);
-    const bonds = new BondLayer(scene, options, themes.pretty);
-    const cell = new CellLayer(scene, themes.pretty);
+    const atoms = new AtomLayer(scene, options, themes.materials);
+    const bonds = new BondLayer(scene, options, themes.materials);
+    const cell = new CellLayer(scene, themes.materials);
 
     expect(atoms.mesh.instanceCount).toBe(0);
     expect(bonds.mesh.instanceCount).toBe(0);
@@ -42,7 +42,7 @@ describe('batched crystal layers', () => {
       },
     ];
     const options = defaultViewerOptions();
-    const layer = new AtomLayer(scene, options, themes.pretty);
+    const layer = new AtomLayer(scene, options, themes.materials);
     expect(layer.mesh.instanceCount).toBeGreaterThan(scene.atomInstances.length);
     layer.updateVisibility({ ...options, showBoundaryAtoms: false });
     const boundaryBatch = [...Array(layer.mesh.instanceCount).keys()].find(
@@ -59,6 +59,7 @@ describe('batched crystal layers', () => {
     const options = { ...defaultViewerOptions(), showBondedOutside: false };
     const layer = new BondLayer(scene, options, themes.materials);
     expect(layer.mesh.instanceCount).toBe(scene.bondInstances.length * 2);
+    expect(layer.mesh.getGeometryIdAt(0)).not.toBe(layer.mesh.getGeometryIdAt(1));
     const outside = [...Array(layer.mesh.instanceCount).keys()].find(
       (id) => layer.get(id)?.visibility === 'bonded',
     );
@@ -80,10 +81,9 @@ describe('batched crystal layers', () => {
     layer.dispose();
   });
 
-  it('keeps both themes on fast Phong unless physical quality is enabled', () => {
+  it('keeps Materials on fast Phong unless physical quality is enabled', () => {
     const scene = createDebugScene();
     const options = defaultViewerOptions();
-    const pretty = new AtomLayer(scene, { ...options, theme: 'pretty' }, themes.pretty);
     const materialsFast = new AtomLayer(scene, options, themes.materials);
     const materialsQuality = new AtomLayer(
       scene,
@@ -91,7 +91,6 @@ describe('batched crystal layers', () => {
       themes.materials,
     );
     const materialsMaterial = materialsQuality.mesh.material as MeshPhysicalMaterial;
-    expect(pretty.mesh.material).toBeInstanceOf(MeshPhongMaterial);
     expect(materialsFast.mesh.material).toBeInstanceOf(MeshPhongMaterial);
     expect(materialsQuality.mesh.material).toBeInstanceOf(MeshPhysicalMaterial);
     expect(materialsMaterial.side).toBe(FrontSide);
@@ -101,16 +100,6 @@ describe('batched crystal layers', () => {
     expect(materialsMaterial.reflectivity).toBe(1);
     expect(materialsMaterial.transmission).toBeGreaterThan(0);
     expect(materialsMaterial.thickness).toBeGreaterThan(0);
-    const prettyColor = new Color();
-    const materialsColor = new Color();
-    pretty.mesh.getColorAt(0, prettyColor);
-    materialsFast.mesh.getColorAt(0, materialsColor);
-    const prettyHsl = { h: 0, s: 0, l: 0 };
-    const materialsHsl = { h: 0, s: 0, l: 0 };
-    prettyColor.getHSL(prettyHsl);
-    materialsColor.getHSL(materialsHsl);
-    expect(materialsHsl.s).toBeGreaterThan(prettyHsl.s);
-    pretty.dispose();
     materialsFast.dispose();
     materialsQuality.dispose();
   });
@@ -118,26 +107,27 @@ describe('batched crystal layers', () => {
   it('builds repeated-cell and coordination polyhedron geometry', () => {
     const scene = createDebugScene();
     scene.structure.repeat = [2, 1, 1];
-    const cell = new CellLayer(scene, themes.pretty);
+    const cell = new CellLayer(scene, themes.materials);
     cell.lines.geometry.computeBoundingBox();
     expect(cell.lines.geometry.boundingBox?.max.x).toBeCloseTo(11.28);
     const options = defaultViewerOptions();
-    const prettyPolyhedra = new PolyhedronLayer(scene, options, themes.pretty);
     const materialsPolyhedra = new PolyhedronLayer(scene, options, themes.materials);
-    expect(prettyPolyhedra.mesh?.instanceCount).toBe(1);
-    expect((prettyPolyhedra.mesh?.material as MeshPhysicalMaterial).opacity).toBe(
-      options.polyhedronOpacity,
-    );
+    expect(materialsPolyhedra.mesh?.instanceCount).toBe(1);
     expect((materialsPolyhedra.mesh?.material as MeshPhysicalMaterial).opacity).toBe(
       options.polyhedronOpacity * 1.3,
     );
-    prettyPolyhedra.dispose();
+    const gleamoePolyhedra = new PolyhedronLayer(scene, options, themes['gleamoe-premiror']);
+    expect((gleamoePolyhedra.mesh?.material as MeshPhysicalMaterial).opacity).toBeCloseTo(
+      options.polyhedronOpacity * 0.44,
+    );
+    expect(gleamoePolyhedra.group.children).toHaveLength(3);
     materialsPolyhedra.dispose();
+    gleamoePolyhedra.dispose();
     cell.dispose();
   });
 
   it('uses visible screen-space widths for measurement segments and angle arcs', () => {
-    const layer = new MeasurementLayer(themes.pretty);
+    const layer = new MeasurementLayer(themes.materials);
     layer.setAnnotations([
       {
         id: 'angle-width-test',
@@ -170,7 +160,7 @@ describe('batched crystal layers', () => {
   it('renders molecular double bonds and hides hydrogen geometry together', () => {
     const scene = createDebugMoleculeScene();
     const options = defaultViewerOptions();
-    const bonds = new BondLayer(scene, options, themes.pretty);
+    const bonds = new BondLayer(scene, options, themes.materials);
     expect(bonds.mesh.instanceCount).toBe(4);
     bonds.dispose();
 
@@ -185,7 +175,7 @@ describe('batched crystal layers', () => {
       ],
     };
     scene.sites[1] = hydrogenSite;
-    const atoms = new AtomLayer(scene, options, themes.pretty);
+    const atoms = new AtomLayer(scene, options, themes.materials);
     atoms.updateVisibility({ ...options, showHydrogens: false });
     const hydrogenBatch = [...Array(atoms.mesh.instanceCount).keys()].find(
       (id) => atoms.get(id)?.site.siteIndex === 1,
@@ -205,7 +195,7 @@ describe('batched crystal layers', () => {
       visibility: index === 0 ? ('base' as const) : ('repeat' as const),
     }));
     const started = performance.now();
-    const layer = new AtomLayer(scene, defaultViewerOptions(), themes.pretty);
+    const layer = new AtomLayer(scene, defaultViewerOptions(), themes.materials);
     expect(layer.mesh.instanceCount).toBe(10_000);
     expect(performance.now() - started).toBeLessThan(3_000);
     layer.dispose();

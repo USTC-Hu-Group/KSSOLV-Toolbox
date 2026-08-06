@@ -1,21 +1,26 @@
 import {
   AmbientLight,
+  ACESFilmicToneMapping,
   BackSide,
   Box3,
+  CircleGeometry,
   ConeGeometry,
   CylinderGeometry,
   DirectionalLight,
   DoubleSide,
+  FogExp2,
   Group,
   Mesh,
   MeshBasicMaterial,
   NoToneMapping,
   OrthographicCamera,
+  PCFShadowMap,
   PMREMGenerator,
   Quaternion,
   Raycaster,
   RingGeometry,
   Scene,
+  ShadowMaterial,
   Shape,
   ShapeGeometry,
   Sphere,
@@ -74,8 +79,17 @@ import {
   svgToPdfBlob,
   type ImageExportFormat,
 } from './imageExport';
-import { exportPixelRatio, interactivePixelRatio } from './quality';
+import { bestHeroDirection, cinematicPalette } from './artDirection';
+import {
+  exportPixelRatio,
+  gleamoeExportPixelRatio,
+  interactivePixelRatio,
+  type HeroExportScale,
+} from './quality';
 import { viewportLayout } from './viewport';
+import { GleamoePathTracer } from './GleamoePathTracer';
+import { GleamoePostProcessing } from './GleamoePostProcessing';
+import { GleamoeAtmosphere } from './GleamoeAtmosphere';
 
 export interface CrystalRendererCallbacks {
   onSelection?: (selection?: SelectionInfo, gesture?: { additive: boolean }) => void;
@@ -85,6 +99,15 @@ export interface CrystalRendererCallbacks {
   onStatistics?: (statistics: RendererStatistics) => void;
   onError?: (error: Error) => void;
 }
+
+export interface RenderExportProgress {
+  stage: 'preparing' | 'rendering' | 'tracing' | 'compositing' | 'encoding' | 'complete';
+  value: number;
+  label: string;
+  detail?: string;
+}
+
+export type RenderExportProgressCallback = (progress: RenderExportProgress) => void;
 
 interface BatchIntersection extends Intersection<Object3D> {
   batchId?: number;
@@ -181,41 +204,31 @@ const selectionHaloColor = 0x1557b0;
 const measurementCometColor = 0x36b8ff;
 const measurementCometCoreColor = 0xd9f7ff;
 
-const createOrientationAxes = (theme: ThemeId): Group => {
+const createOrientationAxes = (): Group => {
   const axes = new Group();
-  const materialsStyle = {
+  const style = {
     shaftLength: 1.08,
     shaftRadius: 0.065,
     headLength: 0.3,
     headRadius: 0.17,
   };
-  const prettyStyle = {
-    shaftLength: 1.08,
-    shaftRadius: 0.05,
-    headLength: 0.3,
-    headRadius: 0.15,
-  };
-  const style = theme === 'materials' ? materialsStyle : prettyStyle;
-  const colors =
-    theme === 'materials' ? [0xf01818, 0x00b82e, 0x143cff] : [0xff5c5c, 0x57cf72, 0x4d8cff];
-  const opacity = theme === 'materials' ? 0.94 : 1;
+  const colors = [0xf01818, 0x00b82e, 0x143cff];
+  const opacity = 0.94;
   axes.add(
     createAxisArrow(new Vector3(1, 0, 0), colors[0], style, opacity),
     createAxisArrow(new Vector3(0, 1, 0), colors[1], style, opacity),
     createAxisArrow(new Vector3(0, 0, 1), colors[2], style, opacity),
   );
-  if (theme === 'materials') {
-    axes.add(
-      new Mesh(
-        new SphereGeometry(0.105, 24, 18),
-        new MeshBasicMaterial({
-          color: 0x4b4b4b,
-          transparent: true,
-          opacity,
-        }),
-      ),
-    );
-  }
+  axes.add(
+    new Mesh(
+      new SphereGeometry(0.105, 24, 18),
+      new MeshBasicMaterial({
+        color: 0x4b4b4b,
+        transparent: true,
+        opacity,
+      }),
+    ),
+  );
   return axes;
 };
 
@@ -236,9 +249,26 @@ export class CrystalRenderer {
   // A fixed orthographic inset keeps every arrow head inside the scissor
   // rectangle at all camera rotations, including skewed crystal axes.
   private readonly orientationCamera = new OrthographicCamera(-1.55, 1.55, 1.55, -1.55, 0.1, 20);
-  private readonly prettyAxes = createOrientationAxes('pretty');
-  private readonly materialsAxes = createOrientationAxes('materials');
+  private readonly materialsAxes = createOrientationAxes();
+  private readonly gleamoeAxes = createOrientationAxes();
   private materialsEnvironment?: Texture;
+  private gleamoePathTracer?: GleamoePathTracer;
+  private gleamoePostProcessing?: GleamoePostProcessing;
+  private gleamoeAtmosphere?: GleamoeAtmosphere;
+  private readonly gleamoeStageCenter = new Vector3();
+  private gleamoeStageRadius = 1;
+  private heroShotActive = false;
+  private rasterExportInProgress = false;
+  private cameraAnimationFrame?: number;
+  private cameraAnimationResolve?: () => void;
+  private readonly rimLight = new DirectionalLight(0x70bfff, 0);
+  private readonly shadowFloorGeometry = new CircleGeometry(1, 96);
+  private readonly shadowFloorMaterial = new ShadowMaterial({
+    color: 0x02060b,
+    opacity: 0.42,
+    transparent: true,
+  });
+  private readonly shadowFloor = new Mesh(this.shadowFloorGeometry, this.shadowFloorMaterial);
   private readonly selectionHaloGeometry = new RingGeometry(0.99, 1.2, 64);
   private readonly selectionHaloMaterial = new MeshBasicMaterial({
     color: selectionHaloColor,
@@ -348,7 +378,7 @@ export class CrystalRenderer {
     this.renderer = new WebGLRenderer({
       canvas,
       antialias: true,
-      alpha: false,
+      alpha: true,
       powerPreference: 'high-performance',
       preserveDrawingBuffer: true,
     });
@@ -361,8 +391,15 @@ export class CrystalRenderer {
     this.scene.add(this.ambientLight);
     this.keyLight.position.set(7, 10, 12);
     this.scene.add(this.keyLight);
+    this.scene.add(this.keyLight.target);
     this.fillLight.position.set(-8, -4, 6);
     this.scene.add(this.fillLight);
+    this.rimLight.position.set(-9, 5, 8);
+    this.scene.add(this.rimLight, this.rimLight.target);
+    this.shadowFloor.name = 'gleamoe-shadow-catcher';
+    this.shadowFloor.receiveShadow = true;
+    this.shadowFloor.visible = false;
+    this.scene.add(this.shadowFloor);
     this.selectionMarkers.name = 'atom-selection-markers';
     this.selectionMarkers.renderOrder = 20;
     this.bondSelectionMarker.visible = false;
@@ -376,7 +413,7 @@ export class CrystalRenderer {
     this.measurementHoverMarker.renderOrder = 31;
     this.scene.add(this.measurementMarkers, this.measurementHoverMarker);
 
-    this.orientationScene.add(this.prettyAxes, this.materialsAxes);
+    this.orientationScene.add(this.materialsAxes, this.gleamoeAxes);
     this.orientationCamera.position.set(3, 3, 3);
     this.orientationCamera.lookAt(0, 0, 0);
 
@@ -419,13 +456,11 @@ export class CrystalRenderer {
     this.clearMeasurementSelection();
     this.sceneSpec = scene;
     const orientationDirections = latticeAxisDirections(scene);
-    updateOrientationAxisDirections(this.prettyAxes, orientationDirections);
     updateOrientationAxisDirections(this.materialsAxes, orientationDirections);
+    updateOrientationAxisDirections(this.gleamoeAxes, orientationDirections);
     this.clearLayers();
     const materialsEnvironment =
-      this.options.theme === 'materials' && this.options.renderMode === 'quality'
-        ? this.ensureMaterialsEnvironment()
-        : undefined;
+      this.options.renderMode === 'quality' ? this.ensureMaterialsEnvironment() : undefined;
     this.atomLayer = new AtomLayer(
       scene,
       this.options,
@@ -435,19 +470,71 @@ export class CrystalRenderer {
     this.bondLayer = new BondLayer(scene, this.options, themes[this.options.theme]);
     this.cellLayer =
       scene.kind === 'crystal' ? new CellLayer(scene, themes[this.options.theme]) : undefined;
+    this.cellLayer?.setVisible(this.options.showUnitCell && !this.heroShotActive);
     this.polyhedronLayer = new PolyhedronLayer(scene, this.options, themes[this.options.theme]);
     this.magmomLayer = new MagmomLayer(scene, this.options);
     this.crystal.add(this.atomLayer.mesh, this.bondLayer.mesh);
     if (this.cellLayer) this.crystal.add(this.cellLayer.lines);
-    if (this.polyhedronLayer.mesh) this.crystal.add(this.polyhedronLayer.mesh);
+    if (this.polyhedronLayer.mesh) this.crystal.add(this.polyhedronLayer.group);
     if (this.magmomLayer.mesh) this.crystal.add(this.magmomLayer.mesh);
+    const premiumShadows =
+      this.options.theme === 'gleamoe-premiror' && this.options.renderMode === 'quality';
+    this.atomLayer.mesh.castShadow = premiumShadows;
+    this.atomLayer.mesh.receiveShadow = premiumShadows;
+    this.bondLayer.mesh.castShadow = premiumShadows;
+    this.bondLayer.mesh.receiveShadow = premiumShadows;
+    if (this.polyhedronLayer.mesh) {
+      this.polyhedronLayer.mesh.castShadow = premiumShadows;
+      this.polyhedronLayer.mesh.receiveShadow = premiumShadows;
+    }
+    this.updateGleamoeStage();
+    if (this.options.theme === 'gleamoe-premiror' && !premiumShadows) {
+      // Keep a sparse, inexpensive star field in the fast interactive path.
+      // Quality and export paths replace it with the procedural galaxy.
+      this.rebuildGleamoeAtmosphere();
+    } else {
+      this.disposeGleamoeAtmosphere();
+    }
+    if (premiumShadows) {
+      try {
+        this.gleamoePostProcessing ??= new GleamoePostProcessing(
+          this.renderer,
+          this.scene,
+          this.camera,
+        );
+        this.updateGleamoeStage();
+        this.gleamoePathTracer ??= new GleamoePathTracer(this.renderer, this.camera, () =>
+          this.gleamoePostProcessing?.render(),
+        );
+        this.gleamoePathTracer.rebuild(scene, this.options, themes[this.options.theme]);
+        this.gleamoePostProcessing.setHeroMode(this.heroShotActive);
+        this.gleamoePathTracer.setHeroMode(this.heroShotActive);
+        this.gleamoeAtmosphere?.setHeroMode(this.heroShotActive);
+      } catch (error) {
+        this.gleamoePathTracer?.dispose();
+        this.gleamoePathTracer = undefined;
+        this.callbacks.onError?.(
+          error instanceof Error
+            ? error
+            : new Error('Gleamoe GPU path tracing could not be initialized.'),
+        );
+      }
+    } else {
+      this.gleamoePathTracer?.dispose();
+      this.gleamoePathTracer = undefined;
+      this.gleamoePostProcessing?.dispose();
+      this.gleamoePostProcessing = undefined;
+      this.disposeGleamoeAtmosphere();
+    }
     if (snapshot) {
       this.restoreCamera(snapshot);
     } else {
-      this.resetView();
+      this.resetView(false);
     }
     this.reportStatistics();
-    if (this.options.renderMode === 'quality') this.prewarmQualityRenderer();
+    if (this.options.renderMode === 'quality' && this.options.theme !== 'gleamoe-premiror') {
+      this.prewarmQualityRenderer();
+    }
   }
 
   setOptions(options: ViewerOptions): void {
@@ -466,7 +553,6 @@ export class CrystalRenderer {
     this.options = { ...options };
     if (themeChanged || renderQualityChanged) {
       this.applyTheme(options.theme);
-      if (options.theme !== 'materials') this.clearHover();
     }
     if (rebuild && this.sceneSpec) {
       this.setScene(this.sceneSpec, true);
@@ -474,7 +560,7 @@ export class CrystalRenderer {
     }
     this.atomLayer?.updateVisibility(this.options);
     this.bondLayer?.updateVisibility(this.options);
-    this.cellLayer?.setVisible(this.options.showUnitCell);
+    this.cellLayer?.setVisible(this.options.showUnitCell && !this.heroShotActive);
     this.polyhedronLayer?.updateVisibility(this.options);
     this.magmomLayer?.setVisible(this.options.showMagmoms);
     this.reconcileSelection();
@@ -519,9 +605,13 @@ export class CrystalRenderer {
     return selectedIds;
   }
 
-  resetView = (): void => {
+  resetView = (animated = true): void => {
     if (!this.sceneSpec) return;
-    this.fitScene(defaultCameraDirection());
+    if (!animated) {
+      this.fitScene(defaultCameraDirection());
+      return;
+    }
+    void this.animateToDirection(defaultCameraDirection(), undefined, 560);
   };
 
   centerView = (): void => {
@@ -596,18 +686,138 @@ export class CrystalRenderer {
     this.requestRender();
   }
 
+  private async composeHeroView(animate: boolean): Promise<void> {
+    if (!this.sceneSpec) return;
+    const direction = bestHeroDirection(this.sceneSpec);
+    const bounds = this.sceneBounds(this.sceneSpec);
+    const center = bounds.getCenter(new Vector3());
+    const sphere = bounds.getBoundingSphere(new Sphere());
+    const distance = Math.max(sphere.radius * 3.5, 3);
+    const up = Math.abs(direction.z) > 0.96 ? new Vector3(0, 1, 0) : new Vector3(0, 0, 1);
+    const viewHeight = projectedFitHeight(
+      this.sceneFitSpheres(this.sceneSpec),
+      center,
+      direction,
+      up,
+      this.aspect(),
+      1.22,
+      2.4,
+    );
+    await this.animateCameraTo(
+      {
+        position: tuple(center.clone().addScaledVector(direction, distance * 1.7)),
+        target: tuple(center),
+        up: tuple(up),
+        zoom: 1,
+      },
+      viewHeight,
+      animate ? 820 : 0,
+    );
+    this.gleamoePostProcessing?.setFocusPoint(center, true);
+  }
+
+  private animateToDirection(
+    direction: Vector3,
+    upOverride?: Vector3,
+    duration = 520,
+  ): Promise<void> {
+    if (!this.sceneSpec) return Promise.resolve();
+    const bounds = this.sceneBounds(this.sceneSpec);
+    const center = bounds.getCenter(new Vector3());
+    const sphere = bounds.getBoundingSphere(new Sphere());
+    const distance = Math.max(sphere.radius * 3.5, 3);
+    const viewDirection = direction.clone().normalize();
+    const up = upOverride?.clone() ?? new Vector3(0, 0, 1);
+    if (!upOverride && Math.abs(viewDirection.dot(up)) > 0.98) up.set(0, 1, 0);
+    const viewHeight = projectedFitHeight(
+      this.sceneFitSpheres(this.sceneSpec),
+      center,
+      viewDirection,
+      up,
+      this.aspect(),
+    );
+    return this.animateCameraTo(
+      {
+        position: tuple(center.clone().addScaledVector(viewDirection, distance * 1.7)),
+        target: tuple(center),
+        up: tuple(up),
+        zoom: 1,
+      },
+      viewHeight,
+      duration,
+    );
+  }
+
+  private animateCameraTo(
+    target: CameraSnapshot,
+    targetViewHeight: number,
+    duration: number,
+  ): Promise<void> {
+    if (this.cameraAnimationFrame !== undefined) {
+      cancelAnimationFrame(this.cameraAnimationFrame);
+      this.cameraAnimationFrame = undefined;
+      this.cameraAnimationResolve?.();
+      this.cameraAnimationResolve = undefined;
+    }
+    const reducedMotion =
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (duration <= 0 || reducedMotion) {
+      this.viewHeight = targetViewHeight;
+      this.restoreCamera(target);
+      this.updateGleamoeAdaptiveLighting();
+      this.gleamoeAtmosphere?.updateCamera(this.camera);
+      return Promise.resolve();
+    }
+
+    const start = this.cameraSnapshot();
+    const startPosition = vector(start.position);
+    const startTarget = vector(start.target);
+    const startUp = vector(start.up);
+    const endPosition = vector(target.position);
+    const endTarget = vector(target.target);
+    const endUp = vector(target.up);
+    const startViewHeight = this.viewHeight;
+    const startedAt = performance.now();
+
+    return new Promise<void>((resolve) => {
+      this.cameraAnimationResolve = resolve;
+      const step = (timestamp: number): void => {
+        const progress = Math.min((timestamp - startedAt) / duration, 1);
+        const eased =
+          progress < 0.5
+            ? 4 * progress * progress * progress
+            : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+        this.camera.position.lerpVectors(startPosition, endPosition, eased);
+        this.controls.target.lerpVectors(startTarget, endTarget, eased);
+        this.camera.up.lerpVectors(startUp, endUp, eased).normalize();
+        this.camera.zoom = start.zoom + (target.zoom - start.zoom) * eased;
+        this.viewHeight = startViewHeight + (targetViewHeight - startViewHeight) * eased;
+        this.camera.lookAt(this.controls.target);
+        this.camera.updateMatrixWorld(true);
+        this.updateFrustum();
+        this.updateGleamoeAdaptiveLighting();
+        this.gleamoeAtmosphere?.updateCamera(this.camera);
+        this.gleamoePathTracer?.updateCamera();
+        this.requestRender();
+        if (progress < 1) {
+          this.cameraAnimationFrame = requestAnimationFrame(step);
+          return;
+        }
+        this.cameraAnimationFrame = undefined;
+        this.cameraAnimationResolve = undefined;
+        this.controls.update();
+        this.emitCamera();
+        resolve();
+      };
+      this.cameraAnimationFrame = requestAnimationFrame(step);
+    });
+  }
+
   setCameraAxis(axis: CrystalCameraAxis): void {
     if (!this.sceneSpec) return;
     const { direction: viewDirection, up } = cameraAxisFrame(this.sceneSpec, axis);
-    const distance = this.camera.position.distanceTo(this.controls.target);
-    this.camera.position
-      .copy(this.controls.target)
-      .add(viewDirection.clone().multiplyScalar(distance));
-    this.camera.up.copy(up);
-    this.camera.lookAt(this.controls.target);
-    this.controls.update();
-    this.requestRender();
-    this.emitCamera();
+    void this.animateToDirection(viewDirection, up, 520);
   }
 
   setCameraSnapshot(snapshot: CameraSnapshot): void {
@@ -616,7 +826,66 @@ export class CrystalRenderer {
     this.emitCamera();
   }
 
-  async exportImage(format: ImageExportFormat): Promise<Blob> {
+  async setHeroShot(active: boolean, animate = true): Promise<void> {
+    const entering = active && !this.heroShotActive;
+    this.heroShotActive = active;
+    this.gleamoePostProcessing?.setHeroMode(active);
+    this.gleamoePathTracer?.setHeroMode(active);
+    this.gleamoeAtmosphere?.setHeroMode(active);
+    this.cellLayer?.setVisible(this.options.showUnitCell && !active);
+    this.updateRendererBackground();
+    if (entering && this.sceneSpec) await this.composeHeroView(animate);
+    this.requestRender();
+  }
+
+  async exportHeroShot(
+    heroExportScale: HeroExportScale = 2.5,
+    onProgress?: RenderExportProgressCallback,
+  ): Promise<Blob> {
+    if (!this.sceneSpec) throw new Error('No atomic structure is available to export.');
+    const previousOptions = { ...this.options };
+    const previousCamera = this.cameraSnapshot();
+    const previousHeroMode = this.heroShotActive;
+    try {
+      onProgress?.({
+        stage: 'preparing',
+        value: 0.02,
+        label: 'Preparing Hero Shot renderer…',
+        detail: 'Switching to the cinematic Ultra preset',
+      });
+      this.setOptions({
+        ...this.options,
+        theme: 'gleamoe-premiror',
+        renderMode: 'quality',
+        renderQuality: 'ultra',
+      });
+      onProgress?.({
+        stage: 'preparing',
+        value: 0.06,
+        label: 'Composing Hero Shot…',
+        detail: 'Selecting the clearest camera angle',
+      });
+      // Hero mode has already composed an initial view. Export the exact camera
+      // position, scale, and orientation the user has adjusted since then.
+      await this.setHeroShot(true, false);
+      this.rasterExportInProgress = true;
+      if (this.requestedFrame !== undefined) cancelAnimationFrame(this.requestedFrame);
+      this.requestedFrame = undefined;
+      return await this.exportImage('png', onProgress, heroExportScale);
+    } finally {
+      this.rasterExportInProgress = false;
+      if (!previousHeroMode) await this.setHeroShot(false, false);
+      this.setOptions(previousOptions);
+      this.restoreCamera(previousCamera);
+      this.requestRender();
+    }
+  }
+
+  async exportImage(
+    format: ImageExportFormat,
+    onProgress?: RenderExportProgressCallback,
+    heroExportScale?: HeroExportScale,
+  ): Promise<Blob> {
     if (!this.sceneSpec) throw new Error('No atomic structure is available to export.');
     const size = this.renderer.getSize(new Vector2());
     if (format === 'svg' || format === 'pdf-vector') {
@@ -639,21 +908,113 @@ export class CrystalRenderer {
       return format === 'svg' ? svgBlob(svg) : svgToPdfBlob(svg, size.x, size.y);
     }
 
+    const previousOptions = { ...this.options };
+    const needsExportQuality =
+      this.options.renderMode !== 'quality' || this.options.renderQuality !== 'ultra';
+    const alreadyExclusive = this.rasterExportInProgress;
+    if (!alreadyExclusive) {
+      this.rasterExportInProgress = true;
+      if (this.requestedFrame !== undefined) cancelAnimationFrame(this.requestedFrame);
+      this.requestedFrame = undefined;
+    }
+    try {
+      onProgress?.({
+        stage: 'preparing',
+        value: 0.02,
+        label: 'Preparing Ultra-quality renderer…',
+        detail: 'The interactive preview remains available after export',
+      });
+      if (needsExportQuality) {
+        this.setOptions({
+          ...this.options,
+          renderMode: 'quality',
+          renderQuality: 'ultra',
+        });
+      }
+      onProgress?.({
+        stage: 'preparing',
+        value: 0.08,
+        label: 'Allocating export buffers…',
+        detail: 'Preparing the high-resolution render target',
+      });
+      return await this.exportRasterImage(format, size, onProgress, heroExportScale);
+    } finally {
+      if (needsExportQuality) this.setOptions(previousOptions);
+      if (!alreadyExclusive) {
+        this.rasterExportInProgress = false;
+        this.requestRender();
+      }
+    }
+  }
+
+  private async exportRasterImage(
+    format: ImageExportFormat,
+    size: Vector2,
+    onProgress?: RenderExportProgressCallback,
+    heroExportScale?: HeroExportScale,
+  ): Promise<Blob> {
     const previousPixelRatio = this.renderer.getPixelRatio();
-    const outputPixelRatio = Math.max(
-      2,
-      exportPixelRatio(
-        window.devicePixelRatio || 1,
-        this.options.renderMode,
-        this.options.renderQuality,
-      ),
-    );
+    const outputPixelRatio =
+      this.options.theme === 'gleamoe-premiror'
+        ? gleamoeExportPixelRatio(
+            window.devicePixelRatio || 1,
+            this.heroShotActive,
+            heroExportScale,
+          )
+        : Math.max(
+            2,
+            exportPixelRatio(
+              window.devicePixelRatio || 1,
+              this.options.renderMode,
+              this.options.renderQuality,
+            ),
+          );
     this.renderer.setPixelRatio(outputPixelRatio);
     this.renderer.setSize(size.x, size.y, false);
+    this.gleamoePostProcessing?.setSize(size.x, size.y, outputPixelRatio);
+    const tiledPathTrace = this.gleamoePathTracer?.active ?? false;
+    if (tiledPathTrace) this.gleamoePathTracer?.setExportTiling(true);
+    else this.gleamoePathTracer?.reset();
     this.updateFrustum();
     let rasterBlob: Blob;
     try {
+      onProgress?.({
+        stage: tiledPathTrace ? 'tracing' : 'rendering',
+        value: 0.1,
+        label: tiledPathTrace ? 'Rendering progress…' : 'Rendering physical materials…',
+        detail: tiledPathTrace ? 'Sample 1 is starting' : 'Drawing the Ultra-quality frame',
+      });
       this.render();
+      if (tiledPathTrace && this.gleamoePathTracer) {
+        await this.gleamoePathTracer.converge((progress) => {
+          onProgress?.({
+            stage: 'tracing',
+            value: 0.1 + progress.progress * 0.8,
+            label: 'Rendering progress…',
+            detail: `Sample ${Math.max(progress.sample, 1)} of ${progress.totalSamples}`,
+          });
+        });
+        onProgress?.({
+          stage: 'compositing',
+          value: 0.92,
+          label: 'Compositing cinematic details…',
+          detail: 'Adding glass polyhedra, labels, and overlays',
+        });
+        this.renderGleamoeOverlays();
+      } else {
+        onProgress?.({
+          stage: 'compositing',
+          value: 0.92,
+          label: 'Compositing export…',
+          detail: 'Applying overlays and color output',
+        });
+      }
+      onProgress?.({
+        stage: 'encoding',
+        value: 0.96,
+        label: `Encoding ${format === 'pdf-raster' ? 'PDF' : format.toUpperCase()}…`,
+        detail: 'Writing the final image file',
+      });
       if (format === 'tiff') {
         const width = this.canvas.width;
         const height = this.canvas.height;
@@ -674,11 +1035,19 @@ export class CrystalRenderer {
           );
         });
       }
+      onProgress?.({
+        stage: 'complete',
+        value: 1,
+        label: 'Export complete',
+        detail: 'Restoring the fast interactive preview',
+      });
     } finally {
       this.renderer.setPixelRatio(previousPixelRatio);
       this.renderer.setSize(size.x, size.y, false);
+      this.gleamoePostProcessing?.setSize(size.x, size.y, previousPixelRatio);
+      if (tiledPathTrace) this.gleamoePathTracer?.setExportTiling(false);
+      else this.gleamoePathTracer?.reset();
       this.updateFrustum();
-      this.requestRender();
     }
     return format === 'pdf-raster' ? pngToPdfBlob(rasterBlob, size.x, size.y) : rasterBlob;
   }
@@ -750,49 +1119,79 @@ export class CrystalRenderer {
     for (const geometry of orientationGeometries) geometry.dispose();
     for (const material of orientationMaterials) material.dispose();
     this.materialsEnvironment?.dispose();
+    this.gleamoePathTracer?.dispose();
+    this.gleamoePostProcessing?.dispose();
+    this.disposeGleamoeAtmosphere();
+    if (this.cameraAnimationFrame !== undefined) cancelAnimationFrame(this.cameraAnimationFrame);
+    this.cameraAnimationResolve?.();
+    this.cameraAnimationResolve = undefined;
+    this.shadowFloorGeometry.dispose();
+    this.shadowFloorMaterial.dispose();
     this.renderer.dispose();
     this.renderer.forceContextLoss();
   }
 
   private applyTheme(themeId: ThemeId): void {
     const theme = themes[themeId];
+    const gleamoe = themeId === 'gleamoe-premiror';
     const devicePixelRatio = window.devicePixelRatio || 1;
-    const pixelRatio = interactivePixelRatio(
-      devicePixelRatio,
-      this.options.renderMode,
-      this.options.renderQuality,
-    );
+    const pixelRatio = gleamoe
+      ? Math.min(devicePixelRatio, this.options.renderMode === 'fast' ? 1.25 : 2)
+      : interactivePixelRatio(
+          devicePixelRatio,
+          this.options.renderMode,
+          this.options.renderQuality,
+        );
     this.renderer.setPixelRatio(pixelRatio);
-    this.renderer.toneMapping = NoToneMapping;
-    this.renderer.toneMappingExposure = 1;
+    this.renderer.toneMapping = gleamoe ? ACESFilmicToneMapping : NoToneMapping;
+    this.renderer.toneMappingExposure = gleamoe ? 1.08 : 1;
+    this.renderer.shadowMap.enabled = gleamoe && this.options.renderMode === 'quality';
+    this.renderer.shadowMap.type = PCFShadowMap;
+    this.keyLight.castShadow = this.renderer.shadowMap.enabled;
+    const shadowResolution = this.options.renderQuality === 'ultra' ? 4096 : 2048;
+    this.keyLight.shadow.mapSize.set(shadowResolution, shadowResolution);
+    this.keyLight.shadow.bias = -0.00015;
+    this.keyLight.shadow.normalBias = 0.018;
+    this.keyLight.shadow.radius = this.options.renderQuality === 'ultra' ? 5 : 3;
     const physicalMaterials = this.options.renderMode === 'quality';
-    this.ambientLight.intensity =
-      themeId === 'materials' ? (physicalMaterials ? 0.82 : 0.92) : physicalMaterials ? 1.8 : 0.9;
-    this.keyLight.intensity =
-      themeId === 'materials' ? (physicalMaterials ? 1.05 : 0.68) : physicalMaterials ? 3.4 : 0.9;
-    this.fillLight.intensity =
-      themeId === 'materials' ? (physicalMaterials ? 0.3 : 0.26) : physicalMaterials ? 1.1 : 0.3;
-    this.fillLight.color.set(themeId === 'materials' ? 0xffffff : 0x9bbcff);
-    this.prettyAxes.visible = themeId === 'pretty';
-    this.materialsAxes.visible = themeId === 'materials';
-    this.renderer.setClearColor(this.options.background ?? theme.background, 1);
+    this.ambientLight.intensity = gleamoe ? 0.3 : physicalMaterials ? 0.82 : 0.92;
+    this.keyLight.intensity = gleamoe ? 4.8 : physicalMaterials ? 1.05 : 0.68;
+    this.fillLight.intensity = gleamoe ? 1.25 : physicalMaterials ? 0.3 : 0.26;
+    this.rimLight.intensity = gleamoe ? 1.9 : 0;
+    this.fillLight.color.set(gleamoe ? 0x8dd7ff : 0xffffff);
+    this.materialsAxes.visible = !gleamoe;
+    this.gleamoeAxes.visible = gleamoe;
+    this.scene.fog = gleamoe ? new FogExp2(theme.background, 0.006) : null;
+    this.shadowFloor.visible = gleamoe && physicalMaterials;
+    if (!gleamoe && this.gleamoePathTracer) {
+      this.gleamoePathTracer.dispose();
+      this.gleamoePathTracer = undefined;
+    }
+    if (!gleamoe && this.gleamoePostProcessing) {
+      this.gleamoePostProcessing.dispose();
+      this.gleamoePostProcessing = undefined;
+    }
+    if (!gleamoe && this.gleamoeAtmosphere) {
+      this.disposeGleamoeAtmosphere();
+    }
+    this.updateRendererBackground();
     this.selectionHaloMaterial.color.set(selectionHaloColor);
-    this.selectionHaloMaterial.opacity = themeId === 'pretty' ? 0.62 : 0.58;
+    this.selectionHaloMaterial.opacity = 0.58;
     this.selectionHaloMaterial.needsUpdate = true;
     this.bondSelectionMaterial.color.set(selectionHaloColor);
-    this.bondSelectionMaterial.opacity = themeId === 'pretty' ? 0.6 : 0.56;
+    this.bondSelectionMaterial.opacity = 0.56;
     this.bondSelectionMaterial.needsUpdate = true;
     this.measurementCometTailMaterial.color.set(measurementCometColor);
-    this.measurementCometTailMaterial.opacity = themeId === 'pretty' ? 0.46 : 0.42;
+    this.measurementCometTailMaterial.opacity = 0.42;
     this.measurementCometTailMaterial.needsUpdate = true;
     this.measurementCometCoreTailMaterial.color.set(measurementCometCoreColor);
-    this.measurementCometCoreTailMaterial.opacity = themeId === 'pretty' ? 0.92 : 0.86;
+    this.measurementCometCoreTailMaterial.opacity = 0.86;
     this.measurementCometCoreTailMaterial.needsUpdate = true;
     this.measurementMarkerStarMaterial.color.set(0xffffff);
     this.measurementMarkerStarMaterial.opacity = 1;
     this.measurementMarkerStarMaterial.needsUpdate = true;
     this.measurementMarkerGlowMaterial.color.set(selectionHaloColor);
-    this.measurementMarkerGlowMaterial.opacity = themeId === 'pretty' ? 0.54 : 0.48;
+    this.measurementMarkerGlowMaterial.opacity = 0.48;
     this.measurementMarkerGlowMaterial.needsUpdate = true;
     this.atomLayer?.updateTheme(theme);
     this.bondLayer?.updateTheme(theme);
@@ -802,10 +1201,25 @@ export class CrystalRenderer {
   }
 
   private readonly handleControlsChange = (): void => {
+    this.updateGleamoeAdaptiveLighting();
+    this.gleamoeAtmosphere?.updateCamera(this.camera);
+    this.gleamoePathTracer?.updateCamera();
     this.requestRender();
     if (this.cameraTimer !== undefined) window.clearTimeout(this.cameraTimer);
     this.cameraTimer = window.setTimeout(() => this.emitCamera(), 120);
   };
+
+  private updateRendererBackground(): void {
+    const theme = themes[this.options.theme];
+    const transparentHeroPreview =
+      this.heroShotActive &&
+      this.options.theme === 'gleamoe-premiror' &&
+      this.options.renderMode === 'fast';
+    this.renderer.setClearColor(
+      this.options.background ?? theme.background,
+      transparentHeroPreview ? 0 : 1,
+    );
+  }
 
   private readonly handleControlsEnd = (): void => {
     this.emitCamera();
@@ -1004,6 +1418,10 @@ export class CrystalRenderer {
     this.clearAtomSelectionMarkers();
     this.selectedBondId = undefined;
     this.bondSelectionMarker.visible = false;
+    this.gleamoePostProcessing?.setFocusPoint(this.gleamoeStageCenter);
+    this.gleamoePostProcessing?.setFocusEmphasis(false);
+    this.gleamoePathTracer?.setSuspended(false);
+    this.setGleamoeFocusLighting(false);
     if (notify && hadSelection) this.callbacks.onSelection?.();
   }
 
@@ -1027,6 +1445,10 @@ export class CrystalRenderer {
       siteIndex: selected.atom.siteIndex,
       marker,
     });
+    this.gleamoePostProcessing?.setFocusPoint(marker.position);
+    this.gleamoePostProcessing?.setFocusEmphasis(true);
+    this.gleamoePathTracer?.setSuspended(true);
+    this.setGleamoeFocusLighting(true);
   }
 
   private removeAtomSelection(atomId: string): void {
@@ -1034,6 +1456,12 @@ export class CrystalRenderer {
     if (!selected) return;
     this.selectionMarkers.remove(selected.marker);
     this.selectedAtoms.delete(atomId);
+    const remainingSelections = [...this.selectedAtoms.values()];
+    const remaining = remainingSelections[remainingSelections.length - 1]?.marker;
+    this.gleamoePostProcessing?.setFocusPoint(remaining?.position ?? this.gleamoeStageCenter);
+    this.gleamoePostProcessing?.setFocusEmphasis(!!remaining);
+    this.gleamoePathTracer?.setSuspended(!!remaining);
+    this.setGleamoeFocusLighting(!!remaining);
   }
 
   private clearHover(): void {
@@ -1219,6 +1647,10 @@ export class CrystalRenderer {
       this.bondSelectionMarker.matrixWorldNeedsUpdate = true;
       this.bondSelectionMarker.visible = true;
       this.selectedBondId = bond.id;
+      this.gleamoePostProcessing?.setFocusPoint(vector(bond.start).lerp(vector(bond.end), 0.5));
+      this.gleamoePostProcessing?.setFocusEmphasis(true);
+      this.gleamoePathTracer?.setSuspended(true);
+      this.setGleamoeFocusLighting(true);
       this.callbacks.onSelection?.(
         {
           kind: 'bond',
@@ -1285,6 +1717,11 @@ export class CrystalRenderer {
   private readonly handleContextRestored = (): void => {
     this.materialsEnvironment?.dispose();
     this.materialsEnvironment = undefined;
+    this.gleamoePathTracer?.dispose();
+    this.gleamoePathTracer = undefined;
+    this.gleamoePostProcessing?.dispose();
+    this.gleamoePostProcessing = undefined;
+    this.disposeGleamoeAtmosphere();
     if (this.sceneSpec) this.setScene(this.sceneSpec, true);
   };
 
@@ -1306,16 +1743,142 @@ export class CrystalRenderer {
     });
   }
 
+  private updateGleamoeStage(): void {
+    const bounds = new Box3().setFromObject(this.crystal);
+    if (bounds.isEmpty()) {
+      this.shadowFloor.position.set(0, 0, -1);
+      this.shadowFloor.scale.setScalar(3);
+      return;
+    }
+    const center = bounds.getCenter(new Vector3());
+    const radius = Math.max(bounds.getSize(new Vector3()).length() * 0.5, 1);
+    this.gleamoeStageCenter.copy(center);
+    this.gleamoeStageRadius = radius;
+    this.shadowFloor.position.set(center.x, center.y, bounds.min.z - Math.max(radius * 0.08, 0.18));
+    this.shadowFloor.scale.setScalar(radius * 3.5);
+    this.shadowFloor.updateMatrixWorld(true);
+
+    if (this.sceneSpec) {
+      const palette = cinematicPalette(this.sceneSpec, this.options.colorMode);
+      this.keyLight.color.copy(palette.key);
+      this.fillLight.color.copy(palette.fill);
+      this.rimLight.color.copy(palette.rim);
+    }
+    this.updateGleamoeAdaptiveLighting();
+
+    const shadowCamera = this.keyLight.shadow.camera;
+    const extent = radius * 1.45;
+    shadowCamera.left = -extent;
+    shadowCamera.right = extent;
+    shadowCamera.top = extent;
+    shadowCamera.bottom = -extent;
+    shadowCamera.near = Math.max(radius * 0.05, 0.05);
+    shadowCamera.far = radius * 8;
+    shadowCamera.updateProjectionMatrix();
+    this.keyLight.shadow.needsUpdate = true;
+    this.gleamoePostProcessing?.setSceneBounds(bounds);
+  }
+
+  private rebuildGleamoeAtmosphere(): void {
+    this.disposeGleamoeAtmosphere();
+    if (!this.sceneSpec || this.options.theme !== 'gleamoe-premiror') return;
+    this.gleamoeAtmosphere = new GleamoeAtmosphere(
+      this.gleamoeStageCenter,
+      this.gleamoeStageRadius,
+      cinematicPalette(this.sceneSpec, this.options.colorMode),
+    );
+    this.gleamoeAtmosphere.setHeroMode(this.heroShotActive);
+    this.gleamoeAtmosphere.updateCamera(this.camera);
+    this.scene.add(this.gleamoeAtmosphere.group);
+  }
+
+  private disposeGleamoeAtmosphere(): void {
+    if (!this.gleamoeAtmosphere) return;
+    this.scene.remove(this.gleamoeAtmosphere.group);
+    this.gleamoeAtmosphere.dispose();
+    this.gleamoeAtmosphere = undefined;
+  }
+
+  private updateGleamoeAdaptiveLighting(): void {
+    if (this.options.theme !== 'gleamoe-premiror') return;
+    const center = this.gleamoeStageCenter;
+    const radius = this.gleamoeStageRadius;
+    const view = this.camera.position.clone().sub(this.controls.target).normalize();
+    const right = new Vector3().crossVectors(view, this.camera.up).normalize();
+    if (right.lengthSq() < 1e-6) right.set(1, 0, 0);
+    const up = new Vector3().crossVectors(right, view).normalize();
+
+    this.keyLight.position
+      .copy(center)
+      .addScaledVector(view, radius * 2.3)
+      .addScaledVector(right, radius * 1.2)
+      .addScaledVector(up, radius * 1.45);
+    this.fillLight.position
+      .copy(center)
+      .addScaledVector(view, radius * 0.8)
+      .addScaledVector(right, -radius * 1.55)
+      .addScaledVector(up, -radius * 0.45);
+    this.rimLight.position
+      .copy(center)
+      .addScaledVector(view, -radius * 0.55)
+      .addScaledVector(right, -radius * 1.7)
+      .addScaledVector(up, radius * 0.65);
+    this.keyLight.target.position.copy(center);
+    this.rimLight.target.position.copy(center);
+    this.keyLight.target.updateMatrixWorld(true);
+    this.rimLight.target.updateMatrixWorld(true);
+    this.keyLight.shadow.needsUpdate = true;
+  }
+
+  private setGleamoeFocusLighting(active: boolean): void {
+    if (this.options.theme !== 'gleamoe-premiror') return;
+    this.ambientLight.intensity = active ? 0.08 : 0.3;
+    this.keyLight.intensity = active ? 0.45 : 4.8;
+    this.fillLight.intensity = active ? 0.12 : 1.25;
+    this.rimLight.intensity = active ? 0.2 : 1.9;
+    this.renderer.toneMappingExposure = active ? 0.72 : 1.08;
+    this.shadowFloorMaterial.opacity = active ? 0.16 : 0.42;
+    this.atomLayer?.setCinematicFocus(active);
+  }
+
+  private renderGleamoeOverlays(): void {
+    const hiddenObjects: Object3D[] = [this.shadowFloor];
+    if (this.atomLayer?.mesh) hiddenObjects.push(this.atomLayer.mesh);
+    if (this.bondLayer?.mesh) hiddenObjects.push(this.bondLayer.mesh);
+    // The old world-space dust points bunch up into soft colored blotches when
+    // composited over a converged path trace. The procedural galaxy already
+    // supplies a clean, resolution-independent atmospheric layer.
+    if (this.gleamoeAtmosphere) hiddenObjects.push(this.gleamoeAtmosphere.group);
+    const visibility = hiddenObjects.map((object) => object.visible);
+    const background = this.scene.background;
+    hiddenObjects.forEach((object) => {
+      object.visible = false;
+    });
+    // WebGLRenderer draws scene.background even when autoClear is disabled.
+    // Rendering the overlay scene with its background intact therefore paints
+    // over the converged path-traced atoms and leaves only the galaxy. Keep the
+    // accumulated color buffer and draw transparent overlays on top instead.
+    this.scene.background = null;
+    this.renderer.render(this.scene, this.camera);
+    this.scene.background = background;
+    hiddenObjects.forEach((object, index) => {
+      object.visible = visibility[index];
+    });
+  }
+
   private requestRender(): void {
-    if (this.disposed || this.requestedFrame !== undefined) return;
+    if (this.disposed || this.rasterExportInProgress || this.requestedFrame !== undefined) return;
     this.requestedFrame = requestAnimationFrame((timestamp) => {
       this.requestedFrame = undefined;
       this.updateAutoRotation(timestamp);
       this.updateMeasurementMarkerAnimation(timestamp);
+      this.gleamoeAtmosphere?.update(timestamp);
       this.render();
       if (this.autoRotating || (this.measurementMode && this.measurementMarkers.children.length)) {
         this.requestRender();
       }
+      if (this.gleamoePathTracer?.active && !this.gleamoePathTracer.converged) this.requestRender();
+      if (this.gleamoeAtmosphere?.animated) this.requestRender();
     });
   }
 
@@ -1389,8 +1952,19 @@ export class CrystalRenderer {
     this.renderer.setScissorTest(false);
     this.renderer.setViewport(0, 0, layout.main.width, layout.main.height);
     this.renderer.clear(true, true, true);
-    this.renderer.render(this.scene, this.camera);
-    if (this.options.showAxes) {
+    if (this.gleamoePathTracer?.active) {
+      this.gleamoePathTracer.renderSample();
+      this.renderGleamoeOverlays();
+    } else if (
+      this.options.theme === 'gleamoe-premiror' &&
+      this.options.renderMode === 'quality' &&
+      this.gleamoePostProcessing
+    ) {
+      this.gleamoePostProcessing.render();
+    } else {
+      this.renderer.render(this.scene, this.camera);
+    }
+    if (this.options.showAxes && !this.heroShotActive) {
       const relative = this.camera.position.clone().sub(this.controls.target).normalize();
       this.orientationCamera.position.copy(relative.multiplyScalar(4.75));
       this.orientationCamera.up.copy(this.camera.up);
@@ -1401,6 +1975,9 @@ export class CrystalRenderer {
       this.renderer.setViewport(layout.axes.x, layout.axes.y, layout.axes.size, layout.axes.size);
       this.renderer.render(this.orientationScene, this.orientationCamera);
       this.renderer.setScissorTest(false);
+      // Progressive export samples continue outside this render call. Restore
+      // the full viewport so the next tile is not drawn into the axes inset.
+      this.renderer.setViewport(0, 0, layout.main.width, layout.main.height);
     }
     this.frameDurations.push(performance.now() - startedAt);
     if (this.frameDurations.length > 120) this.frameDurations.shift();
@@ -1411,6 +1988,7 @@ export class CrystalRenderer {
     const width = Math.max(parent?.clientWidth ?? this.canvas.clientWidth, 1);
     const height = Math.max(parent?.clientHeight ?? this.canvas.clientHeight, 1);
     this.renderer.setSize(width, height, false);
+    this.gleamoePostProcessing?.setSize(width, height, this.renderer.getPixelRatio());
     this.controls.handleResize();
     this.updateFrustum();
     this.requestRender();

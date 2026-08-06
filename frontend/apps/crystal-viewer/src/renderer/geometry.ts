@@ -1,6 +1,6 @@
 import { BufferGeometry, Color, Matrix4, Quaternion, Vector3, type Object3D } from 'three';
 
-import type { RgbTuple, ThemeId, Vector3Tuple } from '../scene/types';
+import type { RgbTuple, Vector3Tuple } from '../scene/types';
 
 const up = new Vector3(0, 1, 0);
 
@@ -14,16 +14,8 @@ export const vector = (value: Vector3Tuple): Vector3 => new Vector3(...value);
 export const orthographicFitHeight = (radius: number, aspect: number, padding = 1.25): number =>
   (radius * 2 * padding) / Math.min(Math.max(aspect, 0.1), 1);
 
-export const fittedViewHeight = (
-  radius: number,
-  aspect: number,
-  verticalSize: number,
-  theme: ThemeId,
-): number => {
-  const profile =
-    theme === 'materials'
-      ? { spherePadding: 1.06, verticalPadding: 1.08, minimum: 2.2 }
-      : { spherePadding: 1.25, verticalPadding: 1.25, minimum: 3 };
+export const fittedViewHeight = (radius: number, aspect: number, verticalSize: number): number => {
+  const profile = { spherePadding: 1.06, verticalPadding: 1.08, minimum: 2.2 };
   return Math.max(
     orthographicFitHeight(radius, aspect, profile.spherePadding),
     verticalSize * profile.verticalPadding,

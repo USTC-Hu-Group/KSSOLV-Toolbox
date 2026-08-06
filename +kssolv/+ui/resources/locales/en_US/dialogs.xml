@@ -104,6 +104,8 @@
         <entry key="SettingsDialogTestConnection">Test Connection</entry>
         <entry key="SettingsDialogStopTest">Stop Test</entry>
         <entry key="SettingsDialogRefreshModels">Refresh model list</entry>
+        <entry key="SettingsDialogShowAPIKey">Show API key</entry>
+        <entry key="SettingsDialogHideAPIKey">Hide API key</entry>
         <entry key="SettingsDialogOllamaNote">Connect to Ollama to select an installed server model, or enter a model name directly.</entry>
         <entry key="SettingsDialogOpenAIKeyNote">The API key is encrypted and saved automatically when you click OK. Clear it and click OK to remove the saved key.</entry>
         <entry key="SettingsDialogConnectionChecking">Connecting and retrieving models…</entry>

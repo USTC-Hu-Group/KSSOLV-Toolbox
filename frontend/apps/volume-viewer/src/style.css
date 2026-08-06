@@ -94,6 +94,26 @@ main {
   stroke-linejoin: round;
   stroke-width: 1.8;
 }
+.viewer-toolbar svg.toolbar-filled-icon {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+  stroke: none;
+}
+.viewer-toolbar svg.reset-camera-icon {
+  width: 20px;
+  height: 20px;
+  stroke-width: 1.6;
+}
+.viewer-toolbar svg.export-image-icon {
+  width: 21px;
+  height: 21px;
+}
+.viewer-toolbar svg.fullscreen-icon {
+  width: 19px;
+  height: 19px;
+  fill: currentColor;
+}
 .viewer-toolbar button:hover,
 .viewer-toolbar button[aria-pressed='true'],
 .close-button:hover {
@@ -273,8 +293,142 @@ main {
 }
 .minimal > :not(.viewport) { display: none !important; }
 
+@media (max-height: 540px) {
+  .viewer-toolbar {
+    display: grid;
+    grid-template-columns: repeat(2, 30px);
+    align-content: start;
+  }
+
+  .viewer-toolbar > .toolbar-separator {
+    display: none;
+  }
+
+  .toolbar-reset {
+    order: 1;
+  }
+
+  .toolbar-fullscreen {
+    order: 2;
+  }
+
+  .viewer-toolbar [data-toolbar-axis='a'] {
+    order: 3;
+  }
+
+  .viewer-toolbar [data-toolbar-axis='a*'] {
+    order: 4;
+  }
+
+  .viewer-toolbar [data-toolbar-axis='b'] {
+    order: 5;
+  }
+
+  .viewer-toolbar [data-toolbar-axis='b*'] {
+    order: 6;
+  }
+
+  .viewer-toolbar [data-toolbar-axis='c'] {
+    order: 7;
+  }
+
+  .viewer-toolbar [data-toolbar-axis='c*'] {
+    order: 8;
+  }
+
+  .toolbar-settings {
+    order: 9;
+  }
+
+  .toolbar-image-export {
+    order: 10;
+  }
+
+  .toolbar-file-export {
+    order: 11;
+  }
+
+  .settings-panel {
+    top: 10px;
+    right: 102px;
+    max-height: calc(100% - 20px);
+  }
+}
+
+@media (max-height: 300px) {
+  .viewer-toolbar {
+    grid-template-columns: repeat(3, 30px);
+  }
+
+  .toolbar-reset {
+    order: 1;
+  }
+
+  .toolbar-settings {
+    order: 2;
+  }
+
+  .toolbar-fullscreen {
+    order: 3;
+  }
+
+  .viewer-toolbar [data-toolbar-axis='a'] {
+    order: 4;
+  }
+
+  .viewer-toolbar [data-toolbar-axis='b'] {
+    order: 5;
+  }
+
+  .viewer-toolbar [data-toolbar-axis='c'] {
+    order: 6;
+  }
+
+  .viewer-toolbar [data-toolbar-axis='a*'] {
+    order: 7;
+  }
+
+  .viewer-toolbar [data-toolbar-axis='b*'] {
+    order: 8;
+  }
+
+  .viewer-toolbar [data-toolbar-axis='c*'] {
+    order: 9;
+  }
+
+  .toolbar-image-export {
+    order: 10;
+  }
+
+  .toolbar-file-export {
+    order: 11;
+  }
+
+  .settings-panel {
+    top: 8px;
+    right: 135px;
+    max-height: calc(100% - 16px);
+  }
+}
+
 @media (max-width: 760px) {
   .info-card { width: 220px; padding: 15px; }
   .histogram { width: 260px; }
+  .viewer-toolbar { top: 10px; right: 10px; }
   .settings-panel { right: 18px; top: 84px; width: calc(100vw - 36px); max-height: calc(100vh - 104px); }
+}
+
+@media (max-width: 760px) and (max-height: 540px) {
+  .settings-panel {
+    top: 10px;
+    right: 94px;
+    width: min(330px, calc(100% - 104px));
+    max-height: calc(100% - 20px);
+  }
+}
+
+@media (max-width: 760px) and (max-height: 300px) {
+  .settings-panel {
+    right: 127px;
+  }
 }

@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
-const repositoryDirectory = path.resolve(scriptDirectory, "..");
+const repositoryDirectory = path.resolve(scriptDirectory, "..", "..");
 const iconRoot = path.join(
   repositoryDirectory,
   "+kssolv",

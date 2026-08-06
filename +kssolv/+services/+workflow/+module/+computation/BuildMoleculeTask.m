@@ -35,6 +35,12 @@ classdef BuildMoleculeTask < kssolv.services.workflow.module.AbstractTask
                 return
             end
             taskOptions = this.optionsUI.options;
+            if ~isfield(taskOptions, 'structures') || ...
+                    isempty(taskOptions.structures)
+                error('KSSOLV:Workflow:BuildMoleculeTask:MissingStructure', ...
+                    ['No imported structure is selected. Select an ' ...
+                    'available structure before running the workflow.']);
+            end
 
             % 设定赝势
             pseudopotential.PpType(taskOptions.pseudopotentialPpType);
@@ -43,10 +49,12 @@ classdef BuildMoleculeTask < kssolv.services.workflow.module.AbstractTask
             structure = taskOptions.structures(1);
             if strcmp(taskOptions.type, 'Crystal')
                 molecule = Crystal('supercell', structure.C, 'atomlist', ...
-                    Atom(cellstr(structure.atomList)), 'xyzlist', structure.xyzList, 'name', structure.name);
+                    Atom(cellstr(structure.atomList)), 'xyzlist', ...
+                    structure.xyzList, 'name', char(structure.name));
             else
                 molecule = Molecule('supercell', structure.C, 'atomlist', ...
-                    Atom(cellstr(structure.atomList)), 'xyzlist', structure.xyzList, 'name', structure.name);
+                    Atom(cellstr(structure.atomList)), 'xyzlist', ...
+                    structure.xyzList, 'name', char(structure.name));
             end
 
             % 为 Molecule/Crystal 实例设置选项
@@ -69,4 +77,3 @@ classdef BuildMoleculeTask < kssolv.services.workflow.module.AbstractTask
         end
     end
 end
-

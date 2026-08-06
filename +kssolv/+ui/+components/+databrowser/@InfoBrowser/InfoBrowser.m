@@ -75,7 +75,14 @@ classdef InfoBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser
         
             % 更新 Project 中相应 item 的属性
             project = kssolv.ui.util.DataStorage.getData('Project');
+            if ~isa(project, 'kssolv.services.filemanager.Project') || ...
+                    ~isvalid(project)
+                return
+            end
             item = project.findChildrenItem(name);
+            if isempty(item)
+                return
+            end
             item.setItemProperty(key, value);
 
             % 更新 Info Browser 界面
@@ -97,6 +104,10 @@ classdef InfoBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser
 
         function handleCurrentSelectedItem(this, ~, event)
             project = kssolv.ui.util.DataStorage.getData('Project');
+            if ~isa(project, 'kssolv.services.filemanager.Project') || ...
+                    ~isvalid(project)
+                return
+            end
             name = event.AffectedObject.currentSelectedItem;
             item = project.findChildrenItem(name);
             if ~isempty(item)

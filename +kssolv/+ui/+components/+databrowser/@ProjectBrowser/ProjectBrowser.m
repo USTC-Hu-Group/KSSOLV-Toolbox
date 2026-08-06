@@ -12,6 +12,11 @@ classdef ProjectBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser
         currentSelectedItem   % 当前选中的节点
     end
 
+    properties (Access = private)
+        CurrentProject
+        CurrentAppContainer
+    end
+
     methods
         function this = ProjectBrowser()
             %PROJECTBROWSER 构造此类的实例
@@ -40,7 +45,7 @@ classdef ProjectBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser
 
             if action == "PATCH"
                 % 更新 html 组件中的 tableData 变量，以便在折叠时能够折叠新增的节点
-                project = kssolv.ui.util.DataStorage.getData('Project');
+                project = this.resolveCurrentProject();
                 this.Widgets.html.sendEventToHTMLSource('updateTreeTableData', ...
                     project.encodeToJSON());
             end
@@ -60,6 +65,7 @@ classdef ProjectBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser
 
         function resetSelectedItem(this)
             % 触发监听 currentSelectedItem 变化的监听器
+            this.resolveCurrentProject();
             this.currentSelectedItem = this.currentSelectedItem;
         end
     end
@@ -78,7 +84,7 @@ classdef ProjectBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser
             this.Widgets.html = h;
 
             % 将当前加载的 project 文件编码为 JSON，发送给 HTML 组件
-            project = kssolv.ui.util.DataStorage.getData('Project');
+            project = this.resolveCurrentProject();
             h.Data = project.encodeToJSON();
 
             % 接收从 HTML 组件触发的事件
@@ -103,14 +109,20 @@ classdef ProjectBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser
         end
 
         function callbackRowClicked(this, ~, event)
+            % 先恢复 Project，再触发 PostSet 监听器。否则 InfoBrowser 会
+            % 在 DataStorage 被清空后尝试对 double([]) 调用对象方法。
+            this.resolveCurrentProject();
             this.currentSelectedItem = event.HTMLEventData;
         end
 
         function callbackRowDoubleClicked(this, ~, event)
+            project = this.resolveCurrentProject();
             this.currentSelectedItem = event.HTMLEventData;
 
-            project = kssolv.ui.util.DataStorage.getData('Project');
             item = project.findChildrenItem(this.currentSelectedItem);
+            if isempty(item)
+                return
+            end
             switch class(item)
                 case 'kssolv.services.filemanager.Structure'
                     if startsWith(item.parent.name, 'Project')
@@ -166,9 +178,12 @@ classdef ProjectBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser
 
         function callbackRowRemoved(this, ~, event)
             removedItemName = event.HTMLEventData;
-            project = kssolv.ui.util.DataStorage.getData('Project');
+            project = this.resolveCurrentProject();
             appContainer = kssolv.ui.util.DataStorage.getData('AppContainer');
             removedItem = project.findChildrenItem(removedItemName);
+            if isempty(removedItem)
+                return
+            end
             parentItem = removedItem.parent;
 
             % 关闭相应的 document
@@ -180,6 +195,42 @@ classdef ProjectBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser
             parentItem.removeChildrenItem(removedItemName);
             % 更新父节点的 Size 显示
             this.updateTreetable('PATCH', parentItem.name, parentItem.encodeToJSON(1));
+        end
+
+        function project = resolveCurrentProject(this)
+            % ProjectBrowser 保留一份当前 Project 句柄。若执行 clear 等
+            % 操作重置了 DataStorage 的 persistent 状态，仍可从可见的
+            % Project Browser 恢复项目，继续处理点击和双击事件。
+            this.restoreAppContainer();
+            project = kssolv.ui.util.DataStorage.getData('Project');
+            if isa(project, 'kssolv.services.filemanager.Project') && ...
+                    isvalid(project)
+                this.CurrentProject = project;
+                return
+            end
+
+            project = this.CurrentProject;
+            if ~isa(project, 'kssolv.services.filemanager.Project') || ...
+                    ~isvalid(project)
+                error('KSSOLV:ProjectBrowser:ProjectUnavailable', ...
+                    'The current project is unavailable.');
+            end
+            kssolv.ui.util.DataStorage.setData('Project', project);
+        end
+
+        function restoreAppContainer(this)
+            appContainer = ...
+                kssolv.ui.util.DataStorage.getData('AppContainer');
+            if isobject(appContainer) && isvalid(appContainer)
+                this.CurrentAppContainer = appContainer;
+                return
+            end
+
+            appContainer = this.CurrentAppContainer;
+            if isobject(appContainer) && isvalid(appContainer)
+                kssolv.ui.util.DataStorage.setData( ...
+                    'AppContainer', appContainer);
+            end
         end
     end
 

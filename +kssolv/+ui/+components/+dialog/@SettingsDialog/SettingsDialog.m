@@ -25,6 +25,7 @@ classdef SettingsDialog < controllib.ui.internal.dialog.AbstractDialog
         savedSettings = struct()
         pendingDialogOptions = struct()
         openAIAPIKey (1, 1) string = ""
+        openAIAPIKeyVisible (1, 1) logical = false
         isClosing (1, 1) logical = false
         connectionTestFuture = []
         connectionTestCompletionFuture = []
@@ -284,18 +285,28 @@ classdef SettingsDialog < controllib.ui.internal.dialog.AbstractDialog
                 message('KSSOLV:dialogs:SettingsDialogOpenAIAPIKey'));
             apiKeyLabel.Layout.Row = 2;
             apiKeyLabel.Layout.Column = 1;
-            passwordFieldFile = fullfile(fileparts(mfilename('fullpath')), ...
-                'html', 'passwordField.html');
-            apiKey = uihtml(layout, 'HTMLSource', passwordFieldFile, ...
-                'HTMLEventReceivedFcn', @(~, event) this.apiKeyChanged(event));
+            apiKey = uieditfield(layout, 'text', ...
+                'Placeholder', 'sk-...', ...
+                'ValueChangedFcn', ...
+                @(src, ~) this.apiKeyEditChanged(src));
             apiKey.Layout.Row = 2;
             apiKey.Layout.Column = 2;
+            apiKeyVisibilityButton = uibutton(layout, ...
+                'Text', '', ...
+                'Icon', kssolv.ui.util.GetIcon('eye.svg'), ...
+                'Tooltip', ...
+                message('KSSOLV:dialogs:SettingsDialogShowAPIKey'), ...
+                'Interruptible', 'off', ...
+                'ButtonPushedFcn', ...
+                @(~, ~) this.toggleAPIKeyVisibility());
+            apiKeyVisibilityButton.Layout.Row = 2;
+            apiKeyVisibilityButton.Layout.Column = 3;
             testButton = uibutton(layout, 'Text', ...
                 message('KSSOLV:dialogs:SettingsDialogTestConnection'), ...
                 'Interruptible', 'off', ...
                 'ButtonPushedFcn', @(~, ~) this.toggleConnectionTest('OpenAI'));
             testButton.Layout.Row = 2;
-            testButton.Layout.Column = [3 4];
+            testButton.Layout.Column = 4;
 
             modelLabel = uilabel(layout, 'Text', ...
                 message('KSSOLV:dialogs:SettingsDialogGeneralTabLLMModelName'));
@@ -325,6 +336,8 @@ classdef SettingsDialog < controllib.ui.internal.dialog.AbstractDialog
 
             this.widgets.OpenAIBaseURLText = baseURL;
             this.widgets.OpenAIAPIKeyText = apiKey;
+            this.widgets.OpenAIAPIKeyVisibilityButton = ...
+                apiKeyVisibilityButton;
             this.widgets.OpenAIModelDropdown = modelDropdown;
             this.widgets.OpenAIRefreshButton = refreshButton;
             this.widgets.OpenAITestButton = testButton;
@@ -393,8 +406,8 @@ classdef SettingsDialog < controllib.ui.internal.dialog.AbstractDialog
                 settings.OllamaModels, settings.OllamaModel);
             this.widgets.OpenAIBaseURLText.Value = char(settings.OpenAIBaseURL);
             this.openAIAPIKey = settings.OpenAIAPIKey;
-            this.widgets.OpenAIAPIKeyText.Data = struct( ...
-                'Value', char(settings.OpenAIAPIKey));
+            this.openAIAPIKeyVisible = false;
+            this.updateAPIKeyDisplay();
             this.setDropdownModels(this.widgets.OpenAIModelDropdown, ...
                 settings.OpenAIModels, settings.OpenAIModel);
 
@@ -679,11 +692,46 @@ classdef SettingsDialog < controllib.ui.internal.dialog.AbstractDialog
             this.widgets.([provider 'StatusLabel']).Text = '';
         end
 
-        function apiKeyChanged(this, event)
-            if strcmp(event.HTMLEventName, 'ValueChanged')
-                this.openAIAPIKey = string(event.HTMLEventData);
-                this.resetConnectionState('OpenAI');
+        function apiKeyEditChanged(this, editField)
+            editedValue = string(editField.Value);
+            if ~this.openAIAPIKeyVisible && ...
+                    editedValue == this.maskedAPIKey() && ...
+                    strlength(this.openAIAPIKey) > 0
+                return
             end
+            this.openAIAPIKey = editedValue;
+            this.openAIAPIKeyVisible = false;
+            this.updateAPIKeyDisplay();
+            this.resetConnectionState('OpenAI');
+        end
+
+        function toggleAPIKeyVisibility(this)
+            this.openAIAPIKeyVisible = ~this.openAIAPIKeyVisible;
+            this.updateAPIKeyDisplay();
+        end
+
+        function updateAPIKeyDisplay(this)
+            import kssolv.ui.util.Localizer.message
+
+            if this.openAIAPIKeyVisible
+                displayedValue = this.openAIAPIKey;
+                iconName = 'eyeOff.svg';
+                tooltip = message( ...
+                    'KSSOLV:dialogs:SettingsDialogHideAPIKey');
+            else
+                displayedValue = "";
+                if strlength(this.openAIAPIKey) > 0
+                    displayedValue = this.maskedAPIKey();
+                end
+                iconName = 'eye.svg';
+                tooltip = message( ...
+                    'KSSOLV:dialogs:SettingsDialogShowAPIKey');
+            end
+
+            this.widgets.OpenAIAPIKeyText.Value = char(displayedValue);
+            this.widgets.OpenAIAPIKeyVisibilityButton.Icon = ...
+                kssolv.ui.util.GetIcon(iconName);
+            this.widgets.OpenAIAPIKeyVisibilityButton.Tooltip = tooltip;
         end
 
         function setConnectionState(this, provider, state, detail)
@@ -732,6 +780,13 @@ classdef SettingsDialog < controllib.ui.internal.dialog.AbstractDialog
             end
 
             this.savedSettings = settings;
+            % 已应用新的服务或模型后，下一次提问创建新的聊天对象，避免
+            % 继续使用旧端点和旧模型。
+            commandWindow = ...
+                kssolv.ui.util.DataStorage.getData('CommandWindow');
+            if ~isempty(commandWindow) && isvalid(commandWindow)
+                commandWindow.ChatBot = [];
+            end
             publicSettings = rmfield(settings, 'OpenAIAPIKey');
             publicSettings.Applied = true;
             publicSettings.Action = 'ok';
@@ -801,6 +856,10 @@ classdef SettingsDialog < controllib.ui.internal.dialog.AbstractDialog
     end
 
     methods (Static, Access = private)
+        function value = maskedAPIKey()
+            value = "sk-******";
+        end
+
         function models = fetchModels(provider, url, apiKey)
             if strcmp(provider, 'Ollama')
                 response = webread(url + "/api/tags", ...

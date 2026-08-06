@@ -47,8 +47,21 @@ classdef VolumeDisplay < handle
             document = appContainer.getDocument( ...
                 this.DocumentGroupTag, this.tag);
             if ~isempty(document)
-                document.Selected = true;
-                return
+                try
+                    if ~isempty(document.Figure) && ...
+                            isvalid(document.Figure)
+                        document.Selected = true;
+                        return
+                    end
+                catch
+                    % 失效文档按已关闭处理。
+                end
+                % 已关闭文档可能仍短暂保留在 AppContainer 索引中。
+                % 清理旧索引后继续创建 FigureDocument 以重新渲染。
+                try
+                    document.close();
+                catch
+                end
             end
             options.Title = "Volume Viewer";
             options.DocumentGroupTag = this.DocumentGroupTag;

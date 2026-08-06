@@ -96,21 +96,41 @@ classdef BuildMoleculeTaskUI < kssolv.services.workflow.module.AbstractTaskUI
             this.widgets.structureListbox = uilistbox(this.widgets.g1, "Multiselect", "on");
             this.widgets.structureListbox.Layout.Row = 3;
             this.widgets.structureListbox.Layout.Column = [1 2];
+            % Multiselect ListBox 使用空元胞表示尚未选择，避免随后更新
+            % ItemsData 时遗留默认项造成 Value/ItemsData 不一致。
+            this.widgets.structureListbox.Value = {};
             importedStructures = kssolv.services.filemanager.Structure.getAllImportedStructures();
             if ~isempty(importedStructures)
                 this.widgets.structureListbox.Items = cellfun(@(cell) cell.node.label, importedStructures, 'UniformOutput', true);
                 this.widgets.structureListbox.ItemsData = cellfun(@(cell) cell.node.name, importedStructures, 'UniformOutput', false);
-                if ~isempty(this.widgets.structureListbox.ItemsData) && isfield(options, 'structures')
-                    selectedItems = cell(1, length(options.structures));
-                    for i = 1:length(options.structures)
-                        selectedItems{1, i} = options.structures(i).node.name;
+                if isfield(options, 'structures')
+                    if isstruct(options.structures)
+                        selectedNames = strings(1, 0);
+                        for i = 1:numel(options.structures)
+                            if isfield(options.structures(i), 'node') && ...
+                                    isstruct(options.structures(i).node) && ...
+                                    isfield(options.structures(i).node, 'name')
+                                selectedNames(end + 1) = string( ...
+                                    options.structures(i).node.name); %#ok<AGROW>
+                            end
+                        end
+                        availableNames = string( ...
+                            this.widgets.structureListbox.ItemsData);
+                        selectedItems = ...
+                            this.widgets.structureListbox.ItemsData( ...
+                            ismember(availableNames, selectedNames));
+                        this.widgets.structureListbox.Value = selectedItems;
                     end
-                    this.widgets.structureListbox.Value = selectedItems;
+                else
+                    % 新建任务保持原有行为：默认选择第一个可用结构。
+                    this.widgets.structureListbox.Value = ...
+                        this.widgets.structureListbox.ItemsData(1);
                 end
             else
                 this.widgets.structureListbox.Items = "Empty";
-                this.widgets.structureListbox.ItemsData = empty;
-                this.widgets.structureListbox.Value = "Empty";
+                this.widgets.structureListbox.ItemsData = {};
+                this.widgets.structureListbox.Value = {};
+                this.widgets.structureListbox.Enable = 'off';
             end
             this.widgets.structureListbox.ValueChangedFcn = @(src, event) this.markDirty();
             this.widgets.structureListbox.Tooltip = structureTooltip;

@@ -112,6 +112,11 @@ classdef Diary < handle
     end
 
     methods
+        function filePath = getLogFile(this)
+            %GETLOGFILE Return the log file used by the current session.
+            filePath = string(this.diaryFile);
+        end
+
         function delete(this)
             % 析构函数: 清理资源
             this.isTimerActive = false;

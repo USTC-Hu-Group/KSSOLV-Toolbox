@@ -95,6 +95,8 @@ classdef HomeTab < handle
                 'ItemPushed', @(src, data) callbackOpenOfficialSiteButton(this));
             addlistener(this.Widgets.ResourceSection.CheckUpdateListItem, ...
                 'ItemPushed', @(src, data) callbackCheckUpdateButton(this));
+            addlistener(this.Widgets.ResourceSection.OpenLogsListItem, ...
+                'ItemPushed', @(src, data) callbackOpenLogsButton(this));
             addlistener(this.Widgets.ResourceSection.CheckLicenseListItem, ...
                 'ItemPushed', @(src, data) callbackCheckLicenseButton(this));
             addlistener(this.Widgets.ResourceSection.AboutUsListItem, ...
@@ -352,12 +354,14 @@ classdef HomeTab < handle
             ExamplesListItem = CreateListItem('default', 'Examples', section.Tag, 0, 'examples');
             OpenOfficialSiteListItem = CreateListItem('default', 'OfficialSite', section.Tag, 0, 'link_globe');
             CheckUpdateListItem = CreateListItem('default', 'CheckUpdate', section.Tag);
+            OpenLogsListItem = CreateListItem('default', 'OpenLogs', section.Tag);
             CheckLicenseListItem = CreateListItem('default', 'CheckLicense', section.Tag);
             AboutUsListItem = CreateListItem('default', 'AboutUs', section.Tag);
             HelpPopup.add(ExamplesListItem);
             HelpPopup.add(OpenOfficialSiteListItem);
             HelpPopup.addSeparator;
             HelpPopup.add(CheckUpdateListItem);
+            HelpPopup.add(OpenLogsListItem);
             HelpPopup.add(CheckLicenseListItem);
             HelpPopup.add(AboutUsListItem);
             ResourceHelpButton.Popup = HelpPopup;
@@ -380,6 +384,7 @@ classdef HomeTab < handle
                 'ExamplesListItem', ExamplesListItem, ...
                 'OfficialSiteListItem', OpenOfficialSiteListItem, ...
                 'CheckUpdateListItem', CheckUpdateListItem, ...
+                'OpenLogsListItem', OpenLogsListItem, ...
                 'CheckLicenseListItem', CheckLicenseListItem, ...
                 'AboutUsListItem', AboutUsListItem);
         end
@@ -719,16 +724,12 @@ classdef HomeTab < handle
         end
 
         function callbackEnvironmentSettingsButton(this, ~, ~)
-            this.Widgets.EnvironmentSection.EnvironmentSettingsButton.Enabled = false;
-
             if isempty(this.settingsDialog) || ~isvalid(this.settingsDialog)
-                this.settingsDialog = kssolv.ui.components.dialog.SettingsDialog();
-                registerUIListeners(this.settingsDialog, ...
-                    addlistener(this.settingsDialog, 'CloseEvent', ...
-                    @(src, event) settingsDialogClosed(this, src, event)));
+                this.settingsDialog = ...
+                    kssolv.ui.components.dialog.SettingsDialog();
             end
-
-            appContainer = kssolv.ui.util.DataStorage.getData('AppContainer');
+            appContainer = ...
+                kssolv.ui.util.DataStorage.getData('AppContainer');
             this.settingsDialog.show(appContainer);
         end
 
@@ -750,6 +751,12 @@ classdef HomeTab < handle
             appContainer = ...
                 kssolv.ui.util.DataStorage.getData('AppContainer');
             this.updateDialog.show(appContainer);
+        end
+
+        function callbackOpenLogsButton(~, ~, ~)
+            diaryService = kssolv.services.logs.Diary.getInstance(false);
+            kssolv.ui.util.openWithSystemDefault( ...
+                diaryService.getLogFile());
         end
 
         function callbackCheckLicenseButton(this, ~, ~)
@@ -778,18 +785,6 @@ classdef HomeTab < handle
             web(url);
         end
 
-        function settingsDialogClosed(this, dialog, ~)
-            this.Widgets.EnvironmentSection.EnvironmentSettingsButton.Enabled = true;
-
-            % 已应用新的服务或模型后，下一次提问应创建新的聊天对象，
-            % 避免继续使用旧端点和旧模型。取消对话框时保留现有会话。
-            if isfield(dialog.dialogOptions, 'Applied') && dialog.dialogOptions.Applied
-                commandWindow = kssolv.ui.util.DataStorage.getData('CommandWindow');
-                if ~isempty(commandWindow) && isvalid(commandWindow)
-                    commandWindow.ChatBot = [];
-                end
-            end
-        end
     end
 
     methods (Static, Access = {?kssolv.ui.components.tab.HomeTab, ?kssolv.ui.components.tab.WorkflowTab})

@@ -77,6 +77,7 @@
         <entry key="ExamplesListItemLabel">Examples</entry>
         <entry key="OfficialSiteListItemLabel">Official Website</entry>
         <entry key="CheckUpdateListItemLabel">Check for updates</entry>
+        <entry key="OpenLogsListItemLabel">Open Log</entry>
         <entry key="CheckLicenseListItemLabel">License</entry>
         <entry key="AboutUsListItemLabel">About KSSOLV</entry>
         

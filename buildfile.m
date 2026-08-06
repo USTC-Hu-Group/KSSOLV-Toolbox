@@ -7,10 +7,12 @@ function plan = buildfile
 import matlab.buildtool.tasks.CodeIssuesTask
 
 plan = buildplan(localfunctions);
+
 sourceFiles = plan.files("**/*.m");
-coreFolder = string(filesep) + "+kssolv" + string(filesep) + ...
-    "+core" + string(filesep);
-sourceFiles = sourceFiles.select(@(path) ~contains(path, coreFolder));
+coreFolder = string(filesep) + fullfile("+kssolv", "+core") + string(filesep);
+releaseFolder = string(filesep) + "Release" + string(filesep);
+sourceFiles = sourceFiles.select(@(path) ...
+    ~contains(path, coreFolder) & ~contains(path, releaseFolder));
 plan("check") = CodeIssuesTask(sourceFiles, WarningThreshold = 0, ...
     Results = ".buildtool/code-issues/results.sarif");
 plan("check").Dependencies = "init";

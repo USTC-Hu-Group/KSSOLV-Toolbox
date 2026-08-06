@@ -77,6 +77,7 @@
         <entry key="ExamplesListItemLabel">探索示例</entry>
         <entry key="OfficialSiteListItemLabel">官方网站</entry>
         <entry key="CheckUpdateListItemLabel">检查更新</entry>
+        <entry key="OpenLogsListItemLabel">打开日志</entry>
         <entry key="CheckLicenseListItemLabel">许可</entry>
         <entry key="AboutUsListItemLabel">关于 KSSOLV</entry>
         

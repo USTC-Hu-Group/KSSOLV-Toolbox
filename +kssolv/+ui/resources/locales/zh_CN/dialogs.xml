@@ -106,6 +106,8 @@
         <entry key="SettingsDialogTestConnection">测试连接</entry>
         <entry key="SettingsDialogStopTest">停止测试</entry>
         <entry key="SettingsDialogRefreshModels">刷新模型列表</entry>
+        <entry key="SettingsDialogShowAPIKey">显示 API Key</entry>
+        <entry key="SettingsDialogHideAPIKey">隐藏 API Key</entry>
         <entry key="SettingsDialogOllamaNote">连接 Ollama 服务并刷新后，可从服务端已安装的模型中选择；也可以直接输入模型名称。</entry>
         <entry key="SettingsDialogOpenAIKeyNote">点击“确认”后将自动加密保存 API Key；清空后点击“确认”可删除已保存的密钥。</entry>
         <entry key="SettingsDialogConnectionChecking">正在连接并获取模型列表…</entry>

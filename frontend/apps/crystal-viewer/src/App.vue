@@ -50,6 +50,7 @@ import { themes } from './themes/themes';
 
 const root = ref<HTMLElement>();
 const canvas = ref<HTMLCanvasElement>();
+const heroProgressCanvas = ref<HTMLCanvasElement>();
 const settingsOpen = ref(false);
 const informationOpen = ref(false);
 const minimalUi = ref(false);
@@ -219,6 +220,24 @@ const retainHeroFrame = (blob: Blob): void => {
   heroRetainedFrameUrl.value = URL.createObjectURL(blob);
 };
 
+const clearHeroTransientState = (): void => {
+  if (autoRotating.value) {
+    autoRotating.value = false;
+    renderer.value?.setAutoRotation(false);
+  }
+  activeMeasurement.value = undefined;
+  progressMeasurement.value = undefined;
+  measurementError.value = '';
+  activeMeasurementKind.value = undefined;
+  measurementSelections.value = [];
+  atomHover.value = undefined;
+  atomContextMenu.value = undefined;
+  modelingPending.value = false;
+  modelingError.value = '';
+  store.setSelection();
+  renderer.value?.clearTransientOverlays();
+};
+
 const exportImage = async (format: ImageExportFormat): Promise<void> => {
   if (!renderer.value || imageExporting.value) return;
   const extension =
@@ -303,7 +322,11 @@ const exportHeroShot = async (scale: HeroExportScale = heroExportScale.value): P
       detail: 'Preparing the cinematic renderer',
     };
     await showProgressBeforeBlockingWork();
-    const blob = await renderer.value.exportHeroShot(scale, updateExportProgress);
+    const blob = await renderer.value.exportHeroShot(
+      scale,
+      updateExportProgress,
+      heroProgressCanvas.value,
+    );
     await saveExportBlob(blob, destination);
     retainHeroFrame(blob);
     heroExportStatus.value = 'saved';
@@ -348,6 +371,7 @@ const toggleHeroShot = async (): Promise<void> => {
     camera: renderer.value.cameraSnapshot(),
     minimalUi: minimalUi.value,
   };
+  clearHeroTransientState();
   clearHeroRetainedFrame();
   settingsOpen.value = false;
   informationOpen.value = false;
@@ -824,6 +848,11 @@ onBeforeUnmount(() => {
       @wheel.passive="clearHeroRetainedFrame"
     />
 
+    <div v-if="heroShotActive && rasterExporting" class="hero-progress-surface" aria-hidden="true">
+      <canvas ref="heroProgressCanvas" class="hero-progress-frame" />
+      <div class="hero-progress-grid"></div>
+    </div>
+
     <img
       v-if="heroShotActive && heroRetainedFrameUrl && !rasterExporting"
       class="hero-retained-frame"
@@ -904,12 +933,9 @@ onBeforeUnmount(() => {
       :rebuild-phase="store.status.activityPhase"
       :rebuild-message="store.status.activityMessage"
       :rebuilding="store.status.loading"
-      :hero-shot-active="heroShotActive"
-      :hero-export-scale="heroExportScale"
       :image-exporting="imageExporting"
       :scene-available="!!store.scene.value && !store.isBlankStructure.value"
       @update:model-value="applyOptions"
-      @update:hero-export-scale="heroExportScale = $event"
       @toggle-hero-shot="toggleHeroShot"
       @rebuild="store.requestAnalysis"
       @close="settingsOpen = false"

@@ -374,6 +374,12 @@ button {
   background: color-mix(in srgb, var(--viewer-accent) 14%, transparent);
 }
 
+.hero-toolbar button:focus,
+.hero-toolbar button:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
 .hero-toolbar button:disabled {
   cursor: progress;
   opacity: 0.5;
@@ -416,6 +422,7 @@ button {
   right: calc(100% + 12px);
   bottom: -36px;
   width: 196px;
+  height: max-content;
 }
 
 .hero-export-popover .is-selected {
@@ -502,6 +509,78 @@ button {
   width: 20px;
   height: 20px;
   fill: currentColor;
+}
+
+.hero-progress-surface {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.hero-progress-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.hero-progress-tile {
+  --hero-tile-fade-duration: 500ms;
+  position: absolute;
+  z-index: 1;
+  display: block;
+  opacity: 0;
+  transition: opacity var(--hero-tile-fade-duration) ease-in-out;
+  will-change: opacity;
+}
+
+.hero-progress-grid {
+  --hero-tile-columns: 1;
+  --hero-tile-rows: 1;
+  --hero-tile-column: 0;
+  --hero-tile-row: 0;
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgb(163 218 255 / 16%) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(163 218 255 / 16%) 1px, transparent 1px);
+  background-size:
+    calc(100% / var(--hero-tile-columns)) 100%,
+    100% calc(100% / var(--hero-tile-rows));
+  opacity: 1;
+  transition: opacity 180ms ease-out;
+}
+
+.hero-progress-pulse {
+  --hero-tile-fade-duration: 500ms;
+  position: absolute;
+  top: calc(var(--hero-tile-row) * 100% / var(--hero-tile-rows) + 10px);
+  left: calc(var(--hero-tile-column) * 100% / var(--hero-tile-columns) + 10px);
+  width: calc(100% / var(--hero-tile-columns) - 20px);
+  height: calc(100% / var(--hero-tile-rows) - 20px);
+  border-radius: 22px;
+  background: radial-gradient(ellipse at center, rgb(146 215 255 / 7%), transparent 72%);
+  box-shadow:
+    inset 0 0 32px rgb(121 204 255 / 15%),
+    0 0 26px rgb(102 198 255 / 14%);
+  filter: blur(9px);
+  animation: hero-progress-pulse var(--hero-tile-fade-duration) ease-out both;
+}
+
+@keyframes hero-progress-pulse {
+  0% {
+    opacity: 0;
+  }
+
+  38% {
+    opacity: 0.72;
+  }
+
+  100% {
+    opacity: 0;
+  }
 }
 
 .viewer-toolbar svg.fullscreen-icon {
@@ -779,36 +858,15 @@ button {
   border-bottom: 0;
 }
 
-.hero-parameter-list {
-  display: grid;
-  gap: 7px;
-  margin: 11px 0 13px;
-}
-
-.hero-parameter-list div {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 11px;
-}
-
-.hero-parameter-list dt {
+.hero-settings-description {
+  margin: 0 0 12px;
   color: var(--viewer-muted);
+  font-size: 11px;
+  line-height: 1.55;
 }
 
-.hero-parameter-list dd {
-  margin: 0;
-  color: var(--viewer-foreground);
-  text-align: right;
-}
-
-.hero-setting-actions {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 8px;
-}
-
-.hero-setting-actions button {
+.hero-settings .hero-mode-button {
+  width: 100%;
   min-height: 34px;
   padding: 7px 9px;
   border: 1px solid var(--viewer-panel-border);
@@ -820,15 +878,9 @@ button {
   cursor: pointer;
 }
 
-.hero-setting-actions button:disabled {
+.hero-settings .hero-mode-button:disabled {
   cursor: not-allowed;
   opacity: 0.5;
-}
-
-.hero-setting-actions .hero-mode-button[aria-pressed='true'] {
-  color: #fff2bd;
-  border-color: rgba(255, 209, 102, 0.48);
-  background: linear-gradient(145deg, rgba(255, 209, 102, 0.2), rgba(102, 217, 255, 0.12));
 }
 
 .settings-panel label:not(.check) {

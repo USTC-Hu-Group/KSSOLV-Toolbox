@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 
-import type { HeroExportScale } from '../renderer/quality';
 import type { AtomicBondAlgorithm, AtomicSceneSpec, ViewerOptions } from '../scene/types';
 import type { SceneActivityPhase } from '../state/viewerStore';
 
@@ -12,8 +11,6 @@ const props = withDefaults(
     rebuildPhase?: SceneActivityPhase;
     rebuildMessage?: string;
     rebuilding?: boolean;
-    heroShotActive?: boolean;
-    heroExportScale?: HeroExportScale;
     imageExporting?: boolean;
     sceneAvailable?: boolean;
   }>(),
@@ -22,8 +19,6 @@ const props = withDefaults(
     rebuildPhase: 'idle',
     rebuildMessage: '',
     rebuilding: false,
-    heroShotActive: false,
-    heroExportScale: 2.5,
     imageExporting: false,
     sceneAvailable: false,
   },
@@ -41,7 +36,6 @@ const emit = defineEmits<{
   ];
   close: [];
   toggleHeroShot: [];
-  'update:heroExportScale': [value: HeroExportScale];
 }>();
 
 const algorithm = ref<AtomicBondAlgorithm>('CrystalNN');
@@ -340,47 +334,18 @@ const isBlankStructure = computed(
 
     <section v-if="modelValue.theme === 'gleamoe-premiror'" class="hero-settings">
       <h3>Hero Shot</h3>
-      <label>
-        Export resolution
-        <select
-          :value="heroExportScale"
-          @change="
-            emit(
-              'update:heroExportScale',
-              Number(($event.target as HTMLSelectElement).value) as HeroExportScale,
-            )
-          "
-        >
-          <option :value="2.5">2.5× · High</option>
-          <option :value="3">3× · Ultra</option>
-          <option :value="4">4× · Poster</option>
-        </select>
-      </label>
-      <dl class="hero-parameter-list">
-        <div>
-          <dt>Output</dt>
-          <dd>PNG · {{ heroExportScale }}× viewport</dd>
-        </div>
-        <div>
-          <dt>Sampling</dt>
-          <dd>128 path-traced samples</dd>
-        </div>
-        <div>
-          <dt>Lighting</dt>
-          <dd>Cinematic adaptive</dd>
-        </div>
-      </dl>
-      <div class="hero-setting-actions">
-        <button
-          type="button"
-          class="hero-mode-button"
-          :aria-pressed="heroShotActive"
-          :disabled="!sceneAvailable || imageExporting"
-          @click="emit('toggleHeroShot')"
-        >
-          {{ heroShotActive ? 'Exit Hero mode' : 'Enter Hero mode' }}
-        </button>
-      </div>
+      <p class="hero-settings-description">
+        Compose a cinematic, path-traced view and progressively refine it into a high-resolution
+        image.
+      </p>
+      <button
+        type="button"
+        class="hero-mode-button"
+        :disabled="!sceneAvailable || imageExporting"
+        @click="emit('toggleHeroShot')"
+      >
+        Enter Hero mode
+      </button>
     </section>
   </aside>
 </template>

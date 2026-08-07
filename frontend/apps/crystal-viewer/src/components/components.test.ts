@@ -90,16 +90,10 @@ describe('viewer controls', () => {
 
     await wrapper.setProps({ modelValue: next });
     const hero = wrapper.get('.hero-settings');
-    expect(hero.text()).toContain('Export resolution');
-    expect(hero.text()).toContain('128 path-traced samples');
-    expect(hero.get('select').element.value).toBe('2.5');
-    expect(hero.findAll('option').map((option) => option.text())).toEqual([
-      '2.5× · High',
-      '3× · Ultra',
-      '4× · Poster',
-    ]);
-    await hero.get('select').setValue('4');
-    expect(wrapper.emitted('update:heroExportScale')).toEqual([[4]]);
+    expect(hero.text()).toContain('cinematic, path-traced view');
+    expect(hero.text()).toContain('Enter Hero mode');
+    expect(hero.find('select').exists()).toBe(false);
+    expect(hero.find('dl').exists()).toBe(false);
     await hero.get('.hero-mode-button').trigger('click');
     expect(wrapper.emitted('toggleHeroShot')).toHaveLength(1);
     expect(hero.find('.hero-export-button').exists()).toBe(false);

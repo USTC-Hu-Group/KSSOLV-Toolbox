@@ -86,6 +86,14 @@ import {
   interactivePixelRatio,
   type HeroExportScale,
 } from './quality';
+import {
+  createProgressiveTileSequence,
+  progressiveTileGrid,
+  randomTileFadeDuration,
+  randomTileUpdateCount,
+  type ProgressiveTile,
+  type ProgressiveTileGrid,
+} from './progressiveTiles';
 import { viewportLayout } from './viewport';
 import { GleamoePathTracer } from './GleamoePathTracer';
 import { GleamoePostProcessing } from './GleamoePostProcessing';
@@ -108,6 +116,12 @@ export interface RenderExportProgress {
 }
 
 export type RenderExportProgressCallback = (progress: RenderExportProgress) => void;
+
+interface ProgressiveHeroPreview {
+  grid: ProgressiveTileGrid;
+  update: () => ProgressiveTile[];
+  complete: () => Promise<void>;
+}
 
 interface BatchIntersection extends Intersection<Object3D> {
   batchId?: number;
@@ -572,6 +586,18 @@ export class CrystalRenderer {
     this.requestRender();
   }
 
+  clearTransientOverlays(): void {
+    this.measurementMode = false;
+    this.controls.noRotate = false;
+    delete this.canvas.dataset.measurement;
+    delete this.canvas.dataset.interaction;
+    this.clearMeasurementSelection();
+    this.clearHover();
+    this.clearSelection(false);
+    this.measurementLayer.setAnnotations([]);
+    this.requestRender();
+  }
+
   setMeasurementMode(active: boolean): void {
     if (this.measurementMode === active) return;
     this.measurementMode = active;
@@ -841,11 +867,15 @@ export class CrystalRenderer {
   async exportHeroShot(
     heroExportScale: HeroExportScale = 2.5,
     onProgress?: RenderExportProgressCallback,
+    progressCanvas?: HTMLCanvasElement,
   ): Promise<Blob> {
     if (!this.sceneSpec) throw new Error('No atomic structure is available to export.');
     const previousOptions = { ...this.options };
     const previousCamera = this.cameraSnapshot();
     const previousHeroMode = this.heroShotActive;
+    const progressivePreview = progressCanvas
+      ? this.createProgressiveHeroPreview(progressCanvas)
+      : undefined;
     try {
       onProgress?.({
         stage: 'preparing',
@@ -871,7 +901,7 @@ export class CrystalRenderer {
       this.rasterExportInProgress = true;
       if (this.requestedFrame !== undefined) cancelAnimationFrame(this.requestedFrame);
       this.requestedFrame = undefined;
-      return await this.exportImage('png', onProgress, heroExportScale);
+      return await this.exportImage('png', onProgress, heroExportScale, progressivePreview);
     } finally {
       this.rasterExportInProgress = false;
       if (!previousHeroMode) await this.setHeroShot(false, false);
@@ -885,6 +915,7 @@ export class CrystalRenderer {
     format: ImageExportFormat,
     onProgress?: RenderExportProgressCallback,
     heroExportScale?: HeroExportScale,
+    progressivePreview?: ProgressiveHeroPreview,
   ): Promise<Blob> {
     if (!this.sceneSpec) throw new Error('No atomic structure is available to export.');
     const size = this.renderer.getSize(new Vector2());
@@ -937,7 +968,13 @@ export class CrystalRenderer {
         label: 'Allocating export buffers…',
         detail: 'Preparing the high-resolution render target',
       });
-      return await this.exportRasterImage(format, size, onProgress, heroExportScale);
+      return await this.exportRasterImage(
+        format,
+        size,
+        onProgress,
+        heroExportScale,
+        progressivePreview,
+      );
     } finally {
       if (needsExportQuality) this.setOptions(previousOptions);
       if (!alreadyExclusive) {
@@ -952,6 +989,7 @@ export class CrystalRenderer {
     size: Vector2,
     onProgress?: RenderExportProgressCallback,
     heroExportScale?: HeroExportScale,
+    progressivePreview?: ProgressiveHeroPreview,
   ): Promise<Blob> {
     const previousPixelRatio = this.renderer.getPixelRatio();
     const outputPixelRatio =
@@ -972,26 +1010,36 @@ export class CrystalRenderer {
     this.renderer.setPixelRatio(outputPixelRatio);
     this.renderer.setSize(size.x, size.y, false);
     this.gleamoePostProcessing?.setSize(size.x, size.y, outputPixelRatio);
-    const tiledPathTrace = this.gleamoePathTracer?.active ?? false;
-    if (tiledPathTrace) this.gleamoePathTracer?.setExportTiling(true);
+    const pathTraceActive = this.gleamoePathTracer?.active ?? false;
+    // The customized denoise/compositing pass samples the complete accumulation
+    // target. Regional tiling can leave that final target containing only the
+    // background when it is copied to the export canvas, so render the Hero
+    // frame as one full region to keep the crystal in the encoded image.
+    if (pathTraceActive) this.gleamoePathTracer?.setExportTiling(false);
     else this.gleamoePathTracer?.reset();
     this.updateFrustum();
     let rasterBlob: Blob;
     try {
       onProgress?.({
-        stage: tiledPathTrace ? 'tracing' : 'rendering',
+        stage: pathTraceActive ? 'tracing' : 'rendering',
         value: 0.1,
-        label: tiledPathTrace ? 'Rendering progress…' : 'Rendering physical materials…',
-        detail: tiledPathTrace ? 'Sample 1 is starting' : 'Drawing the Ultra-quality frame',
+        label: pathTraceActive ? 'Rendering progress…' : 'Rendering physical materials…',
+        detail: pathTraceActive ? 'Sample 1 is starting' : 'Drawing the Ultra-quality frame',
       });
       this.render();
-      if (tiledPathTrace && this.gleamoePathTracer) {
+      if (pathTraceActive && this.gleamoePathTracer) {
         await this.gleamoePathTracer.converge((progress) => {
+          const tiles = progressivePreview?.update();
+          const totalRegions = progressivePreview?.grid.total;
+          const latestTile = tiles?.[tiles.length - 1];
           onProgress?.({
             stage: 'tracing',
             value: 0.1 + progress.progress * 0.8,
             label: 'Rendering progress…',
-            detail: `Sample ${Math.max(progress.sample, 1)} of ${progress.totalSamples}`,
+            detail:
+              tiles?.length && latestTile && totalRegions
+                ? `Updating ${tiles.length} regions · refinement pass ${latestTile.pass}`
+                : `Sample ${Math.max(progress.sample, 1)} of ${progress.totalSamples}`,
           });
         });
         onProgress?.({
@@ -1009,6 +1057,7 @@ export class CrystalRenderer {
           detail: 'Applying overlays and color output',
         });
       }
+      await progressivePreview?.complete();
       onProgress?.({
         stage: 'encoding',
         value: 0.96,
@@ -1045,11 +1094,134 @@ export class CrystalRenderer {
       this.renderer.setPixelRatio(previousPixelRatio);
       this.renderer.setSize(size.x, size.y, false);
       this.gleamoePostProcessing?.setSize(size.x, size.y, previousPixelRatio);
-      if (tiledPathTrace) this.gleamoePathTracer?.setExportTiling(false);
+      if (pathTraceActive) this.gleamoePathTracer?.setExportTiling(false);
       else this.gleamoePathTracer?.reset();
       this.updateFrustum();
     }
     return format === 'pdf-raster' ? pngToPdfBlob(rasterBlob, size.x, size.y) : rasterBlob;
+  }
+
+  private createProgressiveHeroPreview(canvas: HTMLCanvasElement): ProgressiveHeroPreview {
+    const width = Math.max(this.canvas.clientWidth, 1);
+    const height = Math.max(this.canvas.clientHeight, 1);
+    const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.max(Math.round(width * pixelRatio), 1);
+    canvas.height = Math.max(Math.round(height * pixelRatio), 1);
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Unable to initialize the progressive Hero preview.');
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = 'high';
+    context.drawImage(this.canvas, 0, 0, canvas.width, canvas.height);
+    const grid = progressiveTileGrid(canvas.width, canvas.height);
+    const gridElement = canvas.parentElement?.querySelector<HTMLElement>('.hero-progress-grid');
+    gridElement?.style.setProperty('--hero-tile-columns', String(grid.columns));
+    gridElement?.style.setProperty('--hero-tile-rows', String(grid.rows));
+    const sequence = createProgressiveTileSequence(canvas.width, canvas.height, grid);
+    const activeLayers = new Map<
+      number,
+      { canvas: HTMLCanvasElement; tile: ProgressiveTile; timeout: number }
+    >();
+    const activePulses = new Map<number, { element: HTMLSpanElement; timeout: number }>();
+    const commitLayer = (index: number): void => {
+      const active = activeLayers.get(index);
+      if (!active) return;
+      window.clearTimeout(active.timeout);
+      context.drawImage(
+        active.canvas,
+        active.tile.x,
+        active.tile.y,
+        active.tile.width,
+        active.tile.height,
+      );
+      active.canvas.remove();
+      activeLayers.delete(index);
+    };
+    const showPulse = (tile: ProgressiveTile, fadeDuration: number): void => {
+      const previous = activePulses.get(tile.index);
+      if (previous) {
+        window.clearTimeout(previous.timeout);
+        previous.element.remove();
+      }
+      const element = document.createElement('span');
+      element.className = 'hero-progress-pulse';
+      element.style.setProperty('--hero-tile-column', String(tile.column));
+      element.style.setProperty('--hero-tile-row', String(tile.row));
+      element.style.setProperty('--hero-tile-fade-duration', `${fadeDuration}ms`);
+      gridElement?.append(element);
+      const timeout = window.setTimeout(() => {
+        element.remove();
+        activePulses.delete(tile.index);
+      }, fadeDuration + 40);
+      activePulses.set(tile.index, { element, timeout });
+    };
+    const copyTile = (tile: ProgressiveTile): void => {
+      commitLayer(tile.index);
+      const scaleX = this.canvas.width / canvas.width;
+      const scaleY = this.canvas.height / canvas.height;
+      const layer = document.createElement('canvas');
+      const fadeDuration = randomTileFadeDuration();
+      layer.className = 'hero-progress-tile';
+      layer.width = tile.width;
+      layer.height = tile.height;
+      layer.style.left = `${(tile.x / canvas.width) * 100}%`;
+      layer.style.top = `${(tile.y / canvas.height) * 100}%`;
+      layer.style.width = `${(tile.width / canvas.width) * 100}%`;
+      layer.style.height = `${(tile.height / canvas.height) * 100}%`;
+      layer.style.setProperty('--hero-tile-fade-duration', `${fadeDuration}ms`);
+      const layerContext = layer.getContext('2d');
+      if (!layerContext) return;
+      layerContext.imageSmoothingEnabled = true;
+      layerContext.imageSmoothingQuality = 'high';
+      layerContext.drawImage(
+        this.canvas,
+        tile.x * scaleX,
+        tile.y * scaleY,
+        tile.width * scaleX,
+        tile.height * scaleY,
+        0,
+        0,
+        tile.width,
+        tile.height,
+      );
+      canvas.parentElement?.insertBefore(layer, gridElement ?? null);
+      void layer.offsetWidth;
+      layer.style.opacity = '1';
+      const timeout = window.setTimeout(() => commitLayer(tile.index), fadeDuration + 20);
+      activeLayers.set(tile.index, { canvas: layer, tile, timeout });
+      showPulse(tile, fadeDuration);
+    };
+    const updateBatch = (): ProgressiveTile[] => {
+      const count = Math.min(randomTileUpdateCount(), grid.total);
+      const tiles: ProgressiveTile[] = [];
+      const selected = new Set<number>();
+      while (tiles.length < count) {
+        const tile = sequence.next();
+        if (selected.has(tile.index)) continue;
+        selected.add(tile.index);
+        tiles.push(tile);
+      }
+      tiles.forEach(copyTile);
+      return tiles;
+    };
+    return {
+      grid,
+      update: updateBatch,
+      complete: async () => {
+        await new Promise<void>((resolve) => window.setTimeout(resolve, 700));
+        for (const active of activeLayers.values()) {
+          window.clearTimeout(active.timeout);
+          active.canvas.remove();
+        }
+        activeLayers.clear();
+        for (const active of activePulses.values()) {
+          window.clearTimeout(active.timeout);
+          active.element.remove();
+        }
+        activePulses.clear();
+        context.drawImage(this.canvas, 0, 0, canvas.width, canvas.height);
+        if (gridElement) gridElement.style.opacity = '0';
+      },
+    };
   }
 
   cameraSnapshot(): CameraSnapshot {

@@ -63,6 +63,22 @@ classdef MoleculeTest < matlab.unittest.TestCase
             testCase.verifyTrue(restored == molecule);
         end
 
+        function fromSitesPreservesSiteProperties(testCase)
+            sites = {
+                kssolv.analysis.matgenlab.core.Site( ...
+                    "H", [0, 0, 0], properties = struct("tag", "first"))
+                kssolv.analysis.matgenlab.core.Site( ...
+                    "H", [0, 0, 0.74], ...
+                    properties = struct("tag", "second"))
+                };
+
+            molecule = kssolv.analysis.matgenlab.core.IMolecule. ...
+                from_sites(sites);
+
+            testCase.verifyEqual(molecule.site_properties.tag, ...
+                {"first", "second"});
+        end
+
         function boxedStructure(testCase)
             molecule = kssolv.analysis.matgenlab.core.Molecule( ...
                 ["H", "H"], [0, 0, 0; 0, 0, 0.74]);

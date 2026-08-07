@@ -104,7 +104,7 @@ classdef (Abstract) SiteCollection
             end
         end
         function value = get.site_properties(obj)
-            names = strings(1, 0);
+            names = strings(0, 1);
             for index = 1:obj.num_sites
                 names = [names; string(fieldnames( ...
                     obj.sites_{index}.site_properties))]; %#ok<AGROW>

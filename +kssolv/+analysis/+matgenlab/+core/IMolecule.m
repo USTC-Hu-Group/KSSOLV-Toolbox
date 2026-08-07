@@ -550,7 +550,7 @@ classdef IMolecule < kssolv.analysis.matgenlab.core.SiteCollection & ...
             coordinates = cell2mat(cellfun(@(site) site.coords, sites, ...
                 "UniformOutput", false).');
             labels = cellfun(@(site) site.label, sites, "UniformOutput", false);
-            names = strings(1, 0);
+            names = strings(0, 1);
             for index = 1:numel(sites)
                 names = [names; string(fieldnames(sites{index}.site_properties))]; %#ok<AGROW>
             end

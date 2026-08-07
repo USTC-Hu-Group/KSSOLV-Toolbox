@@ -212,6 +212,54 @@ classdef ModelingCommandDialogTest < matlab.unittest.TestCase
             end
         end
 
+        function everyParameterDialogCanShowAndCancel(testCase)
+            [app, display] = testCase.createDisplay();
+            cleanup = onCleanup(@()testCase.cleanupDisplay(app));
+            commandIds = kssolv.modeling.CommandCatalog.commandIds();
+            commandIds(commandIds == "wigner_seitz_cell") = [];
+
+            for index = 1:numel(commandIds)
+                commandId = commandIds(index);
+                commandInfo = ...
+                    kssolv.modeling.CommandCatalog.find(commandId);
+                fields = ...
+                    kssolv.ui.features.modeling.ParameterSchema.forCommand( ...
+                    commandId, display);
+                preset = testCase.referencePreset(fields);
+                dialog = kssolv.ui.features.modeling.CommandDialog( ...
+                    commandInfo, display, preset);
+                dialogCleanup = onCleanup(@()deleteIfValid(dialog));
+                cancelCallback = ...
+                    dialog.Widgets.CancelButton.ButtonPushedFcn;
+                closeTimer = timer( ...
+                    "StartDelay", 0.02, ...
+                    "TimerFcn", @(~, ~)cancelCallback([], []));
+                timerCleanup = onCleanup(@()deleteTimer(closeTimer));
+
+                start(closeTimer);
+                [parameters, cancelled] = dialog.show(app);
+
+                testCase.verifyTrue(cancelled, ...
+                    "Dialog did not cancel for " + commandId);
+                testCase.verifyEmpty(fieldnames(parameters));
+                clear timerCleanup dialogCleanup
+            end
+            clear cleanup
+
+            function deleteIfValid(value)
+                if ~isempty(value) && isvalid(value)
+                    delete(value);
+                end
+            end
+
+            function deleteTimer(value)
+                if isvalid(value)
+                    stop(value);
+                    delete(value);
+                end
+            end
+        end
+
         function commandDialogSupportsAppContainerModalHost(testCase)
             [app, display] = testCase.createDisplay();
             cleanup = onCleanup(@()testCase.cleanupDisplay(app));

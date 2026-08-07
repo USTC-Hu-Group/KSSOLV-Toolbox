@@ -3,6 +3,7 @@ classdef SessionRegistry < handle
 
     properties (Access = private)
         Sessions containers.Map
+        ActiveSessionId string = ""
     end
 
     events
@@ -47,15 +48,20 @@ classdef SessionRegistry < handle
                 if isequal(previous.display, display)
                     return
                 end
-                delete(previous.closeListener);
+                this.deleteEntryListeners(previous);
             end
             closeListener = addlistener(document, ...
                 "ObjectBeingDestroyed", ...
                 @(~, ~)this.unregister(sessionId));
+            selectionListener = addlistener(document, ...
+                "PropertyChanged", ...
+                @(~, ~)this.noteSelection(sessionId));
             this.Sessions(key) = struct( ...
                 "display", display, ...
                 "document", document, ...
-                "closeListener", closeListener);
+                "closeListener", closeListener, ...
+                "selectionListener", selectionListener);
+            this.noteSelection(sessionId);
             notify(this, "SessionCountChanged");
         end
 
@@ -66,8 +72,9 @@ classdef SessionRegistry < handle
             end
             entry = this.Sessions(key);
             remove(this.Sessions, key);
-            if ~isempty(entry.closeListener) && isvalid(entry.closeListener)
-                delete(entry.closeListener);
+            this.deleteEntryListeners(entry);
+            if this.ActiveSessionId == string(sessionId)
+                this.ActiveSessionId = "";
             end
             notify(this, "SessionCountChanged");
         end
@@ -90,11 +97,25 @@ classdef SessionRegistry < handle
                         key = char(tag);
                         if isKey(this.Sessions, key)
                             entry = this.Sessions(key);
+                            this.ActiveSessionId = string(key);
                             display = entry.display;
                             return
                         end
                     end
                 end
+            end
+            selectedKey = this.selectedSessionKey();
+            if selectedKey ~= ""
+                this.ActiveSessionId = selectedKey;
+                entry = this.Sessions(char(selectedKey));
+                display = entry.display;
+                return
+            end
+            if this.ActiveSessionId ~= "" && ...
+                    isKey(this.Sessions, char(this.ActiveSessionId))
+                entry = this.Sessions(char(this.ActiveSessionId));
+                display = entry.display;
+                return
             end
             keys = this.Sessions.keys;
             if isscalar(keys)
@@ -116,13 +137,11 @@ classdef SessionRegistry < handle
             keys = this.Sessions.keys;
             for index = 1:numel(keys)
                 entry = this.Sessions(keys{index});
-                if ~isempty(entry.closeListener) && ...
-                        isvalid(entry.closeListener)
-                    delete(entry.closeListener);
-                end
+                this.deleteEntryListeners(entry);
             end
             this.Sessions = containers.Map( ...
                 "KeyType", "char", "ValueType", "any");
+            this.ActiveSessionId = "";
             notify(this, "SessionCountChanged");
         end
 
@@ -145,9 +164,9 @@ classdef SessionRegistry < handle
                 entry = this.Sessions(keys{index});
                 if isempty(entry.document) || ~isvalid(entry.document) || ...
                         isempty(entry.display) || ~isvalid(entry.display)
-                    if ~isempty(entry.closeListener) && ...
-                            isvalid(entry.closeListener)
-                        delete(entry.closeListener);
+                    this.deleteEntryListeners(entry);
+                    if this.ActiveSessionId == string(keys{index})
+                        this.ActiveSessionId = "";
                     end
                     remove(this.Sessions, keys{index});
                     changed = true;
@@ -155,6 +174,50 @@ classdef SessionRegistry < handle
             end
             if changed
                 notify(this, "SessionCountChanged");
+            end
+        end
+
+        function noteSelection(this, sessionId)
+            key = char(string(sessionId));
+            if ~isKey(this.Sessions, key)
+                return
+            end
+            entry = this.Sessions(key);
+            if ~isempty(entry.document) && isvalid(entry.document) && ...
+                    entry.document.Selected
+                this.ActiveSessionId = string(sessionId);
+            end
+        end
+
+        function key = selectedSessionKey(this)
+            key = "";
+            keys = this.Sessions.keys;
+            selected = strings(0, 1);
+            for index = 1:numel(keys)
+                entry = this.Sessions(keys{index});
+                if ~isempty(entry.document) && isvalid(entry.document) && ...
+                        entry.document.Selected
+                    selected(end + 1, 1) = string(keys{index}); %#ok<AGROW>
+                end
+            end
+            if isempty(selected)
+                return
+            end
+            if any(selected == this.ActiveSessionId)
+                key = this.ActiveSessionId;
+            else
+                key = selected(end);
+            end
+        end
+
+        function deleteEntryListeners(~, entry)
+            listenerFields = ["closeListener", "selectionListener"];
+            for index = 1:numel(listenerFields)
+                field = char(listenerFields(index));
+                if isfield(entry, field) && ~isempty(entry.(field)) && ...
+                        isvalid(entry.(field))
+                    delete(entry.(field));
+                end
             end
         end
     end

@@ -2,6 +2,77 @@ classdef ModelingTabTest < matlab.unittest.TestCase
     %MODELINGTABTEST Contextual toolstrip lifecycle contract.
 
     methods (Test)
+        function registryResolvesSelectedStructureAmongMultipleSessions( ...
+                testCase)
+            app = matlab.ui.container.internal.AppContainer( ...
+                struct("Title", "Modeling Selection Test", ...
+                "ToolstripEnabled", true));
+            cleanup = onCleanup(@()cleanupSelectionApp(app));
+            kssolv.ui.util.DataStorage.setData("AppContainer", app);
+
+            first = kssolv.analysis.matgenlab.core.Structure( ...
+                eye(3) * 4, {"Si"}, [0, 0, 0]);
+            second = kssolv.analysis.matgenlab.core.Structure( ...
+                eye(3) * 5, {"C"}, [0, 0, 0]);
+            firstDisplay = ...
+                kssolv.ui.components.figuredocument.MoleculeDisplay(first);
+            secondDisplay = ...
+                kssolv.ui.components.figuredocument.MoleculeDisplay(second);
+            firstDocument = matlab.ui.internal.FigureDocument(struct( ...
+                "Title", "First structure", ...
+                "DocumentGroupTag", "Structure", ...
+                "Tag", "first-structure"));
+            secondDocument = matlab.ui.internal.FigureDocument(struct( ...
+                "Title", "Second structure", ...
+                "DocumentGroupTag", "Structure", ...
+                "Tag", "second-structure"));
+            app.add(firstDocument);
+            app.add(secondDocument);
+            app.Visible = true;
+            drawnow
+            registry = ...
+                kssolv.ui.features.modeling.SessionRegistry.getInstance();
+            registry.register(firstDocument, firstDisplay);
+            registry.register(secondDocument, secondDisplay);
+
+            firstDocument.Selected = true;
+            drawnow
+            testCase.verifyEqual( ...
+                registry.getCurrentDisplay(), firstDisplay);
+
+            secondDocument.Selected = true;
+            drawnow
+            testCase.verifyEqual( ...
+                registry.getCurrentDisplay(), secondDisplay);
+
+            workflowGroup = matlab.ui.internal.FigureDocumentGroup();
+            workflowGroup.Tag = "Workflow";
+            app.add(workflowGroup);
+            workflowDocument = matlab.ui.internal.FigureDocument(struct( ...
+                "Title", "Workflow", ...
+                "DocumentGroupTag", "Workflow", ...
+                "Tag", "workflow"));
+            app.add(workflowDocument);
+            workflowDocument.Selected = true;
+            drawnow
+            testCase.verifyEqual( ...
+                registry.getCurrentDisplay(), secondDisplay);
+            clear cleanup
+
+            function cleanupSelectionApp(value)
+                registryValue = ...
+                    kssolv.ui.util.DataStorage.getData( ...
+                    "ModelingSessionRegistry");
+                if ~isempty(registryValue) && isvalid(registryValue)
+                    delete(registryValue);
+                end
+                if ~isempty(value) && isvalid(value)
+                    delete(value);
+                end
+                kssolv.ui.util.DataStorage.removeData("AppContainer");
+            end
+        end
+
         function analysisResultsCreateVisualFigures(testCase)
             previous = get(groot, "defaultFigureVisible");
             set(groot, "defaultFigureVisible", "off");

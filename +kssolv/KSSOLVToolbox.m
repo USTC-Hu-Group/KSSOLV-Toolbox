@@ -210,6 +210,22 @@ classdef KSSOLVToolbox < handle
             import kssolv.ui.util.Localizer.*
 
             status = false;
+            registry = kssolv.ui.util.DataStorage.getData( ...
+                "ModelingSessionRegistry");
+            if ~isempty(registry) && isvalid(registry)
+                try
+                    % The embedded structure viewer owns its browser
+                    % fullscreen state.  Ask it to leave fullscreen before
+                    % showing a close confirmation or tearing down the host.
+                    registry.exitFullscreen();
+                    registry.waitForFullscreenExit();
+                catch exception
+                    % A stale viewer must not prevent Toolbox shutdown.
+                    warning('KSSOLV:Toolbox:FullscreenExitOnClose', ...
+                        'Unable to exit a structure viewer from fullscreen: %s', ...
+                        exception.message);
+                end
+            end
             try
                 [project, projectFilename] = ...
                     this.projectBrowser.getCurrentProject();
@@ -224,7 +240,10 @@ classdef KSSOLVToolbox < handle
                 return
             end
 
-            if ~project.isDirty
+            hasStructureDrafts = ~isempty(registry) && ...
+                isvalid(registry) && registry.hasUnsavedChanges();
+
+            if ~project.isDirty && ~hasStructureDrafts
                 % 如果 project 没有进行任何修改，则直接关闭已有的 project
                 % 此处不需要进行额外的处理
             else
@@ -265,15 +284,20 @@ classdef KSSOLVToolbox < handle
                                 % 用户点击了"取消"按钮
                                 return
                             else
-                                % 用户选择了具体的文件路径，保存 project
-                                project.saveToKsFile(fullfile(location, file));
+                                projectFilename = fullfile(location, file);
                             end
-                        else
-                            % 如果已打开 .ks 文件，则保存后关闭当前 project
-                            project.saveToKsFile(projectFilename);
                         end
+                        % 应用退出时，“保存”会先把所有结构文档草稿提交到
+                        % Project，再将完整 Project 写入 .ks 文件。
+                        if hasStructureDrafts
+                            registry.saveAllChangesToProject();
+                        end
+                        project.saveToKsFile(projectFilename);
                     case NoLabel
-                        % 此处无需进行处理
+                        % Project 文件不保存，结构文档草稿也一并放弃。
+                        if hasStructureDrafts
+                            registry.discardAllChanges(false);
+                        end
                     case CancelLabel
                         return
                 end

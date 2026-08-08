@@ -45,7 +45,7 @@ describe('viewer controls', () => {
       },
     });
     expect(wrapper.find('[aria-label="Crystal display settings"]').exists()).toBe(true);
-    expect(wrapper.findAll('input[type="checkbox"]')).toHaveLength(11);
+    expect(wrapper.findAll('input[type="checkbox"]')).toHaveLength(12);
     expect(wrapper.text()).not.toContain('Ordered ·');
     expect(wrapper.text()).toContain('CrystalNN · accurate');
     expect(wrapper.text()).toContain('Jmol bonding');
@@ -54,8 +54,25 @@ describe('viewer controls', () => {
     expect(wrapper.text()).toContain("Brunner's reciprocal algorithm");
     expect(wrapper.text()).not.toContain('Preview rendering');
     expect(wrapper.text()).not.toContain('High quality · Physical');
-    expect(wrapper.text()).toContain('Unit-cell representation');
+    expect(wrapper.text()).toContain('Change unit cell');
     expect(wrapper.text()).toContain('Repeat cell');
+  });
+
+  it('toggles depth cueing from display settings', async () => {
+    const options = defaultViewerOptions();
+    const wrapper = mount(SettingsPanel, {
+      props: { modelValue: options, scene: createDebugScene() },
+    });
+    const control = wrapper
+      .findAll('label.check')
+      .find((label) => label.text().includes('Depth Cueing'))!;
+
+    expect(options.depthCueing).toBe(true);
+    expect(control.get('input').element.checked).toBe(true);
+    await control.get('input').setValue(false);
+
+    const next = wrapper.emitted('update:modelValue')?.[0][0] as typeof options;
+    expect(next.depthCueing).toBe(false);
   });
 
   it('offers only Materials Project and Gleamoe Noir with Materials selected by default', () => {
@@ -71,6 +88,49 @@ describe('viewer controls', () => {
     ]);
     expect(wrapper.text()).not.toContain('Pretty Lattice');
     expect(wrapper.text()).not.toContain('Ray traced');
+  });
+
+  it('provides calibrated lighting, material, and image controls with reset', async () => {
+    const options = defaultViewerOptions();
+    const wrapper = mount(SettingsPanel, {
+      props: { modelValue: options, scene: createDebugScene() },
+    });
+    const appearance = wrapper.get('.appearance-settings');
+    const labels = appearance.findAll('label').map((label) => label.text());
+
+    expect(labels).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('Ambient light'),
+        expect.stringContaining('Directional light'),
+        expect.stringContaining('Metalness'),
+        expect.stringContaining('Roughness'),
+        expect.stringContaining('Brightness'),
+        expect.stringContaining('Contrast'),
+      ]),
+    );
+    expect(appearance.findAll('input[type="range"]')).toHaveLength(6);
+    expect(appearance.text()).toContain('50%');
+    expect(appearance.text()).not.toContain('preserves the current theme');
+    const sections = wrapper.findAll('section');
+    expect(sections[sections.length - 1].classes()).toContain('appearance-settings');
+    expect(appearance.get('.appearance-reset-button').attributes('disabled')).toBeDefined();
+
+    const brightness = appearance
+      .findAll('label')
+      .find((label) => label.text().includes('Brightness'))!
+      .get('input');
+    await brightness.setValue(0.75);
+    const next = wrapper.emitted('update:modelValue')?.[0][0] as typeof options;
+    expect(next.brightness).toBe(0.75);
+
+    await wrapper.setProps({ modelValue: next });
+    const reset = appearance.get('.appearance-reset-button');
+    expect(reset.attributes('disabled')).toBeUndefined();
+    await reset.trigger('click');
+    const restored = wrapper.emitted('update:modelValue')?.[1][0] as typeof options;
+    expect(restored.brightness).toBe(0.5);
+    expect(restored.ambientLight).toBe(0.5);
+    expect(restored.metalness).toBe(0.5);
   });
 
   it('changes to Gleamoe without exposing preview-rendering presets', async () => {
@@ -94,6 +154,8 @@ describe('viewer controls', () => {
     expect(hero.text()).toContain('Enter Hero mode');
     expect(hero.find('select').exists()).toBe(false);
     expect(hero.find('dl').exists()).toBe(false);
+    const sections = wrapper.findAll('section');
+    expect(sections[sections.length - 1].classes()).toContain('hero-settings');
     await hero.get('.hero-mode-button').trigger('click');
     expect(wrapper.emitted('toggleHeroShot')).toHaveLength(1);
     expect(hero.find('.hero-export-button').exists()).toBe(false);
@@ -214,6 +276,13 @@ describe('viewer controls', () => {
         scene: createDebugScene(),
       },
     });
+    const scientificSection = wrapper
+      .findAll('section')
+      .find((section) => section.get('h3').text() === 'Scientific scene')!;
+    expect(scientificSection.findAll(':scope > label').map((label) => label.text())).toEqual([
+      expect.stringContaining('Change unit cell'),
+      expect.stringContaining('Bonding strategy'),
+    ]);
     const bondingControl = wrapper
       .findAll('label')
       .find((control) => control.text().includes('Bonding strategy'))!
@@ -231,8 +300,15 @@ describe('viewer controls', () => {
 
     const cellControl = wrapper
       .findAll('label')
-      .find((control) => control.text().includes('Unit-cell representation'))!
+      .find((control) => control.text().includes('Change unit cell'))!
       .get('select');
+    expect(cellControl.findAll('option').map((option) => option.text())).toEqual([
+      'Input cell',
+      'Primitive cell',
+      'Conventional cell',
+      'Reduced cell (Niggli)',
+      'Reduced cell (LLL)',
+    ]);
     await cellControl.setValue('primitive');
     expect((wrapper.emitted('rebuild')?.[1][0] as { cell: string }).cell).toBe('primitive');
 
@@ -240,6 +316,50 @@ describe('viewer controls', () => {
     await repeatA.setValue(2);
     expect((wrapper.emitted('rebuild')?.[2][0] as { repeat: number[] }).repeat).toEqual([2, 1, 1]);
     expect(wrapper.text()).not.toContain('Theme changes never alter scientific connectivity');
+  });
+
+  it('restores the active unit-cell representation when settings are reopened', () => {
+    const scene = createDebugScene();
+    scene.analysis.parameters.cell = 'conventional';
+    const wrapper = mount(SettingsPanel, {
+      props: {
+        modelValue: defaultViewerOptions(),
+        scene,
+      },
+    });
+    const cellControl = wrapper
+      .findAll('label')
+      .find((control) => control.text().includes('Change unit cell'))!
+      .get('select');
+
+    expect((cellControl.element as HTMLSelectElement).value).toBe('conventional');
+  });
+
+  it('restores the current visual repeat when settings are reopened', async () => {
+    const scene = createDebugScene();
+    scene.structure.repeat = [1, 2, 2];
+    const wrapper = mount(SettingsPanel, {
+      props: {
+        modelValue: defaultViewerOptions(),
+        scene,
+      },
+    });
+    const repeatInputs = wrapper.findAll('fieldset input');
+
+    expect(repeatInputs.map((input) => (input.element as HTMLInputElement).value)).toEqual([
+      '1',
+      '2',
+      '2',
+    ]);
+
+    await repeatInputs[1].setValue(1);
+    expect((wrapper.emitted('rebuild')?.[0][0] as { repeat: number[] }).repeat).toEqual([1, 1, 2]);
+
+    const reset = wrapper.get('.repeat-reset-button');
+    expect(reset.attributes('disabled')).toBeUndefined();
+    await reset.trigger('click');
+    expect((wrapper.emitted('rebuild')?.[1][0] as { repeat: number[] }).repeat).toEqual([1, 1, 1]);
+    expect(reset.attributes('disabled')).toBeDefined();
   });
 
   it('stops after one measurement by default and can enable continuous measurement', async () => {

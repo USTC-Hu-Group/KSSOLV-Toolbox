@@ -10,6 +10,16 @@ describe('CrystalSceneSpec validation', () => {
     expect(validateScene(scene)).toBe(scene);
   });
 
+  it('accepts the slab view hint and rejects unsupported hints', () => {
+    const slab = createDebugScene();
+    slab.viewHint = 'slab';
+    expect(validateScene(slab)).toBe(slab);
+
+    const unsupported = createDebugScene() as unknown as { viewHint: string };
+    unsupported.viewHint = 'surface';
+    expect(() => validateScene(unsupported)).toThrow(/unsupported view hint/);
+  });
+
   it('accepts every Crystal Toolkit bonding strategy exposed by the viewer', () => {
     const algorithms: BondAlgorithm[] = [
       'CrystalNN',

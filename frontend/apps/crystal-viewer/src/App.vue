@@ -11,6 +11,7 @@ import SettingsPanel from './components/SettingsPanel.vue';
 import ViewerToolbar from './components/ViewerToolbar.vue';
 import WarningStack from './components/WarningStack.vue';
 import { atomIdsForElement, siteSpeciesLabel } from './elementSelection';
+import { exitFullscreenIfActive } from './fullscreen';
 import { ImageSaveCoordinator, type ImageSaveDestination } from './imageSave';
 import { viewerShortcutFor } from './keyboard';
 import {
@@ -35,6 +36,7 @@ import {
 } from './renderer/CrystalRenderer';
 import type { CrystalCameraAxis } from './renderer/cameraAxis';
 import type { ImageExportFormat } from './renderer/imageExport';
+import { atomCountLabel } from './renderer/atomVisibility';
 import type { HeroExportScale } from './renderer/quality';
 import type {
   AtomHoverInfo,
@@ -132,7 +134,7 @@ const sceneDetails = computed(() => {
       'Use Modeling → Add Atom to begin',
     ];
   }
-  const atomCount = statistics.value?.atoms ?? scene.atomInstances.length;
+  const atomCount = atomCountLabel(scene, store.options);
   const bondCount = statistics.value?.bonds ?? scene.bondInstances.length;
   const ordered = scene.kind === 'crystal' ? scene.structure.isOrdered : scene.molecule.isOrdered;
   if (scene.kind === 'molecule') {
@@ -436,8 +438,22 @@ const exportStructure = (format: string): void => {
 
 const toggleFullscreen = async (): Promise<void> => {
   if (!root.value) return;
-  if (document.fullscreenElement) await document.exitFullscreen();
+  if (document.fullscreenElement) await exitFullscreenIfActive();
   else await root.value.requestFullscreen();
+};
+
+const exitFullscreenForToolboxClose = async (): Promise<void> => {
+  try {
+    await exitFullscreenIfActive();
+  } catch (error: unknown) {
+    matlabBridge.emit('viewer:error', {
+      requestId: store.scene.value?.requestId ?? '',
+      code: 'FULLSCREEN_EXIT',
+      message: error instanceof Error ? error.message : String(error),
+    });
+  } finally {
+    matlabBridge.emit('viewer:fullscreenExitComplete');
+  }
 };
 
 const toggleAutoRotation = (): void => {
@@ -783,6 +799,7 @@ const removeCommandListener = matlabBridge.on('viewer:command', (payload) => {
     if (camera) renderer.value?.setCameraSnapshot(camera);
   }
   if (command === 'screenshot') void exportImage('png');
+  if (command === 'exit-fullscreen') void exitFullscreenForToolboxClose();
 });
 
 const removeExportFormatsListener = matlabBridge.on('structure:exportFormats', (payload) => {

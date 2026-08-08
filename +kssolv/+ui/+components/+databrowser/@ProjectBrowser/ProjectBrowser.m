@@ -195,7 +195,12 @@ classdef ProjectBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser
             % 关闭相应的 document
             document = appContainer.getDocument(removedItem.category, removedItem.name);
             if ~isempty(document)
-                document.close();
+                closed = document.close();
+                if ~closed
+                    % 用户取消关闭时，同步取消 Project 节点删除。
+                    this.reBuildUI();
+                    return
+                end
             end
             % 在 project 中移除对应的子节点
             parentItem.removeChildrenItem(removedItemName);

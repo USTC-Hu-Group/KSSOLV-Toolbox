@@ -11,8 +11,8 @@ import type {
 
 const lattice = 5.64;
 const colors: Record<string, RgbTuple> = {
-  Na: [249, 220, 60],
-  Cl: [49, 252, 2],
+  Na: [250, 221, 61],
+  Cl: [50, 252, 3],
 };
 
 const jmol: Record<string, RgbTuple> = {
@@ -207,7 +207,7 @@ export const createStressScene = (count = 10_000): CrystalSceneSpec => {
           symbol: 'C',
           occupancy: 1,
           atomicNumber: 6,
-          colorVesta: [76, 76, 76],
+          colorVesta: [129, 73, 41],
           colorJmol: [144, 144, 144],
           atomicRadius: 0.7,
         },
@@ -246,7 +246,7 @@ export const createDebugMoleculeScene = (): MoleculeSceneSpec => {
           symbol: 'C',
           occupancy: 1,
           atomicNumber: 6,
-          colorVesta: [76, 76, 76],
+          colorVesta: [129, 73, 41],
           colorJmol: [144, 144, 144],
           atomicRadius: 0.7,
         },
@@ -262,7 +262,7 @@ export const createDebugMoleculeScene = (): MoleculeSceneSpec => {
           symbol: 'C',
           occupancy: 1,
           atomicNumber: 6,
-          colorVesta: [76, 76, 76],
+          colorVesta: [129, 73, 41],
           colorJmol: [144, 144, 144],
           atomicRadius: 0.7,
         },

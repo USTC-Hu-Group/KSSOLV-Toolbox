@@ -16,6 +16,7 @@ classdef HomeTab < handle
         updateDialog   % 检查更新对话框
         licenseDialog  % 许可对话框
         aboutDialog    % 关于对话框
+        materialsProjectDialog % Materials Project 结构检索对话框
     end
 
     methods
@@ -68,6 +69,8 @@ classdef HomeTab < handle
                 'ItemPushed', @(src, data) callbackNewBlankStructure(this));
             addlistener(this.Widgets.ProjectSection.ProjectStructureButton.Popup.getChildByIndex(2), ...
                 'ItemPushed', @(src, data) callbackImportStructureFromFile(this));
+            addlistener(this.Widgets.ProjectSection.ProjectStructureButton.Popup.getChildByIndex(3), ...
+                'ItemPushed', @(src, data) callbackImportStructureFromMaterialsProject(this));
             addlistener(this.Widgets.ProjectSection.ProjectWorkflowButton, ...
                 'ButtonPushed', @(src, data) callbackProjectWorkflowButton(this));
             addlistener(this.Widgets.ProjectSection.ProjectWorkflowButton.Popup.getChildByIndex(1), ...
@@ -111,9 +114,7 @@ classdef HomeTab < handle
             this.Widgets.RunningSection.RunningStopButton.Enabled = false;
 
             % 禁用尚未实现功能的按钮
-            this.Widgets.ProjectSection.ProjectStructureButton.Popup.getChildByIndex(3).Enabled = false;
             this.Widgets.ProjectSection.ProjectStructureButton.Popup.getChildByIndex(4).Enabled = false;
-            this.Widgets.ProjectSection.ProjectStructureButton.Popup.getChildByIndex(5).Enabled = false;
             this.Widgets.ProjectSection.ProjectVariableButton.Popup.getChildByIndex(1).Enabled = false;
             this.Widgets.EnvironmentSection.EnvironmentRemoteButton.Popup.getChildByIndex(1).Enabled = false;
             this.Widgets.EnvironmentSection.EnvironmentExtraButton.Popup.getChildByIndex(1).Enabled = false;
@@ -195,8 +196,9 @@ classdef HomeTab < handle
             ProjectStructureButtonPopup = PopupList();
             NewStructureListItem = CreateListItem('default', 'NewStructure', section.Tag, 0, 'add_class');
             ImportStructureFromFileListItem = CreateListItem('default', 'ImportStructureFromFile', section.Tag, 0, 'importDiagram');
-            ImportStructureFromLinkListItem = CreateListItem('default', 'ImportStructureFromLink', section.Tag, 0, 'link_project');
-            ImportStructureFromLibraryListItem = CreateListItem('default', 'ImportStructureFromLibrary', section.Tag, 0, 'database_projectYellow');
+            ImportStructureFromMaterialsProjectListItem = CreateListItem( ...
+                'default', 'ImportStructureFromMaterialsProject', ...
+                section.Tag, 0, 'database_projectYellow');
             ImportStructureFromMatlabListItem = CreateListItem('default', 'ImportStructureFromMatlab', section.Tag, 0, 'matlabWorkspaceFile');
 
             ProjectWorkflowButtonPopup = PopupList();
@@ -211,8 +213,8 @@ classdef HomeTab < handle
 
             ProjectStructureButtonPopup.add(NewStructureListItem);
             ProjectStructureButtonPopup.add(ImportStructureFromFileListItem)
-            ProjectStructureButtonPopup.add(ImportStructureFromLinkListItem);
-            ProjectStructureButtonPopup.add(ImportStructureFromLibraryListItem);
+            ProjectStructureButtonPopup.add( ...
+                ImportStructureFromMaterialsProjectListItem);
             ProjectStructureButtonPopup.add(ImportStructureFromMatlabListItem);
             ProjectWorkflowButtonPopup.add(NewWorkflowListItem);
             ProjectWorkflowButtonPopup.add(ImportTemplateWorkflowListItem);
@@ -235,7 +237,10 @@ classdef HomeTab < handle
 
             % 添加到 Widgets
             this.Widgets.ProjectSection = struct('ProjectStructureButton', ProjectStructureButton, ...
-                'ProjectWorkflowButton', ProjectWorkflowButton, 'ProjectVariableButton', ProjectVariableButton);
+                'ImportStructureFromMaterialsProjectListItem', ...
+                ImportStructureFromMaterialsProjectListItem, ...
+                'ProjectWorkflowButton', ProjectWorkflowButton, ...
+                'ProjectVariableButton', ProjectVariableButton);
         end
 
         function createRunningSection(this)
@@ -416,7 +421,11 @@ classdef HomeTab < handle
         function callbackFileSaveButton(~, ~, ~)
             import kssolv.ui.util.Localizer.*
             project = kssolv.ui.util.DataStorage.getData('Project');
-            if ~project.isDirty
+            registry = kssolv.ui.util.DataStorage.getData( ...
+                "ModelingSessionRegistry");
+            hasStructureDrafts = ~isempty(registry) && ...
+                isvalid(registry) && registry.hasUnsavedChanges();
+            if ~project.isDirty && ~hasStructureDrafts
                 return
             end
             ksFile = kssolv.ui.util.DataStorage.getData('ProjectFilename');
@@ -432,11 +441,17 @@ classdef HomeTab < handle
                     % 用户选择了具体的文件路径
                     ksFile = fullfile(location, file);
                     kssolv.ui.util.DataStorage.setData('ProjectFilename', ksFile);
+                    if hasStructureDrafts
+                        registry.saveAllChangesToProject();
+                    end
                     project.saveToKsFile(ksFile);
                 end
                 kssolv.ui.util.DataStorage.getData('AppContainer').bringToFront();
             else
                 % ksFile 不为空说明当前已打开某个 .ks 文件，直接保存文件
+                if hasStructureDrafts
+                    registry.saveAllChangesToProject();
+                end
                 project.saveToKsFile(ksFile);
             end
         end
@@ -462,7 +477,12 @@ classdef HomeTab < handle
                 % 用户选择了具体的文件路径
                 ksFile = fullfile(location, file);
                 project = kssolv.ui.util.DataStorage.getData('Project');
-                project.isDirty = false;
+                registry = kssolv.ui.util.DataStorage.getData( ...
+                    "ModelingSessionRegistry");
+                if ~isempty(registry) && isvalid(registry) && ...
+                        registry.hasUnsavedChanges()
+                    registry.saveAllChangesToProject();
+                end
                 project.saveToKsFile(ksFile);
 
                 % 更新标题栏
@@ -477,7 +497,11 @@ classdef HomeTab < handle
             project = kssolv.ui.util.DataStorage.getData('Project');
             projectFilename = kssolv.ui.util.DataStorage.getData('ProjectFilename');
             appContainer = kssolv.ui.util.DataStorage.getData('AppContainer');
-            if ~project.isDirty
+            registry = kssolv.ui.util.DataStorage.getData( ...
+                "ModelingSessionRegistry");
+            hasStructureDrafts = ~isempty(registry) && ...
+                isvalid(registry) && registry.hasUnsavedChanges();
+            if ~project.isDirty && ~hasStructureDrafts
                 % 如果 project 没有进行任何修改，则直接关闭已有的 project
                 % 此处不需要进行额外的处理
             else
@@ -513,15 +537,17 @@ classdef HomeTab < handle
                                 % 用户点击了"取消"按钮
                                 return
                             else
-                                % 用户选择了具体的文件路径，保存 project
-                                project.saveToKsFile(fullfile(location, file));
+                                projectFilename = fullfile(location, file);
                             end
-                        else
-                            % 如果已打开 .ks 文件，则保存后关闭当前 project
-                            project.saveToKsFile(projectFilename);
                         end
+                        if hasStructureDrafts
+                            registry.saveAllChangesToProject();
+                        end
+                        project.saveToKsFile(projectFilename);
                     case NoLabel
-                        % 此处无需进行处理
+                        if hasStructureDrafts
+                            registry.discardAllChanges(false);
+                        end
                     case CancelLabel
                         return
                 end
@@ -561,6 +587,37 @@ classdef HomeTab < handle
                     projectBrowser.updateTreetable('PATCH', item.name, item.encodeToJSON(1));
                 end
             end
+        end
+
+        function callbackImportStructureFromMaterialsProject(this, ~, ~)
+            if isempty(this.materialsProjectDialog) || ...
+                    ~isvalid(this.materialsProjectDialog)
+                this.materialsProjectDialog = ...
+                    kssolv.ui.components.dialog.MaterialsProjectDialog( ...
+                    @(record, model) ...
+                    this.importMaterialsProjectStructure(record, model));
+            end
+            appContainer = ...
+                kssolv.ui.util.DataStorage.getData('AppContainer');
+            this.materialsProjectDialog.show(appContainer);
+        end
+
+        function importMaterialsProjectStructure(~, record, model)
+            project = kssolv.ui.util.DataStorage.getData('Project');
+            item = project.findChildrenItem("Structure");
+            if isempty(item)
+                return
+            end
+
+            structure = item.importMaterialsProjectStructure( ...
+                model, string(record.MaterialId), ...
+                string(record.Formula));
+            projectBrowser = ...
+                kssolv.ui.util.DataStorage.getData('ProjectBrowser');
+            projectBrowser.updateTreetable( ...
+                'ADD', item.name, structure.encodeToJSON(1));
+            projectBrowser.updateTreetable( ...
+                'PATCH', item.name, item.encodeToJSON(1));
         end
 
         function callbackNewBlankStructure(~, ~, ~)

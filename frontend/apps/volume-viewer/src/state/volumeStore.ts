@@ -2,6 +2,12 @@ import { computed, reactive, shallowRef } from 'vue';
 
 import { matlabBridge } from '@kssolv/matlab-bridge';
 import {
+  defaultViewerOptions,
+  type ColorMode,
+  type RadiusMode,
+  type ThemeId,
+} from '@kssolv/atomic-scene';
+import {
   validateVolumeScene,
   VolumeTransferAssembler,
   type VolumeChunk,
@@ -21,6 +27,17 @@ export type VolumeStatusPhase =
   | 'error';
 
 export interface VolumeOptions {
+  theme: ThemeId;
+  colorMode: ColorMode;
+  radiusMode: RadiusMode;
+  atomScale: number;
+  bondRadius: number;
+  ambientLight: number;
+  directionalLight: number;
+  metalness: number;
+  roughness: number;
+  brightness: number;
+  contrast: number;
   mode: VolumeMode;
   isovalueMode: IsovalueMode;
   channelId: string;
@@ -36,6 +53,8 @@ export interface VolumeOptions {
   rangeMaximum: number;
   sliceAxis: SliceAxis;
   sliceIndex: number;
+  sliceIndices: [number, number, number];
+  sliceVisibility: [boolean, boolean, boolean];
   interpolation: 'nearest' | 'linear';
   volumeQuality: 'fast' | 'balanced' | 'high';
   gradientOpacity: number;
@@ -49,10 +68,38 @@ export interface VolumeOptions {
   showAxes: boolean;
 }
 
+const atomicDefaults = defaultViewerOptions();
+export const defaultVolumeAppearance = (): Pick<
+  VolumeOptions,
+  | 'theme'
+  | 'colorMode'
+  | 'radiusMode'
+  | 'atomScale'
+  | 'bondRadius'
+  | 'ambientLight'
+  | 'directionalLight'
+  | 'metalness'
+  | 'roughness'
+  | 'brightness'
+  | 'contrast'
+> => ({
+  theme: atomicDefaults.theme,
+  colorMode: atomicDefaults.colorMode,
+  radiusMode: atomicDefaults.radiusMode,
+  atomScale: atomicDefaults.atomScale,
+  bondRadius: atomicDefaults.bondRadius,
+  ambientLight: atomicDefaults.ambientLight,
+  directionalLight: atomicDefaults.directionalLight,
+  metalness: atomicDefaults.metalness,
+  roughness: atomicDefaults.roughness,
+  brightness: atomicDefaults.brightness,
+  contrast: atomicDefaults.contrast,
+});
 const scene = shallowRef<VolumeSceneSpec>();
 const buffers = shallowRef(new Map<string, ArrayBuffer>());
 const assembler = new VolumeTransferAssembler();
 const options = reactive<VolumeOptions>({
+  ...defaultVolumeAppearance(),
   mode: 'isosurface',
   isovalueMode: 'absolute',
   channelId: '',
@@ -68,6 +115,8 @@ const options = reactive<VolumeOptions>({
   rangeMaximum: 1,
   sliceAxis: 'k',
   sliceIndex: 0,
+  sliceIndices: [0, 0, 0],
+  sliceVisibility: [true, true, true],
   interpolation: 'linear',
   volumeQuality: 'balanced',
   gradientOpacity: 0.35,
@@ -156,7 +205,12 @@ const receiveManifest = (payload: unknown): void => {
     options.rangeMinimum = next.channels[0].minimum;
     options.rangeMaximum = next.channels[0].maximum;
     if (next.grid.dimensionality === 2) options.mode = 'slices';
-    options.sliceIndex = Math.floor(next.grid.dimensions[2] / 2);
+    options.sliceIndices = next.grid.dimensions.map((dimension) =>
+      Math.floor(dimension / 2),
+    ) as [number, number, number];
+    options.sliceAxis = 'k';
+    options.sliceIndex = options.sliceIndices[2];
+    options.sliceVisibility = [true, true, true];
     assembler.beginRequest(
       next.requestId,
       next.channels.map((channel) => channel.transport),
@@ -313,7 +367,12 @@ export const useVolumeStore = () => {
       options.rangeMinimum = next.channels[0].minimum;
       options.rangeMaximum = next.channels[0].maximum;
       if (next.grid.dimensionality === 2) options.mode = 'slices';
-      options.sliceIndex = Math.floor(next.grid.dimensions[2] / 2);
+      options.sliceIndices = next.grid.dimensions.map((dimension) =>
+        Math.floor(dimension / 2),
+      ) as [number, number, number];
+      options.sliceAxis = 'k';
+      options.sliceIndex = options.sliceIndices[2];
+      options.sliceVisibility = [true, true, true];
     },
     setChannelBytes(transferId: string, value: ArrayBuffer): void {
       const next = new Map(buffers.value);

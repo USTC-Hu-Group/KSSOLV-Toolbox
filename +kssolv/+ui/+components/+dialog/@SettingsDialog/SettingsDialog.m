@@ -21,11 +21,15 @@ classdef SettingsDialog < controllib.ui.internal.dialog.AbstractDialog
         availableLanguageOptions = {'简体中文', 'English'}
         availableLanguageOptionsData = {'zh_CN', 'en_US'}
         availableLLMType = {'OpenAICompatible', 'Ollama'}
+        materialsProjectAPIURL = ...
+            'https://next-gen.materialsproject.org/api'
 
         savedSettings = struct()
         pendingDialogOptions = struct()
         openAIAPIKey (1, 1) string = ""
         openAIAPIKeyVisible (1, 1) logical = false
+        materialsProjectAPIKey (1, 1) string = ""
+        materialsProjectAPIKeyVisible (1, 1) logical = false
         isClosing (1, 1) logical = false
         connectionTestFuture = []
         connectionTestCompletionFuture = []
@@ -70,6 +74,9 @@ classdef SettingsDialog < controllib.ui.internal.dialog.AbstractDialog
                 if isfield(options, 'OpenAIAPIKey')
                     options = rmfield(options, 'OpenAIAPIKey');
                 end
+                if isfield(options, 'MaterialsProjectAPIKey')
+                    options = rmfield(options, 'MaterialsProjectAPIKey');
+                end
                 options.Applied = false;
                 options.Action = 'cancel';
             else
@@ -104,6 +111,7 @@ classdef SettingsDialog < controllib.ui.internal.dialog.AbstractDialog
             this.tabGroup.Layout.Column = 1;
 
             this.buildGeneralTab();
+            this.buildMaterialsProjectTab();
             this.createButtonPanel();
         end
 
@@ -124,6 +132,68 @@ classdef SettingsDialog < controllib.ui.internal.dialog.AbstractDialog
             this.buildLanguagePanel(mainLayout);
             this.buildLLMPanel(mainLayout);
             this.widgets.GeneralTab = generalTab;
+        end
+
+        function buildMaterialsProjectTab(this)
+            %BUILDMATERIALSPROJECTTAB 构建 Materials Project 设置页。
+            import kssolv.ui.util.Localizer.message
+
+            tab = uitab(this.tabGroup, ...
+                'Title', message( ...
+                'KSSOLV:dialogs:SettingsDialogMaterialsProjectTabName'), ...
+                'Scrollable', 'off');
+            layout = uigridlayout(tab, [4 3], ...
+                'RowHeight', {24, 'fit', 'fit', '1x'}, ...
+                'ColumnWidth', {145, '1x', 110}, ...
+                'RowSpacing', 10, ...
+                'Padding', [18 18 18 18]);
+
+            apiKeyLabel = uilabel(layout, 'Text', message( ...
+                'KSSOLV:dialogs:SettingsDialogMaterialsProjectAPIKey'));
+            apiKeyLabel.Layout.Row = 1;
+            apiKeyLabel.Layout.Column = 1;
+
+            apiKey = uieditfield(layout, 'text', ...
+                'Placeholder', message( ...
+                'KSSOLV:dialogs:SettingsDialogMaterialsProjectKeyPlaceholder'), ...
+                'ValueChangedFcn', ...
+                @(src, ~) this.materialsProjectAPIKeyEditChanged(src));
+            apiKey.Layout.Row = 1;
+            apiKey.Layout.Column = 2;
+
+            visibilityButton = uibutton(layout, ...
+                'Text', '', ...
+                'Icon', kssolv.ui.util.GetIcon('eye.svg'), ...
+                'Tooltip', message( ...
+                'KSSOLV:dialogs:SettingsDialogShowAPIKey'), ...
+                'Interruptible', 'off', ...
+                'ButtonPushedFcn', ...
+                @(~, ~) this.toggleMaterialsProjectAPIKeyVisibility());
+            visibilityButton.Layout.Row = 1;
+            visibilityButton.Layout.Column = 3;
+
+            dashboardButton = uibutton(layout, 'Text', message( ...
+                'KSSOLV:dialogs:SettingsDialogMaterialsProjectOpenAPIPage'), ...
+                'Interruptible', 'off', ...
+                'ButtonPushedFcn', ...
+                @(~, ~) this.openMaterialsProjectAPIPage());
+            dashboardButton.Layout.Row = 2;
+            dashboardButton.Layout.Column = [2 3];
+
+            note = uilabel(layout, 'Text', message( ...
+                'KSSOLV:dialogs:SettingsDialogMaterialsProjectKeyNote'), ...
+                'FontAngle', 'italic', ...
+                'FontColor', [0.35 0.35 0.35], ...
+                'VerticalAlignment', 'top', ...
+                'WordWrap', 'on');
+            note.Layout.Row = 3;
+            note.Layout.Column = [2 3];
+
+            this.widgets.MaterialsProjectTab = tab;
+            this.widgets.MaterialsProjectAPIKeyText = apiKey;
+            this.widgets.MaterialsProjectAPIKeyVisibilityButton = ...
+                visibilityButton;
+            this.widgets.MaterialsProjectAPIPageButton = dashboardButton;
         end
 
         function buildLanguagePanel(this, parent)
@@ -408,6 +478,10 @@ classdef SettingsDialog < controllib.ui.internal.dialog.AbstractDialog
             this.openAIAPIKey = settings.OpenAIAPIKey;
             this.openAIAPIKeyVisible = false;
             this.updateAPIKeyDisplay();
+            this.materialsProjectAPIKey = ...
+                settings.MaterialsProjectAPIKey;
+            this.materialsProjectAPIKeyVisible = false;
+            this.updateMaterialsProjectAPIKeyDisplay();
             this.setDropdownModels(this.widgets.OpenAIModelDropdown, ...
                 settings.OpenAIModels, settings.OpenAIModel);
 
@@ -425,6 +499,8 @@ classdef SettingsDialog < controllib.ui.internal.dialog.AbstractDialog
             settings.OllamaModels = this.widgets.OllamaModelDropdown.Items;
             settings.OpenAIBaseURL = string(this.widgets.OpenAIBaseURLText.Value);
             settings.OpenAIAPIKey = this.openAIAPIKey;
+            settings.MaterialsProjectAPIKey = ...
+                this.materialsProjectAPIKey;
             settings.OpenAIModel = string(this.widgets.OpenAIModelDropdown.Value);
             settings.OpenAIModels = this.widgets.OpenAIModelDropdown.Items;
         end
@@ -734,6 +810,63 @@ classdef SettingsDialog < controllib.ui.internal.dialog.AbstractDialog
             this.widgets.OpenAIAPIKeyVisibilityButton.Tooltip = tooltip;
         end
 
+        function materialsProjectAPIKeyEditChanged(this, editField)
+            editedValue = string(editField.Value);
+            if ~this.materialsProjectAPIKeyVisible && ...
+                    editedValue == this.maskedMaterialsProjectAPIKey() && ...
+                    strlength(this.materialsProjectAPIKey) > 0
+                return
+            end
+            this.materialsProjectAPIKey = editedValue;
+            this.materialsProjectAPIKeyVisible = false;
+            this.updateMaterialsProjectAPIKeyDisplay();
+        end
+
+        function toggleMaterialsProjectAPIKeyVisibility(this)
+            this.materialsProjectAPIKeyVisible = ...
+                ~this.materialsProjectAPIKeyVisible;
+            this.updateMaterialsProjectAPIKeyDisplay();
+        end
+
+        function updateMaterialsProjectAPIKeyDisplay(this)
+            import kssolv.ui.util.Localizer.message
+
+            if this.materialsProjectAPIKeyVisible
+                displayedValue = this.materialsProjectAPIKey;
+                iconName = 'eyeOff.svg';
+                tooltip = message( ...
+                    'KSSOLV:dialogs:SettingsDialogHideAPIKey');
+            else
+                displayedValue = "";
+                if strlength(this.materialsProjectAPIKey) > 0
+                    displayedValue = this.maskedMaterialsProjectAPIKey();
+                end
+                iconName = 'eye.svg';
+                tooltip = message( ...
+                    'KSSOLV:dialogs:SettingsDialogShowAPIKey');
+            end
+
+            this.widgets.MaterialsProjectAPIKeyText.Value = ...
+                char(displayedValue);
+            this.widgets.MaterialsProjectAPIKeyVisibilityButton.Icon = ...
+                kssolv.ui.util.GetIcon(iconName);
+            this.widgets.MaterialsProjectAPIKeyVisibilityButton.Tooltip = ...
+                tooltip;
+        end
+
+        function openMaterialsProjectAPIPage(this)
+            import kssolv.ui.util.Localizer.message
+            try
+                web(this.materialsProjectAPIURL, '-browser');
+            catch
+                uialert(this.getWidget(), message( ...
+                    'KSSOLV:dialogs:SettingsDialogMaterialsProjectOpenFailed'), ...
+                    message( ...
+                    ['KSSOLV:dialogs:' ...
+                    'SettingsDialogMaterialsProjectOpenErrorTitle']));
+            end
+        end
+
         function setConnectionState(this, provider, state, detail)
             icon = this.widgets.([provider 'StatusIcon']);
             label = this.widgets.([provider 'StatusLabel']);
@@ -788,6 +921,8 @@ classdef SettingsDialog < controllib.ui.internal.dialog.AbstractDialog
                 commandWindow.ChatBot = [];
             end
             publicSettings = rmfield(settings, 'OpenAIAPIKey');
+            publicSettings = rmfield( ...
+                publicSettings, 'MaterialsProjectAPIKey');
             publicSettings.Applied = true;
             publicSettings.Action = 'ok';
             this.finishClose(publicSettings);
@@ -802,6 +937,9 @@ classdef SettingsDialog < controllib.ui.internal.dialog.AbstractDialog
             options = this.savedSettings;
             if isfield(options, 'OpenAIAPIKey')
                 options = rmfield(options, 'OpenAIAPIKey');
+            end
+            if isfield(options, 'MaterialsProjectAPIKey')
+                options = rmfield(options, 'MaterialsProjectAPIKey');
             end
             options.Applied = false;
             options.Action = 'cancel';
@@ -847,6 +985,15 @@ classdef SettingsDialog < controllib.ui.internal.dialog.AbstractDialog
                         message('KSSOLV:dialogs:SettingsDialogAPIKeyRequired'));
                 end
             end
+            validatedMaterialsProjectAPIKey = ...
+                strip(settings.MaterialsProjectAPIKey);
+            if strlength(validatedMaterialsProjectAPIKey) > 0 && ...
+                    strlength(validatedMaterialsProjectAPIKey) ~= 32
+                error('KSSOLV:SettingsDialog:InvalidMaterialsProjectAPIKey', ...
+                    '%s', message( ...
+                    ['KSSOLV:dialogs:' ...
+                    'SettingsDialogMaterialsProjectInvalidAPIKey']));
+            end
             if strlength(strip(settings.OllamaModel)) == 0 || ...
                     strlength(strip(settings.OpenAIModel)) == 0
                 error('KSSOLV:SettingsDialog:MissingModel', '%s', ...
@@ -858,6 +1005,10 @@ classdef SettingsDialog < controllib.ui.internal.dialog.AbstractDialog
     methods (Static, Access = private)
         function value = maskedAPIKey()
             value = "sk-******";
+        end
+
+        function value = maskedMaterialsProjectAPIKey()
+            value = "********************************";
         end
 
         function models = fetchModels(provider, url, apiKey)

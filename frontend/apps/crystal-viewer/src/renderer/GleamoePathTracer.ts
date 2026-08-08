@@ -18,9 +18,11 @@ import {
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { DenoiseMaterial, GradientEquirectTexture, WebGLPathTracer } from 'three-gpu-pathtracer';
 
-import type { AtomicSceneSpec, SiteSpec, SpeciesComponent, ViewerOptions } from '../scene/types';
+import type { AtomicSceneSpec, SpeciesComponent, ViewerOptions } from '../scene/types';
 import type { ViewerTheme } from '../themes/themes';
+import { appearanceScale, scaledMetalness, scaledRoughness } from './appearance';
 import { cinematicPalette, elementMaterialProfile } from './artDirection';
+import { isAtomVisible, isHydrogenSite } from './atomVisibility';
 import { gleamoeGalaxyShader } from './GleamoeBackdrop';
 import { color, cylinderMatrix, vector } from './geometry';
 import { renderQualityProfile } from './quality';
@@ -32,21 +34,6 @@ import {
 
 const MAX_TRACE_ATOMS = 2_000;
 const MAX_TRACE_BONDS = 6_000;
-
-const isHydrogen = (site?: SiteSpec): boolean =>
-  site?.species.every((component) => component.symbol === 'H') ?? false;
-
-const atomVisible = (
-  atom: AtomicSceneSpec['atomInstances'][number],
-  site: SiteSpec | undefined,
-  options: ViewerOptions,
-): boolean =>
-  options.showAtoms &&
-  (options.showHydrogens || !isHydrogen(site)) &&
-  (atom.visibility === 'base' ||
-    atom.visibility === 'repeat' ||
-    (atom.visibility === 'boundary' && options.showBoundaryAtoms) ||
-    (atom.visibility === 'bonded' && options.showBondedOutside));
 
 const sphereSegmentGeometry = (
   widthSegments: number,
@@ -178,7 +165,7 @@ export class GleamoePathTracer {
     const scene = new Scene();
     scene.background = new Color(theme.background).lerp(new Color(0x132448), 0.24);
     scene.backgroundIntensity = 0.9;
-    scene.environmentIntensity = 0.82;
+    scene.environmentIntensity = 0.82 * appearanceScale(options.ambientLight);
 
     let environment = this.environment;
     if (!environment || environment.image.width !== environmentResolution) {
@@ -212,8 +199,8 @@ export class GleamoePathTracer {
       if (cached) return cached;
       const material = new MeshPhysicalMaterial({
         color: tint,
-        metalness: profile.metalness,
-        roughness: profile.roughness,
+        metalness: scaledMetalness(profile.metalness, options.metalness),
+        roughness: scaledRoughness(profile.roughness, options.roughness),
         clearcoat: profile.clearcoat,
         clearcoatRoughness: profile.clearcoatRoughness,
         ior: theme.atom.ior,
@@ -238,7 +225,7 @@ export class GleamoePathTracer {
 
     for (const atom of sceneSpec.atomInstances) {
       const site = sites.get(atom.siteIndex);
-      if (!site || !atomVisible(atom, site, options)) continue;
+      if (!site || !isAtomVisible(atom, site, options)) continue;
       const total = site.species.reduce((sum, component) => sum + component.occupancy, 0);
       let cursor = 0;
       const components: Array<{ component: SpeciesComponent | null; occupancy: number }> = [
@@ -285,8 +272,8 @@ export class GleamoePathTracer {
       if (cached) return cached;
       const material = new MeshPhysicalMaterial({
         color: tint,
-        metalness: theme.bond.metalness,
-        roughness: theme.bond.roughness,
+        metalness: scaledMetalness(theme.bond.metalness, options.metalness),
+        roughness: scaledRoughness(theme.bond.roughness, options.roughness),
         clearcoat: theme.bond.clearcoat,
         clearcoatRoughness: theme.bond.clearcoatRoughness,
       });
@@ -309,7 +296,8 @@ export class GleamoePathTracer {
     };
     for (const bond of sceneSpec.bondInstances) {
       const hydrogen =
-        isHydrogen(sites.get(bond.fromSiteIndex)) || isHydrogen(sites.get(bond.toSiteIndex));
+        isHydrogenSite(sites.get(bond.fromSiteIndex)) ||
+        isHydrogenSite(sites.get(bond.toSiteIndex));
       const visible =
         options.showBonds &&
         (options.showHydrogens || !hydrogen) &&
@@ -332,8 +320,18 @@ export class GleamoePathTracer {
     const radius = Math.max(bounds.getSize(new Vector3()).length() * 0.5, 1);
 
     const palette = cinematicPalette(sceneSpec, options.colorMode);
-    const keyLight = new RectAreaLight(palette.key, 5.4, radius * 2.5, radius * 2.15);
-    const rimLight = new RectAreaLight(palette.rim, 3.7, radius * 1.7, radius * 2.3);
+    const keyLight = new RectAreaLight(
+      palette.key,
+      5.4 * appearanceScale(options.directionalLight),
+      radius * 2.5,
+      radius * 2.15,
+    );
+    const rimLight = new RectAreaLight(
+      palette.rim,
+      3.7 * appearanceScale(options.directionalLight),
+      radius * 1.7,
+      radius * 2.3,
+    );
     this.lightCenter.copy(center);
     this.lightRadius = radius;
     this.keyLight = keyLight;

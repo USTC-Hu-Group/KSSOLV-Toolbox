@@ -265,6 +265,12 @@ export const validateScene = (value: unknown): AtomicSceneSpec => {
   if (kind !== 'crystal' && kind !== 'molecule') {
     throw new SceneValidationError('unsupported atomic scene kind', 'kind');
   }
+  if (scene.viewHint !== undefined && scene.viewHint !== 'slab') {
+    throw new SceneValidationError('uses an unsupported view hint', 'viewHint');
+  }
+  if (kind === 'molecule' && scene.viewHint !== undefined) {
+    throw new SceneValidationError('molecule scenes cannot use crystal view hints', 'viewHint');
+  }
   const analysis = objectAt(scene.analysis, 'analysis');
   stringAt(scene.requestId, 'requestId');
   const sites = arrayAt(scene.sites, 'sites').map(parseSite);

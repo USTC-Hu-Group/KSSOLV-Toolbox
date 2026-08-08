@@ -10,6 +10,11 @@ import type {
 } from './components/histogramInteraction';
 import SettingsPanel from './components/SettingsPanel.vue';
 import ViewerToolbar from './components/ViewerToolbar.vue';
+import {
+  densityDisplayFor,
+  toDisplayedDensity,
+  type DensityDisplayUnit,
+} from './densityUnits';
 import { createVolumeRenderer } from './renderer/createVolumeRenderer';
 import { sliceExportStem, volumeExportStem } from './renderer/exportNames';
 import { decodeValues } from './renderer/gridMath';
@@ -21,6 +26,7 @@ import type {
 import { useVolumeStore, type VolumeOptions } from './state/volumeStore';
 import { BoundedLruCache } from './state/BoundedLruCache';
 import { useAcceptanceSoak } from './state/useAcceptanceSoak';
+import { volumeViewerThemes } from './themes';
 
 const store = useVolumeStore();
 const viewport = ref<HTMLElement>();
@@ -30,6 +36,7 @@ const probe = ref<VolumeProbe>();
 const percentiles = ref<Float32Array>();
 const histogramCounts = ref<Uint32Array>();
 const rendererBackend = ref<'webgl2' | 'canvas2d'>('webgl2');
+const densityUnit = ref<DensityDisplayUnit>('angstrom-3');
 const statusVisible = ref(false);
 const acceptanceMode = new URLSearchParams(window.location.search).has('kssolvTest');
 let renderer: VolumeRendererApi | undefined;
@@ -84,6 +91,25 @@ const values = computed(() => {
         channel.transport.offset,
       )
     : undefined;
+});
+const densityDisplay = computed(() =>
+  densityDisplayFor(store.activeChannel.value?.units ?? '', densityUnit.value),
+);
+const toggleDensityUnit = (): void => {
+  if (!densityDisplay.value.convertible) return;
+  densityUnit.value = densityUnit.value === 'angstrom-3' ? 'bohr-3' : 'angstrom-3';
+};
+const themeStyle = computed(() => {
+  const theme = volumeViewerThemes[store.options.theme];
+  return {
+    '--viewer-background': theme.background,
+    '--viewer-foreground': theme.foreground,
+    '--viewer-muted': theme.muted,
+    '--viewer-panel': theme.panel,
+    '--viewer-panel-border': theme.panelBorder,
+    '--viewer-accent': theme.accent,
+    '--viewer-selection': theme.selection,
+  };
 });
 
 const applyOptions = (next: VolumeOptions): void => {
@@ -421,7 +447,11 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main :class="{ minimal: minimalUi }">
+  <main
+    class="volume-viewer"
+    :class="[`theme-${store.options.theme}`, { minimal: minimalUi }]"
+    :style="themeStyle"
+  >
     <div ref="viewport" class="viewport" />
 
     <section v-if="store.scene.value && !minimalUi" class="info-card">
@@ -431,7 +461,22 @@ onBeforeUnmount(() => {
         <div><dt>Format</dt><dd>{{ store.scene.value.source.format.toUpperCase() }}</dd></div>
         <div><dt>Grid</dt><dd>{{ store.scene.value.grid.dimensions.join(' × ') }}</dd></div>
         <div><dt>Channel</dt><dd>{{ store.activeChannel.value?.label }}</dd></div>
-        <div><dt>Units</dt><dd>{{ store.activeChannel.value?.units }}</dd></div>
+        <div>
+          <dt>Units</dt>
+          <dd>
+            <button
+              v-if="densityDisplay.convertible"
+              class="unit-toggle"
+              type="button"
+              :aria-label="`Switch density units from ${densityDisplay.units}`"
+              :title="`Switch to ${densityUnit === 'angstrom-3' ? 'bohr⁻³' : 'Å⁻³'}`"
+              @click="toggleDensityUnit"
+            >
+              {{ densityDisplay.units }} ⇄
+            </button>
+            <template v-else>{{ densityDisplay.units }}</template>
+          </dd>
+        </div>
       </dl>
     </section>
 
@@ -452,7 +497,9 @@ onBeforeUnmount(() => {
       :model-value="{ ...store.options }"
       :percentiles="percentiles"
       :backend="rendererBackend"
+      :display-unit="densityUnit"
       @update:model-value="applyOptions"
+      @update:display-unit="densityUnit = $event"
       @export-isosurface="exportIsosurface"
       @export-slice="exportSlice"
       @close="settingsOpen = false"
@@ -460,7 +507,7 @@ onBeforeUnmount(() => {
 
     <div v-if="probe && !minimalUi" class="probe-card">
       <strong>{{ store.activeChannel.value?.label }}</strong>
-      <span>{{ probe.value.toPrecision(7) }} {{ store.activeChannel.value?.units }}</span>
+      <span>{{ toDisplayedDensity(probe.value, densityDisplay).toPrecision(7) }} {{ densityDisplay.units }}</span>
       <small>grid ({{ probe.grid.map((value) => value.toFixed(2)).join(', ') }})</small>
       <button @click="probe = undefined">×</button>
     </div>
@@ -473,6 +520,8 @@ onBeforeUnmount(() => {
       :negative-threshold="store.options.negativeThreshold"
       :range-minimum="store.options.rangeMinimum"
       :range-maximum="store.options.rangeMaximum"
+      :display-scale="densityDisplay.scale"
+      :display-units="densityDisplay.units"
       :interaction="store.options.mode === 'isosurface' ? 'threshold' : 'range'"
       @select-threshold="selectHistogramThreshold"
       @select-range="selectHistogramRange"

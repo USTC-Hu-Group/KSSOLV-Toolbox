@@ -220,6 +220,22 @@ classdef CohpPlotterTest < matlab.unittest.TestCase
             testCase.verifyTrue(isgraphics(ax,"axes"));close(fig);
         end
 
+        function wignerSeitzPlotUsesUniqueBoundaryEdges(testCase)
+            import kssolv.analysis.matgenlab.core.Lattice
+            import kssolv.analysis.matgenlab.electronic_structure.plot_wigner_seitz
+            matrix=[ ...
+                -0.1315582766583831,0.32889479254503001, ...
+                0.18477464588139864; ...
+                0.059096720783089994,0.023495436356213435, ...
+                -0.0070269996842483601; ...
+                -0.67403725598345854,0.726688312106062, ...
+                -3.4036609657731893];
+
+            [figureHandle,axesHandle]=plot_wigner_seitz(Lattice(matrix));
+            testCase.addTeardown(@()close(figureHandle));
+            testCase.verifyNumElements(findobj(axesHandle,"Type","line"),24);
+        end
+
         function boltztrapPlotAdapters(testCase)
             import kssolv.analysis.matgenlab.electronic_structure.*
             energies=linspace(-1,2,5);

@@ -119,6 +119,34 @@ classdef Structure < kssolv.services.filemanager.AbstractItem
                 displayObj.Display();
             end
         end
+
+        function structure = importMaterialsProjectStructure(this, model, ...
+                materialId, formula, showDisplay)
+            %IMPORTMATERIALSPROJECTSTRUCTURE Add an MP crystal to Project.
+            arguments
+                this
+                model kssolv.analysis.matgenlab.core.IStructure
+                materialId (1, 1) string
+                formula (1, 1) string
+                showDisplay (1, 1) logical = true
+            end
+
+            label = formula + " (" + materialId + ")";
+            structure = ...
+                kssolv.services.filemanager.Structure(label);
+            structure.description = "Materials Project: " + materialId;
+            structure.data = ...
+                kssolv.services.fileparser.ModeledStructureData( ...
+                model, label);
+            this.addChildrenItem(structure);
+
+            if showDisplay
+                displayObj = ...
+                    kssolv.ui.components.figuredocument.MoleculeDisplay( ...
+                    model, "", structure.name);
+                displayObj.Display();
+            end
+        end
     end
 
     methods (Static)

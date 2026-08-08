@@ -9,6 +9,8 @@
 
 # Test Data Directory
 data/
+!/+kssolv/+settings/data/
+!/+kssolv/+settings/data/materials-project-default.json
 
 # P-Code files
 **/*.p

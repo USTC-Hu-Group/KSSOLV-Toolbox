@@ -25,6 +25,30 @@ const axisIndex = (axis: CrystalCameraAxis): number =>
 /** Standard isometric direction used by the Reset camera command. */
 export const defaultCameraDirection = (): Vector3 => new Vector3(1, 1, 1).normalize();
 
+/**
+ * Compose the conventional oblique slab view while keeping the exact
+ * surface normal vertical on screen. Slab cells use a and b as their
+ * in-plane vectors, so a x b is the physical surface normal even when
+ * the direct c vector is skewed.
+ */
+export const slabCameraFrame = (scene: AtomicSceneSpec): CameraAxisFrame => {
+  const direction = defaultCameraDirection();
+  if (scene.kind === 'molecule') {
+    return { direction, up: new Vector3(0, 0, 1) };
+  }
+
+  const normal = new Vector3(...scene.structure.lattice[0])
+    .cross(new Vector3(...scene.structure.lattice[1]))
+    .normalize();
+  let up = normal.clone().addScaledVector(direction, -normal.dot(direction));
+  if (up.lengthSq() <= Number.EPSILON) {
+    const inPlane = latticeAxisDirections(scene)[0];
+    direction.copy(inPlane).addScaledVector(normal, 0.7).normalize();
+    up = normal.clone().addScaledVector(direction, -normal.dot(direction));
+  }
+  return { direction, up: up.normalize() };
+};
+
 export const latticeAxisDirectionsFromVectors = (
   lattice: Matrix3Tuple,
 ): [Vector3, Vector3, Vector3] => [

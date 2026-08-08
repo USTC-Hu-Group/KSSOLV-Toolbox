@@ -4,6 +4,44 @@
     <message>
         <!-- HomeTab: callbackImportStructureFromFile -->
         <entry key="ImportStructureFromFile">Select the Structure File to Import</entry>
+        <!-- MaterialsProjectDialog -->
+        <entry key="MaterialsProjectDialogTitle">Import Structure from Materials Project</entry>
+        <entry key="MaterialsProjectAPIKey">API key:</entry>
+        <entry key="MaterialsProjectDashboard">Get API key</entry>
+        <entry key="MaterialsProjectQuery">Formula / MP ID:</entry>
+        <entry key="MaterialsProjectSearch">Search</entry>
+        <entry key="MaterialsProjectOnlyElements">Only these elements</entry>
+        <entry key="MaterialsProjectAtLeastElements">At least these elements</entry>
+        <entry key="MaterialsProjectFormulaOrId">Formula / MP ID</entry>
+        <entry key="MaterialsProjectShowAPIKey">Show API key</entry>
+        <entry key="MaterialsProjectHideAPIKey">Hide API key</entry>
+        <entry key="MaterialsProjectNoElementsSelected">No elements selected</entry>
+        <entry key="MaterialsProjectSelectedElements">Selected elements: %s</entry>
+        <entry key="MaterialsProjectIdColumn">Material ID</entry>
+        <entry key="MaterialsProjectFormulaColumn">Formula</entry>
+        <entry key="MaterialsProjectSpaceGroupColumn">Space group</entry>
+        <entry key="MaterialsProjectBandGapColumn">Band gap (eV)</entry>
+        <entry key="MaterialsProjectHullColumn">E above hull (eV/atom)</entry>
+        <entry key="MaterialsProjectStableColumn">Stable</entry>
+        <entry key="MaterialsProjectSitesColumn">Sites</entry>
+        <entry key="MaterialsProjectReady">Select elements or enter a formula / MP ID to search. The first 100 results are shown.</entry>
+        <entry key="MaterialsProjectClearElements">Clear elements</entry>
+        <entry key="MaterialsProjectImportSelected">Import selected</entry>
+        <entry key="MaterialsProjectInvalidSearch">Unable to start search</entry>
+        <entry key="MaterialsProjectAPIKeyRequired">Enter a valid 32-character Materials Project API key. It can also be configured with the MP_API_KEY or PMG_MAPI_KEY environment variable.</entry>
+        <entry key="MaterialsProjectQueryRequired">Enter a formula or Materials Project ID.</entry>
+        <entry key="MaterialsProjectElementsRequired">Select at least one element.</entry>
+        <entry key="MaterialsProjectSearching">Searching Materials Project…</entry>
+        <entry key="MaterialsProjectNoResults">No matching materials were found.</entry>
+        <entry key="MaterialsProjectResultsFound">Found %d results. Select a structure in the table to import it.</entry>
+        <entry key="MaterialsProjectDownloading">Downloading the crystal structure for %s…</entry>
+        <entry key="MaterialsProjectImported">Imported %s into the current project.</entry>
+        <entry key="MaterialsProjectAuthenticationFailed">Materials Project authentication failed. Check the API key.</entry>
+        <entry key="MaterialsProjectTimedOut">The Materials Project request timed out. Check the network and try again.</entry>
+        <entry key="MaterialsProjectNetworkFailed">Materials Project could not be reached. Check the network, proxy, or secure connection settings.</entry>
+        <entry key="MaterialsProjectUnexpectedError">The Materials Project operation failed: %s</entry>
+        <entry key="MaterialsProjectYes">Yes</entry>
+        <entry key="MaterialsProjectNo">No</entry>
         <entry key="ImportVolumeFromFile">Select CHGCAR, Cube, or XSF Volume Data</entry>
         <entry key="VolumeFilterAllSupported">Volume data (CHGCAR, Cube, XSF)</entry>
         <entry key="VolumeFilterVasp">VASP charge density (CHGCAR, CHG)</entry>
@@ -28,6 +66,13 @@
         <entry key="AppCanCloseSave">Save</entry>
         <entry key="AppCanCloseDoNotSave">Don't Save</entry>
         <entry key="AppCanCloseCancel">Cancel</entry>
+
+        <!-- MoleculeDisplay: canCloseDocument -->
+        <entry key="StructureCanCloseTitle">Save structure changes</entry>
+        <entry key="StructureCanCloseMessage">This structure has unsaved modeling changes. Save them to the Project before closing?</entry>
+        <entry key="StructureCanCloseSave">Save to Project</entry>
+        <entry key="StructureCanCloseDiscard">Discard Changes</entry>
+        <entry key="StructureCanCloseCancel">Cancel</entry>
 
         <!-- HomeTab: callbackFileProjectButton -->
         <entry key="OpenKSFileTitle">Open KSSOLV Project file</entry>
@@ -90,6 +135,15 @@
         <entry key="SettingsDialogCancelButtonText">Cancel</entry>
         <!-- SettingsDialog/GeneralTab -->
         <entry key="SettingsDialogGeneralTabName">General</entry>
+        <!-- SettingsDialog/MaterialsProjectTab -->
+        <entry key="SettingsDialogMaterialsProjectTabName">Materials Project</entry>
+        <entry key="SettingsDialogMaterialsProjectAPIKey">API key:</entry>
+        <entry key="SettingsDialogMaterialsProjectKeyPlaceholder">Enter the 32-character API key</entry>
+        <entry key="SettingsDialogMaterialsProjectOpenAPIPage">View My API Key</entry>
+        <entry key="SettingsDialogMaterialsProjectKeyNote">Your API key is encrypted and takes priority. The button above opens the Materials Project API page in your system browser.</entry>
+        <entry key="SettingsDialogMaterialsProjectInvalidAPIKey">The Materials Project API key must contain 32 characters, or be left empty to use the bundled default key.</entry>
+        <entry key="SettingsDialogMaterialsProjectOpenErrorTitle">Unable to Open Materials Project</entry>
+        <entry key="SettingsDialogMaterialsProjectOpenFailed">The Materials Project API page could not be opened in the system browser.</entry>
         <!-- SettingsDialog/GeneralTab/LanguagePanel -->
         <entry key="SettingsDialogGeneralTabLanguagePanelName">Language</entry>
         <entry key="SettingsDialogGeneralTabLanguageLabel">Select the language:</entry>

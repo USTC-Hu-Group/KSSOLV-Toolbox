@@ -30,5 +30,30 @@ classdef SymmetryFunctionalTest < matlab.unittest.TestCase
                     testCase.verifyEqual(numel(result.data), 6);
             end
         end
+
+        function toleranceControlsEquivalentAtomDetection(testCase)
+            lattice = 4 * eye(3);
+            coordinates = [
+                0, 0, 0
+                0.00125, 0.5, 0.5
+                0.5, 0, 0.5
+                0.5, 0.5, 0
+                ];
+            model = kssolv.analysis.matgenlab.core.Structure( ...
+                lattice, {"Si", "Si", "Si", "Si"}, coordinates);
+
+            fine = kssolv.modeling.CommandExecutor.execute( ...
+                model, "find_symmetry", struct( ...
+                "symprec", 0.001, "angleTolerance", 5));
+            good = kssolv.modeling.CommandExecutor.execute( ...
+                model, "find_symmetry", struct( ...
+                "symprec", 0.01, "angleTolerance", 5));
+
+            testCase.verifyGreaterThan( ...
+                numel(unique(fine.data.equivalent_atoms)), 1);
+            testCase.verifyEqual( ...
+                numel(unique(good.data.equivalent_atoms)), 1);
+            testCase.verifyNotEqual(fine.data.number, good.data.number);
+        end
     end
 end

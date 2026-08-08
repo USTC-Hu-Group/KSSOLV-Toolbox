@@ -10,6 +10,8 @@ import type {
   ViewerOptions,
 } from '../scene/types';
 import type { ViewerTheme } from '../themes/themes';
+import { isAtomVisible, isHydrogenSite } from './atomVisibility';
+import { repeatedCellEdges } from './cellEdges';
 
 export type ImageExportFormat = 'png' | 'jpeg' | 'tiff' | 'svg' | 'pdf-vector' | 'pdf-raster';
 
@@ -116,21 +118,6 @@ const atomRadius = (
   if (options.radiusMode === 'uniform' || !component) return 0.5 * options.atomScale;
   return Math.max(component.atomicRadius, 0.35) * options.atomScale;
 };
-
-const isHydrogen = (site?: SiteSpec): boolean =>
-  site?.species.every((component) => component.symbol === 'H') ?? false;
-
-const atomVisible = (
-  atom: AtomicSceneSpec['atomInstances'][number],
-  site: SiteSpec | undefined,
-  options: ViewerOptions,
-): boolean =>
-  options.showAtoms &&
-  (options.showHydrogens || !isHydrogen(site)) &&
-  (atom.visibility === 'base' ||
-    atom.visibility === 'repeat' ||
-    (atom.visibility === 'boundary' && options.showBoundaryAtoms) ||
-    (atom.visibility === 'bonded' && options.showBondedOutside));
 
 const project = (
   value: Vector3 | Vector3Tuple,
@@ -258,7 +245,7 @@ const addBonds = (
   );
   for (const bond of input.scene.bondInstances) {
     const hydrogen =
-      isHydrogen(sites.get(bond.fromSiteIndex)) || isHydrogen(sites.get(bond.toSiteIndex));
+      isHydrogenSite(sites.get(bond.fromSiteIndex)) || isHydrogenSite(sites.get(bond.toSiteIndex));
     if (hydrogen && !input.options.showHydrogens) continue;
     const lanes = input.options.showBondOrders
       ? Math.max(1, Math.min(3, Math.round(bond.order ?? 1)))
@@ -315,7 +302,7 @@ const addAtoms = (
 ): void => {
   for (const atom of input.scene.atomInstances) {
     const site = sites.get(atom.siteIndex);
-    if (!site || !atomVisible(atom, site, input.options)) continue;
+    if (!site || !isAtomVisible(atom, site, input.options)) continue;
     const center = project(atom.position, input.camera, input.width, input.height);
     const total = site.species.reduce((sum, component) => sum + component.occupancy, 0);
     const records: Array<{ component: SiteSpec['species'][number] | null; occupancy: number }> = [
@@ -356,36 +343,10 @@ const addAtoms = (
 const addCell = (input: VectorExportInput, items: SvgItem[]): void => {
   if (input.scene.kind !== 'crystal' || !input.options.showUnitCell) return;
   const { structure } = input.scene;
-  const [a, b, c] = structure.lattice.map((entry, index) =>
-    vector(entry).multiplyScalar(structure.repeat[index]),
-  );
-  const corners = [
-    new Vector3(),
-    a,
-    b,
-    c,
-    a.clone().add(b),
-    a.clone().add(c),
-    b.clone().add(c),
-    a.clone().add(b).add(c),
-  ];
-  const edges = [
-    [0, 1],
-    [0, 2],
-    [0, 3],
-    [1, 4],
-    [1, 5],
-    [2, 4],
-    [2, 6],
-    [3, 5],
-    [3, 6],
-    [4, 7],
-    [5, 7],
-    [6, 7],
-  ];
-  for (const [edgeIndex, [fromIndex, toIndex]] of edges.entries()) {
-    const from = project(corners[fromIndex], input.camera, input.width, input.height);
-    const to = project(corners[toIndex], input.camera, input.width, input.height);
+  const edges = repeatedCellEdges(structure.lattice, structure.repeat);
+  for (const [edgeIndex, [fromPoint, toPoint]] of edges.entries()) {
+    const from = project(fromPoint, input.camera, input.width, input.height);
+    const to = project(toPoint, input.camera, input.width, input.height);
     const projectedLength = Math.hypot(to.x - from.x, to.y - from.y);
     const segmentCount = Math.min(64, Math.max(1, Math.ceil(projectedLength / 10)));
     for (let segmentIndex = 0; segmentIndex < segmentCount; segmentIndex += 1) {

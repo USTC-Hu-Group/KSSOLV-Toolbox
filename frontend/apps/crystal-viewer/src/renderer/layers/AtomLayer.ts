@@ -21,7 +21,9 @@ import type {
   ViewerOptions,
 } from '../../scene/types';
 import type { ViewerTheme } from '../../themes/themes';
+import { appearanceScale, scaledMetalness, scaledRoughness } from '../appearance';
 import { encodeElementMaterialColor, installElementMaterialShader } from '../artDirection';
+import { isAtomVisible } from '../atomVisibility';
 import { color, geometryCapacity, vector } from '../geometry';
 import { renderQualityProfile } from '../quality';
 
@@ -122,14 +124,14 @@ export class AtomLayer {
     const material = !usePhysicalMaterial
       ? new MeshPhongMaterial({
           color: 0xffffff,
-          specular: 0x8f8f8f,
-          shininess: theme.atom.shininess,
+          specular: new Color(0x8f8f8f).multiplyScalar(appearanceScale(options.metalness)),
+          shininess: theme.atom.shininess / Math.max(appearanceScale(options.roughness), 0.2),
           side: FrontSide,
         })
       : new MeshPhysicalMaterial({
           color: 0xffffff,
-          metalness: theme.atom.metalness,
-          roughness: theme.atom.roughness,
+          metalness: scaledMetalness(theme.atom.metalness, options.metalness),
+          roughness: scaledRoughness(theme.atom.roughness, options.roughness),
           clearcoat: theme.atom.clearcoat,
           clearcoatRoughness: theme.atom.clearcoatRoughness,
           ior: theme.atom.ior,
@@ -153,7 +155,7 @@ export class AtomLayer {
           side: FrontSide,
         });
     if (material instanceof MeshPhysicalMaterial && this.artDirectedMaterials) {
-      installElementMaterialShader(material);
+      installElementMaterialShader(material, options.metalness, options.roughness);
     }
     this.mesh = new BatchedMesh(
       Math.max(records.length, 1),
@@ -216,27 +218,20 @@ export class AtomLayer {
   updateVisibility(options: ViewerOptions): void {
     this.options = options;
     for (const [batchId, record] of this.records) {
-      const visible =
-        options.showAtoms &&
-        (options.showHydrogens ||
-          !record.site.species.every((component) => component.symbol === 'H')) &&
-        (record.atom.visibility === 'base' ||
-          record.atom.visibility === 'repeat' ||
-          (record.atom.visibility === 'boundary' && options.showBoundaryAtoms) ||
-          (record.atom.visibility === 'bonded' && options.showBondedOutside));
-      this.mesh.setVisibleAt(batchId, visible);
+      this.mesh.setVisibleAt(batchId, isAtomVisible(record.atom, record.site, options));
     }
   }
 
   updateTheme(theme: ViewerTheme): void {
     const material = this.mesh.material;
     if (material instanceof MeshPhongMaterial) {
-      material.shininess = theme.atom.shininess;
-      material.specular.set(0x8f8f8f);
+      material.shininess =
+        theme.atom.shininess / Math.max(appearanceScale(this.options.roughness), 0.2);
+      material.specular.set(0x8f8f8f).multiplyScalar(appearanceScale(this.options.metalness));
       material.side = FrontSide;
     } else if (material instanceof MeshPhysicalMaterial) {
-      material.metalness = theme.atom.metalness;
-      material.roughness = theme.atom.roughness;
+      material.metalness = scaledMetalness(theme.atom.metalness, this.options.metalness);
+      material.roughness = scaledRoughness(theme.atom.roughness, this.options.roughness);
       material.clearcoat = theme.atom.clearcoat;
       material.clearcoatRoughness = theme.atom.clearcoatRoughness;
       material.ior = theme.atom.ior;
@@ -257,13 +252,6 @@ export class AtomLayer {
         theme.id === 'gleamoe-premiror' ? 1.35 : theme.id === 'materials' ? 0.34 : 1;
       material.side = FrontSide;
     }
-    material.needsUpdate = true;
-  }
-
-  setCinematicFocus(active: boolean): void {
-    const material = this.mesh.material;
-    if (!(material instanceof MeshPhysicalMaterial) || !this.artDirectedMaterials) return;
-    material.envMapIntensity = active ? 0.38 : 1.35;
     material.needsUpdate = true;
   }
 

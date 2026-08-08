@@ -2,6 +2,7 @@ import type { VolumeChannelSpec, VolumeSceneSpec } from '@kssolv/volume-scene';
 import type { CrystalCameraAxis } from '@kssolv/three-scene';
 
 import type { VolumeOptions } from '../state/volumeStore';
+import { appearanceScale } from '../themes';
 import { decodeValues } from './gridMath';
 import {
   encodeSliceCsv,
@@ -65,11 +66,13 @@ export class CanvasVolumeFallback implements VolumeRendererApi {
       channel.transport.offset,
     );
     this.options = { ...options, mode: 'slices' };
+    this.applyAppearance(options);
     this.render();
   }
 
   setOptions(options: VolumeOptions): void {
     this.options = { ...options, mode: 'slices' };
+    this.applyAppearance(options);
     this.render();
   }
 
@@ -146,6 +149,10 @@ export class CanvasVolumeFallback implements VolumeRendererApi {
   private requiredOptions(): VolumeOptions {
     if (!this.options) throw new Error('No volume slice is available.');
     return this.options;
+  }
+
+  private applyAppearance(options: VolumeOptions): void {
+    this.canvas.style.filter = `brightness(${appearanceScale(options.brightness)}) contrast(${appearanceScale(options.contrast)})`;
   }
 
   private slice() {

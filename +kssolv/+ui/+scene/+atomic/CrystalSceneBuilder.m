@@ -42,6 +42,8 @@ classdef CrystalSceneBuilder
                 options.requestId string = ""
             end
             started = tic;
+            isSlab = isa(structure, ...
+                "kssolv.analysis.matgenlab.core.Slab");
             repeat = round(options.repeat);
             if any(repeat < 1) || any(repeat > 8)
                 error("KSSOLV:CrystalViewer:Repeat", ...
@@ -215,6 +217,9 @@ classdef CrystalSceneBuilder
                         string(matgenlabVersion.PymatgenVersion), ...
                     "elapsedMilliseconds", toc(started) * 1000), ...
                 "warnings", warnings);
+            if isSlab
+                scene.viewHint = "slab";
+            end
             kssolv.ui.scene.atomic.CrystalSceneValidator.validate(scene);
         end
     end

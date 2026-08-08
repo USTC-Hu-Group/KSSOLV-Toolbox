@@ -1,6 +1,15 @@
+import {
+  Color,
+  LineBasicMaterial,
+  LineSegments,
+  Mesh,
+  MeshPhysicalMaterial,
+} from 'three';
+
 import type { CrystalSceneSpec } from '@kssolv/atomic-scene';
 import { describe, expect, it } from 'vitest';
 
+import { defaultVolumeAppearance } from '../state/volumeStore';
 import { AtomicOverlayLayer } from './AtomicOverlayLayer';
 
 const scene = (): CrystalSceneSpec => ({
@@ -69,6 +78,33 @@ describe('atomic overlay bounds', () => {
     expect(bounds.min.x).toBeLessThanOrEqual(0);
     expect(bounds.max.x).toBeGreaterThan(20.5);
 
+    layer.dispose();
+  });
+
+  it('applies the crystal viewer radius, color, and theme choices', () => {
+    const layer = new AtomicOverlayLayer(scene(), {
+      ...defaultVolumeAppearance(),
+      theme: 'gleamoe-premiror',
+      colorMode: 'jmol',
+      radiusMode: 'uniform',
+      atomScale: 0.6,
+    });
+    const meshes: Mesh[] = [];
+    layer.traverse((entry) => {
+      if (entry instanceof Mesh) meshes.push(entry);
+    });
+    expect(meshes).toHaveLength(1);
+    meshes[0].geometry.computeBoundingSphere();
+    expect(meshes[0].geometry.boundingSphere?.radius).toBeCloseTo(0.3, 4);
+    expect(meshes[0].material).toBeInstanceOf(MeshPhysicalMaterial);
+    expect((meshes[0].material as MeshPhysicalMaterial).color.getHex()).toBe(
+      new Color(240 / 255, 200 / 255, 160 / 255).getHex(),
+    );
+
+    const cellMaterial = (layer.children[3].children[0] as LineSegments)
+      .material;
+    expect(cellMaterial).toBeInstanceOf(LineBasicMaterial);
+    expect((cellMaterial as LineBasicMaterial).color.getHex()).toBe(0x85bde7);
     layer.dispose();
   });
 });

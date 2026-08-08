@@ -2,9 +2,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createVolumeRenderer } from './createVolumeRenderer';
 import { createDebugVolume } from '../state/debugVolume';
-import type { VolumeOptions } from '../state/volumeStore';
+import { defaultVolumeAppearance, type VolumeOptions } from '../state/volumeStore';
 
 const options: VolumeOptions = {
+  ...defaultVolumeAppearance(),
   mode: 'isosurface',
   isovalueMode: 'absolute',
   channelId: 'density',
@@ -20,6 +21,8 @@ const options: VolumeOptions = {
   rangeMaximum: 1,
   sliceAxis: 'k',
   sliceIndex: 2,
+  sliceIndices: [2, 2, 2],
+  sliceVisibility: [true, true, true],
   interpolation: 'nearest',
   volumeQuality: 'balanced',
   gradientOpacity: 0.3,

@@ -43,6 +43,24 @@ classdef ProjectTest < matlab.unittest.TestCase
             json = project.encodeToJSON(1);
             fprintf(json);
         end
+
+        function importsMaterialsProjectStructure(testCase)
+            project = kssolv.services.filemanager.Project();
+            structureRoot = project.findChildrenItem("Structure");
+            model = kssolv.analysis.matgenlab.core.Structure( ...
+                4 * eye(3), {"Si"}, [0, 0, 0]);
+
+            item = structureRoot.importMaterialsProjectStructure( ...
+                model, "mp-149", "Si", false);
+
+            testCase.verifyEqual(item.label, "Si (mp-149)");
+            testCase.verifyEqual(item.description, ...
+                "Materials Project: mp-149");
+            testCase.verifyEqual(item.parent, structureRoot);
+            testCase.verifyEqual(string( ...
+                item.data.MatgenlabObject.composition.reduced_formula), ...
+                "Si");
+            testCase.verifyTrue(project.isDirty);
+        end
     end
 end
-

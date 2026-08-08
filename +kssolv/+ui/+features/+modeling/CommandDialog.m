@@ -19,6 +19,8 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
         Width (1,1) double = 560
         Height (1,1) double = 160
         FormHeight (1,1) double = 70
+        HelpExpanded (1,1) logical = false
+        HelpContentHeight (1,1) double = 0
     end
 
     methods
@@ -83,8 +85,8 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
             figure = this.getWidget();
             figure.Position(3:4) = [this.Width, this.Height];
 
-            this.DialogLayout = uigridlayout(figure, [3, 1], ...
-                "RowHeight", {"fit", this.FormHeight, "fit"}, ...
+            this.DialogLayout = uigridlayout(figure, [4, 1], ...
+                "RowHeight", {"fit", this.FormHeight, 0, "fit"}, ...
                 "ColumnWidth", {"1x"}, ...
                 "RowSpacing", 10, ...
                 "Padding", [14, 16, 14, 12], ...
@@ -93,6 +95,7 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
             this.buildHeader();
             this.buildForm();
             this.Widgets.FormLayout = this.FormLayout;
+            this.buildHelp();
             this.buildButtons();
             this.loadInitialValues();
             this.applyConditions();
@@ -157,23 +160,43 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
                 presentation = ...
                     kssolv.ui.features.modeling.ParameterPresentation.describe( ...
                     this.CommandInfo.id, field);
-                fieldLayout = uigridlayout(this.FormLayout, [2, 1], ...
-                    "ColumnWidth", {"1x"}, ...
-                    "RowHeight", {"fit", "fit"}, ...
-                    "RowSpacing", 4, ...
-                    "Padding", 0);
+                isLogical = presentation.control == "logical";
+                if isLogical
+                    fieldLayout = uigridlayout( ...
+                        this.FormLayout, [1, 1], ...
+                        "ColumnWidth", {"1x"}, ...
+                        "RowHeight", {"fit"}, ...
+                        "Padding", 0);
+                else
+                    fieldLayout = uigridlayout( ...
+                        this.FormLayout, [2, 1], ...
+                        "ColumnWidth", {"1x"}, ...
+                        "RowHeight", {"fit", "fit"}, ...
+                        "RowSpacing", 4, ...
+                        "Padding", 0);
+                end
                 fieldLayout.Layout.Row = index;
 
-                label = uilabel(fieldLayout, ...
-                    "Text", presentation.label, ...
-                    "Tooltip", presentation.tooltip, ...
-                    "HorizontalAlignment", "left", ...
-                    "WordWrap", "on");
-                label.Layout.Row = 1;
-                label.Layout.Column = 1;
+                if isLogical
+                    label = [];
+                else
+                    label = uilabel(fieldLayout, ...
+                        "Text", presentation.label, ...
+                        "Tooltip", presentation.tooltip, ...
+                        "HorizontalAlignment", "left", ...
+                        "WordWrap", "on");
+                    label.Layout.Row = 1;
+                    label.Layout.Column = 1;
+                end
 
                 entry = this.createControl( ...
                     fieldLayout, field, presentation);
+                if isLogical
+                    % The checkbox text is the field label.  This avoids a
+                    % redundant label/"Enabled" pair and makes boolean rows
+                    % both clearer and more compact.
+                    label = entry.container;
+                end
                 entry.label = label;
                 entry.row = index;
                 entry.rowContainer = fieldLayout;
@@ -189,6 +212,114 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
             end
         end
 
+        function buildHelp(this)
+            help = kssolv.ui.features.modeling.ParameterHelp.describe( ...
+                this.CommandInfo.id);
+            if help.key == ""
+                return
+            end
+
+            layout = uigridlayout(this.DialogLayout, [2, 1], ...
+                "RowHeight", {"fit", 0}, ...
+                "ColumnWidth", {"1x"}, ...
+                "RowSpacing", 6, ...
+                "Padding", 0);
+            layout.Layout.Row = 3;
+
+            sectionTitle = kssolv.ui.util.Localizer.message( ...
+                "KSSOLV:modeling:HelpInformation");
+            header = uigridlayout(layout, [1, 3], ...
+                "RowHeight", {26}, ...
+                "ColumnWidth", {26, "fit", "1x"}, ...
+                "ColumnSpacing", 6, ...
+                "Padding", 0);
+            header.Layout.Row = 1;
+            toggleButton = uibutton(header, ...
+                "Text", "", ...
+                "BackgroundColor", "white", ...
+                "Tooltip", sectionTitle, ...
+                "ButtonPushedFcn", @(~, ~)this.toggleHelp());
+            toggleButton.Layout.Row = 1;
+            toggleButton.Layout.Column = 1;
+            toggleButton.IconAlignment = "center";
+            matlab.ui.control.internal.specifyIconID( ...
+                toggleButton, "help", 16);
+            helpLabel = uilabel(header, ...
+                "Text", sectionTitle, ...
+                "FontWeight", "bold", ...
+                "VerticalAlignment", "center");
+            helpLabel.Layout.Row = 1;
+            helpLabel.Layout.Column = 2;
+
+            panel = uipanel(layout, ...
+                "BorderType", "line", ...
+                "Visible", "off");
+            panel.Layout.Row = 2;
+
+            hasFormula = help.formula ~= "";
+            if hasFormula
+                rowHeights = {"fit", "1x", 48, "fit"};
+                rowCount = 4;
+            else
+                rowHeights = {"fit", "1x"};
+                rowCount = 2;
+            end
+            content = uigridlayout(panel, [rowCount, 1], ...
+                "RowHeight", rowHeights, ...
+                "ColumnWidth", {"1x"}, ...
+                "RowSpacing", 7, ...
+                "Padding", [12, 12, 12, 10]);
+            titleLabel = uilabel(content, ...
+                "Text", help.title, ...
+                "FontWeight", "bold", ...
+                "WordWrap", "on");
+            titleLabel.Layout.Row = 1;
+            textLabel = uilabel(content, ...
+                "Text", help.text, ...
+                "WordWrap", "on", ...
+                "VerticalAlignment", "top");
+            textLabel.Layout.Row = 2;
+            if hasFormula
+                formulaLabel = uilabel(content, ...
+                    "Text", help.formula, ...
+                    "Interpreter", "latex", ...
+                    "FontSize", 15, ...
+                    "HorizontalAlignment", "center", ...
+                    "VerticalAlignment", "center");
+                formulaLabel.Layout.Row = 3;
+                this.Widgets.HelpFormulaLabel = formulaLabel;
+                symbolsLabel = uilabel(content, ...
+                    "Text", help.symbols, ...
+                    "WordWrap", "on", ...
+                    "VerticalAlignment", "top", ...
+                    "FontColor", [0.28, 0.28, 0.28]);
+                symbolsLabel.Layout.Row = 4;
+                this.Widgets.HelpSymbolsLabel = symbolsLabel;
+            end
+
+            textLineCount = max(2, min(5, ...
+                ceil(strlength(string(help.text)) / 58)));
+            symbolLineCount = 0;
+            if hasFormula
+                symbolLineCount = max(2, min(4, ...
+                    ceil(strlength(string(help.symbols)) / 58)));
+            end
+            this.HelpContentHeight = 52 + 19 * textLineCount + ...
+                double(hasFormula) * (48 + 19 * symbolLineCount);
+            this.Widgets.HelpLayout = layout;
+            this.Widgets.HelpHeaderLayout = header;
+            this.Widgets.HelpToggleButton = toggleButton;
+            this.Widgets.HelpInformationLabel = helpLabel;
+            this.Widgets.HelpPanel = panel;
+            this.Widgets.HelpContentLayout = content;
+            this.Widgets.HelpTitleLabel = titleLabel;
+            this.Widgets.HelpTextLabel = textLabel;
+
+            heights = this.DialogLayout.RowHeight;
+            heights{3} = "fit";
+            this.DialogLayout.RowHeight = heights;
+        end
+
         function entry = createControl( ...
                 this, parent, field, presentation)
             name = char(field.name);
@@ -199,17 +330,15 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
             switch presentation.control
                 case "logical"
                     control = uicheckbox(parent, ...
-                        "Text", ...
-                        kssolv.ui.util.Localizer.message( ...
-                        "KSSOLV:modeling:Enabled"), ...
+                        "Text", presentation.label, ...
                         "Tooltip", presentation.tooltip);
-                    control.Layout.Row = 2;
+                    control.Layout.Row = 1;
                     control.Layout.Column = 1;
                     control.ValueChangedFcn = ...
                         @(~, ~)this.applyConditions();
                     entry.controls = {control};
                     entry.container = control;
-                case "enum"
+                case {"enum", "coordinateSystem", "numericEnum"}
                     control = uidropdown(parent, ...
                         "Items", cellstr(presentation.choiceLabels), ...
                         "ItemsData", cellstr(presentation.choices), ...
@@ -296,7 +425,7 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
                 "ColumnWidth", {"fit", "1x", "fit", "fit"}, ...
                 "RowSpacing", 5, ...
                 "Padding", 0);
-            layout.Layout.Row = 3;
+            layout.Layout.Row = 4;
 
             status = uilabel(layout, ...
                 "Text", "", ...
@@ -332,6 +461,20 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
             this.Widgets.ApplyButton = applyButton;
         end
 
+        function toggleHelp(this)
+            this.HelpExpanded = ~this.HelpExpanded;
+            heights = this.Widgets.HelpLayout.RowHeight;
+            if this.HelpExpanded
+                heights{2} = this.HelpContentHeight;
+                this.Widgets.HelpPanel.Visible = "on";
+            else
+                heights{2} = 0;
+                this.Widgets.HelpPanel.Visible = "off";
+            end
+            this.Widgets.HelpLayout.RowHeight = heights;
+            this.updateDialogSize();
+        end
+
         function loadInitialValues(this)
             if isempty(fieldnames(this.FieldEntries))
                 return
@@ -365,6 +508,23 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
             switch entry.controlType
                 case "logical"
                     entry.controls{1}.Value = logical(value);
+                case "coordinateSystem"
+                    value = logical(value);
+                    if entry.field.name == "cartesian"
+                        if value
+                            choice = "cartesian";
+                        else
+                            choice = "fractional";
+                        end
+                    elseif value
+                        choice = "fractional";
+                    else
+                        choice = "cartesian";
+                    end
+                    entry.controls{1}.Value = char(choice);
+                case "numericEnum"
+                    value = string(compose("%.15g", double(value)));
+                    entry.controls{1}.Value = char(value);
                 case {"enum", "structure"}
                     value = string(value);
                     control = entry.controls{1};
@@ -442,6 +602,8 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
                 end
                 if entry.controlType == "matrix"
                     rowHeights(end + 1) = 144; %#ok<AGROW>
+                elseif entry.controlType == "logical"
+                    rowHeights(end + 1) = 24; %#ok<AGROW>
                 else
                     rowHeights(end + 1) = 48; %#ok<AGROW>
                 end
@@ -452,10 +614,16 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
                 contentHeight = sum(rowHeights) + ...
                     10 * (numel(rowHeights) - 1) + 26;
             end
-            this.FormHeight = min(500, contentHeight);
+            if this.HelpExpanded
+                maximumFormHeight = 400;
+            else
+                maximumFormHeight = 500;
+            end
+            this.FormHeight = min(maximumFormHeight, contentHeight);
             if ~isempty(this.FormLayout) && isvalid(this.FormLayout)
                 this.FormLayout.Scrollable = ...
-                    matlab.lang.OnOffSwitchState(contentHeight > 500);
+                    matlab.lang.OnOffSwitchState( ...
+                    contentHeight > maximumFormHeight);
             end
             layoutHeights = this.DialogLayout.RowHeight;
             layoutHeights{2} = this.FormHeight;
@@ -477,8 +645,16 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
                 end
                 this.Widgets.ButtonLayout.RowHeight = buttonRowHeights;
             end
-            targetHeight = min(620, max(160, ...
-                104 + this.FormHeight + statusHeight));
+            helpHeight = 0;
+            if isfield(this.Widgets, "HelpToggleButton")
+                helpHeight = 34;
+                if this.HelpExpanded
+                    helpHeight = helpHeight + ...
+                        this.HelpContentHeight + 6;
+                end
+            end
+            targetHeight = min(760, max(160, ...
+                104 + this.FormHeight + statusHeight + helpHeight));
             figure = this.getWidget();
             position = figure.Position;
             % Keep the window centered when conditional fields resize it.
@@ -550,6 +726,15 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
             switch entry.controlType
                 case "logical"
                     value = logical(entry.controls{1}.Value);
+                case "coordinateSystem"
+                    choice = string(entry.controls{1}.Value);
+                    if entry.field.name == "cartesian"
+                        value = choice == "cartesian";
+                    else
+                        value = choice == "fractional";
+                    end
+                case "numericEnum"
+                    value = str2double(string(entry.controls{1}.Value));
                 case {"enum", "structure"}
                     value = string(entry.controls{1}.Value);
                 case "scalar"

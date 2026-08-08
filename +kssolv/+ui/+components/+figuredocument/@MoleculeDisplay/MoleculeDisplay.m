@@ -19,6 +19,7 @@ classdef MoleculeDisplay < handle
     properties (Access = private)
         HTMLComponent
         ParsedModel
+        InitialModel
         SceneOptions = struct( ...
             "algorithm", "CrystalNN", ...
             "cell", "input", ...
@@ -28,6 +29,8 @@ classdef MoleculeDisplay < handle
         IsBuilding (1,1) logical = false
         UndoStack cell = {}
         RedoStack cell = {}
+        CurrentRevision (1,1) double = 0
+        NextRevision (1,1) double = 0
         MaximumHistory (1,1) double = 50
         PendingImageExportRequestId string = ""
         PendingImageExportPath string = ""
@@ -36,6 +39,7 @@ classdef MoleculeDisplay < handle
         HTMLSourcePath string = ""
         ImageExportDestinationTimer = []
         BridgeEventSerial (1,1) double = 0
+        PendingFullscreenExit (1,1) logical = false
     end
 
     events
@@ -56,6 +60,7 @@ classdef MoleculeDisplay < handle
                     isa(structureInput, ...
                     "kssolv.analysis.matgenlab.core.IMolecule")
                 this.ParsedModel = structureInput.copy();
+                this.InitialModel = this.ParsedModel.copy();
                 this.structureFileContent = "";
                 this.structureFileType = structureFileType;
             elseif isempty(structureInput) || string(structureInput) == ""
@@ -107,6 +112,7 @@ classdef MoleculeDisplay < handle
             end
             document = matlab.ui.internal.FigureDocument(figOptions);
             this.Document = document;
+            document.CanCloseFcn = @(~)this.canCloseDocument();
 
             % 添加 html 组件
             fig = document.Figure;
@@ -129,6 +135,7 @@ classdef MoleculeDisplay < handle
             this.HTMLComponent.HTMLEventReceivedFcn = @this.eventReceiver;
             if isempty(this.ParsedModel)
                 this.ParsedModel = this.parseTextInput();
+                this.InitialModel = this.ParsedModel.copy();
                 if isa(this.ParsedModel, ...
                         "kssolv.analysis.matgenlab.core.IMolecule")
                     this.SceneOptions.algorithm = "Auto";
@@ -163,7 +170,7 @@ classdef MoleculeDisplay < handle
         end
 
         function applyModel(this, model, description)
-            %APPLYMODEL Atomically commit, persist and render a modeled result.
+            %APPLYMODEL Atomically update the document-local modeling draft.
             arguments
                 this
                 model
@@ -171,13 +178,18 @@ classdef MoleculeDisplay < handle
             end
             this.validateModel(model);
             previous = this.ParsedModel.copy();
+            previousRevision = this.CurrentRevision;
             this.commitModel(model);
             this.UndoStack{end + 1} = struct( ...
-                "model", previous, "description", string(description));
+                "model", previous, ...
+                "description", string(description), ...
+                "revision", previousRevision);
             if numel(this.UndoStack) > this.MaximumHistory
                 this.UndoStack(1) = [];
             end
             this.RedoStack = {};
+            this.NextRevision = this.NextRevision + 1;
+            this.CurrentRevision = this.NextRevision;
             notify(this, "HistoryChanged");
             notify(this, "SelectionChanged");
         end
@@ -190,6 +202,26 @@ classdef MoleculeDisplay < handle
             value = ~isempty(this.RedoStack);
         end
 
+        function exitFullscreen(this)
+            %EXITFULLSCREEN Ask the embedded viewer to leave fullscreen.
+            if isempty(this.HTMLComponent) || ~isvalid(this.HTMLComponent)
+                return
+            end
+            this.PendingFullscreenExit = true;
+            try
+                this.HTMLComponent.sendEventToHTMLSource( ...
+                    "viewer:command", struct("command", "exit-fullscreen"));
+            catch exception
+                this.PendingFullscreenExit = false;
+                rethrow(exception)
+            end
+        end
+
+        function value = isFullscreenExitPending(this)
+            %ISFULLSCREENEXITPENDING True until the browser handles exit.
+            value = this.PendingFullscreenExit;
+        end
+
         function undo(this)
             if ~this.canUndo()
                 return
@@ -200,7 +232,9 @@ classdef MoleculeDisplay < handle
             this.UndoStack(end) = [];
             this.RedoStack{end + 1} = struct( ...
                 "model", current, ...
-                "description", entry.description);
+                "description", entry.description, ...
+                "revision", this.CurrentRevision);
+            this.CurrentRevision = entry.revision;
             notify(this, "HistoryChanged");
             notify(this, "SelectionChanged");
         end
@@ -215,8 +249,54 @@ classdef MoleculeDisplay < handle
             this.RedoStack(end) = [];
             this.UndoStack{end + 1} = struct( ...
                 "model", current, ...
-                "description", entry.description);
+                "description", entry.description, ...
+                "revision", this.CurrentRevision);
+            this.CurrentRevision = entry.revision;
             notify(this, "HistoryChanged");
+            notify(this, "SelectionChanged");
+        end
+
+        function value = hasUnsavedChanges(this)
+            %HASUNSAVEDCHANGES True when the draft differs from its baseline.
+            value = this.CurrentRevision ~= 0;
+        end
+
+        function value = canReset(this)
+            value = this.hasUnsavedChanges();
+        end
+
+        function reset(this)
+            %RESET Restore the structure captured when this draft began.
+            this.discardChanges(true);
+        end
+
+        function saveChangesToProject(this)
+            %SAVECHANGESTOPROJECT Commit this document's draft to Project.
+            if ~this.hasUnsavedChanges()
+                return
+            end
+            this.persistModel();
+            this.InitialModel = this.ParsedModel.copy();
+            this.clearHistory();
+        end
+
+        function discardChanges(this, render)
+            %DISCARDCHANGES Restore the initial copy without touching Project.
+            arguments
+                this
+                render (1,1) logical = true
+            end
+            if ~this.hasUnsavedChanges()
+                return
+            end
+            initial = this.InitialModel.copy();
+            if render
+                this.commitModel(initial);
+            else
+                this.ParsedModel = initial;
+                this.LastSelection = struct.empty;
+            end
+            this.clearHistory();
             notify(this, "SelectionChanged");
         end
 
@@ -254,7 +334,7 @@ classdef MoleculeDisplay < handle
 
     methods (Access = private)
         function commitModel(this, model)
-            %COMMITMODEL Render first, then persist; rollback every layer.
+            %COMMITMODEL Render first, then update the document-local draft.
             this.validateModel(model);
             candidate = model.copy();
             previous = this.ParsedModel.copy();
@@ -265,13 +345,8 @@ classdef MoleculeDisplay < handle
                 this.renderModel(candidate, true);
                 this.ParsedModel = candidate;
                 this.LastSelection = struct.empty;
-                this.persistModel();
             catch exception
                 this.ParsedModel = previous;
-                try
-                    this.persistModel();
-                catch
-                end
                 try
                     this.renderModel(previous, false);
                 catch
@@ -297,20 +372,82 @@ classdef MoleculeDisplay < handle
 
         function persistModel(this)
             if this.tag == ""
-                return
+                error("KSSOLV:Modeling:ProjectItemUnavailable", ...
+                    "This structure is not associated with a Project item.");
             end
             project = kssolv.ui.util.DataStorage.getData("Project");
             if isempty(project) || ~isvalid(project)
-                return
+                error("KSSOLV:Modeling:ProjectUnavailable", ...
+                    "The current Project is unavailable.");
             end
             item = project.findChildrenItem(this.tag);
             if isempty(item) || isempty(item.data)
+                error("KSSOLV:Modeling:ProjectItemUnavailable", ...
+                    "The structure's Project item is unavailable.");
+            end
+            if ~ismethod(item.data, "updateMatgenlabObject")
+                error("KSSOLV:Modeling:ProjectItemReadOnly", ...
+                    "The structure's Project item cannot be updated.");
+            end
+            item.data.updateMatgenlabObject(this.ParsedModel);
+            item.updatedAt = datetime;
+            project.isDirty = true;
+        end
+
+        function clearHistory(this)
+            this.UndoStack = {};
+            this.RedoStack = {};
+            this.CurrentRevision = 0;
+            this.NextRevision = 0;
+            notify(this, "HistoryChanged");
+        end
+
+        function status = canCloseDocument(this)
+            status = true;
+            if ~this.hasUnsavedChanges()
                 return
             end
-            if ismethod(item.data, "updateMatgenlabObject")
-                item.data.updateMatgenlabObject(this.ParsedModel);
-                item.updatedAt = datetime;
-                project.isDirty = true;
+
+            import kssolv.ui.util.Localizer.message
+            appContainer = kssolv.ui.util.DataStorage.getData("AppContainer");
+            saveLabel = message("KSSOLV:dialogs:StructureCanCloseSave");
+            discardLabel = ...
+                message("KSSOLV:dialogs:StructureCanCloseDiscard");
+            cancelLabel = message("KSSOLV:dialogs:StructureCanCloseCancel");
+            if isdeployed
+                dialog = kssolv.ui.components.dialog.ConfirmDialog( ...
+                    message("KSSOLV:dialogs:StructureCanCloseMessage"), ...
+                    message("KSSOLV:dialogs:StructureCanCloseTitle"), ...
+                    "Options", {saveLabel, discardLabel, cancelLabel}, ...
+                    "DefaultOption", 1, "CancelOption", 3);
+                selection = dialog.show();
+            else
+                selection = uiconfirm(appContainer, ...
+                    message("KSSOLV:dialogs:StructureCanCloseMessage"), ...
+                    message("KSSOLV:dialogs:StructureCanCloseTitle"), ...
+                    "Options", {saveLabel, discardLabel, cancelLabel}, ...
+                    "DefaultOption", 1, "CancelOption", 3);
+            end
+
+            try
+                switch selection
+                    case saveLabel
+                        this.saveChangesToProject();
+                    case discardLabel
+                        this.discardChanges(false);
+                    otherwise
+                        status = false;
+                end
+            catch exception
+                status = false;
+                if ~isempty(appContainer) && isvalid(appContainer)
+                    uialert(appContainer, exception.message, ...
+                        message("KSSOLV:modeling:ModelingError"), ...
+                        "Icon", "error");
+                else
+                    warning("KSSOLV:Modeling:CloseFailed", ...
+                        "%s", exception.message);
+                end
             end
         end
 
@@ -335,6 +472,8 @@ classdef MoleculeDisplay < handle
                     this.cancelImageExport(event.HTMLEventData);
                 case "viewer:bringToFront"
                     this.bringToolboxToFront();
+                case "viewer:fullscreenExitComplete"
+                    this.PendingFullscreenExit = false;
                 case "viewer:error"
                     this.reportViewerError(event.HTMLEventData);
             end

@@ -10,6 +10,7 @@
         <entry key="EditorsSection">Editors</entry>
         <entry key="UndoTooltip">Restore the structure before the most recent modeling operation.</entry>
         <entry key="RedoTooltip">Reapply the most recently undone modeling operation.</entry>
+        <entry key="ResetStructureTooltip">Restore the structure captured when this document was opened or last saved.</entry>
         <entry key="AtomicEditorTooltip">Create, select, transform, and clean up atomic sites.</entry>
         <entry key="LatticeEditorTooltip">Edit and transform lattice vectors and coordinates.</entry>
         <entry key="SupercellLatticeTooltip">Build, redefine, orthogonalize, strain, or perturb a crystal cell.</entry>
@@ -68,6 +69,96 @@
         <entry key="ChoiceTop">Top</entry>
         <entry key="ChoiceBottom">Bottom</entry>
         <entry key="ChoiceBoth">Both sides</entry>
+        <entry key="ChoiceFractionalCoordinates">Fractional coordinates</entry>
+        <entry key="ChoiceCartesianCoordinates">Cartesian coordinates</entry>
+        <entry key="ChoiceToleranceVeryFine">Very fine (0.0001 Å)</entry>
+        <entry key="ChoiceToleranceFine">Fine (0.001 Å)</entry>
+        <entry key="ChoiceToleranceGood">Good (0.01 Å)</entry>
+        <entry key="ChoiceToleranceCoarse">Coarse (0.1 Å)</entry>
+        <entry key="HelpInformation">Help information</entry>
+
+        <entry key="HelpTitle_CenterAtoms">How centering works</entry>
+        <entry key="HelpText_CenterAtoms">Selected atoms move together so their mean fractional position reaches the target. Unwrap selections that cross a periodic boundary first.</entry>
+        <entry key="HelpFormula_CenterAtoms">$\Delta\mathbf{f}=\mathbf{f}_{\mathrm{target}}-\frac{1}{N}\sum_i\mathbf{f}_i$</entry>
+        <entry key="HelpSymbols_CenterAtoms">Symbols: Δf is the common fractional translation; ftarget is the target; fi is atom i's original fractional position; N is the number of selected atoms.</entry>
+        <entry key="HelpTitle_MergeAtoms">Merging overlapping sites</entry>
+        <entry key="HelpText_MergeAtoms">Sites within the periodic minimum-image tolerance are moved to their mean position. Delete keeps one site; Sum combines occupancies; Average averages compatible numeric properties.</entry>
+        <entry key="HelpTitle_MirrorAtoms">Mirror plane</entry>
+        <entry key="HelpText_MirrorAtoms">The Cartesian normal and point define the mirror plane. Only selected atoms move; the lattice is unchanged.</entry>
+        <entry key="HelpFormula_MirrorAtoms">$\hat{\mathbf n}=\frac{\mathbf n}{\|\mathbf n\|},\qquad \mathbf r^{\prime}=\mathbf r-2[(\mathbf r-\mathbf p)\cdot\hat{\mathbf n}]\hat{\mathbf n}$</entry>
+        <entry key="HelpSymbols_MirrorAtoms">Symbols: r and r′ are the Cartesian positions before and after mirroring; p is a point on the plane; n is the plane normal; n̂ is its unit vector; · is the dot product.</entry>
+        <entry key="HelpTitle_Perturbation">Random displacement</entry>
+        <entry key="HelpText_Perturbation">Each affected atom receives a random direction and a displacement uniformly sampled between the minimum and maximum values. The seed makes the result reproducible. Both current perturb commands affect all atoms.</entry>
+        <entry key="HelpTitle_RotateAtoms">Atomic rotation</entry>
+        <entry key="HelpText_RotateAtoms">Axis and anchor are Cartesian; the anchor is in Å. Positive angles follow the right-hand rule. The lattice remains fixed and rotated atoms are wrapped into the cell.</entry>
+        <entry key="HelpFormula_RotateAtoms">$\mathbf r^{\prime}=\mathbf p+R(\hat{\mathbf n},\theta)(\mathbf r-\mathbf p)$</entry>
+        <entry key="HelpSymbols_RotateAtoms">Symbols: r and r′ are the Cartesian positions before and after rotation; p is the anchor; n̂ is the unit rotation axis; θ is the entered angle; R is the rotation matrix.</entry>
+        <entry key="HelpTitle_TranslationCoordinates">Translation coordinates</entry>
+        <entry key="HelpText_TranslationCoordinates">Cartesian vectors are in Å. Fractional vectors use the lattice basis: [1 0 0] translates by one complete a vector. Periodic results are wrapped into the cell.</entry>
+        <entry key="HelpTitle_Strain">Diagonal strain</entry>
+        <entry key="HelpText_Strain">A scalar acts on all axes; three values specify the axial strains. Fractional coordinates stay fixed. Shear strain is not supported.</entry>
+        <entry key="HelpFormula_Strain">$A^{\prime}=\mathrm{diag}(1+\varepsilon_x,1+\varepsilon_y,1+\varepsilon_z)A$</entry>
+        <entry key="HelpSymbols_Strain">Symbols: A and A′ are the lattice matrices before and after strain; εx, εy and εz are dimensionless axial strains. For example, 0.01 means 1% extension.</entry>
+        <entry key="HelpTitle_EditLattice">Editing the lattice</entry>
+        <entry key="HelpText_EditLattice">Matrix rows are a, b and c. Preserve Cartesian off keeps fractional coordinates, so atoms deform with the cell. On keeps Cartesian positions and recomputes fractional coordinates.</entry>
+        <entry key="HelpFormula_EditLattice">$\mathbf r=\mathbf fA$</entry>
+        <entry key="HelpSymbols_EditLattice">Symbols: A is the lattice matrix whose rows are a, b and c; f is a fractional-coordinate row vector; r is the corresponding Cartesian position.</entry>
+        <entry key="HelpTitle_MirrorLattice">Reversing a lattice vector</entry>
+        <entry key="HelpText_MirrorLattice">The chosen basis vector is reversed while fractional coordinates stay fixed. Cartesian positions and basis handedness may change. This is not a spatial mirror of the atoms.</entry>
+        <entry key="HelpFormula_MirrorLattice">$\mathbf a_i^{\prime}=-\mathbf a_i$</entry>
+        <entry key="HelpSymbols_MirrorLattice">Symbols: ai and ai′ are the selected lattice vector before and after reversal; i is the chosen axis index.</entry>
+        <entry key="HelpTitle_RotateLattice">Rigid lattice rotation</entry>
+        <entry key="HelpText_RotateLattice">The lattice and all atoms rotate together about the Cartesian axis. Lengths, angles and internal distances remain unchanged.</entry>
+        <entry key="HelpTitle_SwapAxes">Reordering lattice axes</entry>
+        <entry key="HelpText_SwapAxes">The value must permute 1, 2 and 3. [2 1 3] makes the new axes b, a and c and reorders fractional components to preserve Cartesian positions.</entry>
+        <entry key="HelpTitle_BuildSupercell">Supercell transformation</entry>
+        <entry key="HelpText_BuildSupercell">The input is an integer transformation. [2 2 2] gives an eightfold cell; nondiagonal matrices create tilted or reoriented supercells.</entry>
+        <entry key="HelpFormula_BuildSupercell">$A^{\prime}=SA,\qquad N^{\prime}=|\det S|N$</entry>
+        <entry key="HelpSymbols_BuildSupercell">Symbols: S is the integer transformation; A and A′ are the original and new lattice matrices; N and N′ are their atom counts; |det S| is the cell-volume multiplier.</entry>
+        <entry key="HelpTitle_RedefineLattice">Redefining the cell</entry>
+        <entry key="HelpText_RedefineLattice">The lattice is replaced while Cartesian atomic positions stay fixed. Periodic images are not added or removed; choose a cell that contains the existing geometry.</entry>
+        <entry key="HelpTitle_OrthogonalizeCell">Orthogonal-cell search</entry>
+        <entry key="HelpText_OrthogonalizeCell">This searches integer supercells whose angles are near 90° and whose lengths satisfy the bounds. Larger length and atom limits or a looser angle tolerance make a solution more likely.</entry>
+        <entry key="HelpTitle_PointDefects">Point-defect types</entry>
+        <entry key="HelpText_PointDefects">Vacancy removes one site; substitution changes one species; interstitial adds an atom at the given coordinates; antisite exchanges the species on two sites.</entry>
+        <entry key="HelpTitle_SQS">SQS search</entry>
+        <entry key="HelpText_SQS">SQS preserves a disordered alloy's composition while matching random-alloy pair correlations. Scalar k targets k times the cell volume, not k times each axis. Small spaces are enumerated; larger ones use a time-bounded Monte Carlo search.</entry>
+        <entry key="HelpTitle_Nanotube">Nanotube chirality</entry>
+        <entry key="HelpText_Nanotube">The chiral vector becomes the circumference. For hexagonal layers, (n,0) is zigzag and (n,n) armchair. Axial repetitions set the periodic tube length.</entry>
+        <entry key="HelpFormula_Nanotube">$\mathbf C_h=n\mathbf a_1+m\mathbf a_2,\qquad R=\frac{\|\mathbf C_h\|}{2\pi}$</entry>
+        <entry key="HelpSymbols_Nanotube">Symbols: (n,m) are the chiral indices; a1 and a2 are the in-plane lattice vectors; Ch is the circumference vector; R is the tube radius.</entry>
+        <entry key="HelpTitle_Nanoribbon">Nanoribbon width and edge</entry>
+        <entry key="HelpText_Nanoribbon">Width is a number of transverse lattice repeats, not Å. Zigzag and armchair select different edge directions. Only the ribbon axis remains periodic.</entry>
+        <entry key="HelpTitle_Nanowire">Nanowire direction and radius</entry>
+        <entry key="HelpText_Nanowire">The integer indices define the wire axis. Atoms are retained inside a Cartesian cylinder of the requested radius. Only the wire axis remains periodic.</entry>
+        <entry key="HelpFormula_Nanowire">$\mathbf t=u\mathbf a+v\mathbf b+w\mathbf c$</entry>
+        <entry key="HelpSymbols_Nanowire">Symbols: [u v w] are integer direction indices; a, b and c are lattice vectors; t is the Cartesian wire-axis vector.</entry>
+        <entry key="HelpTitle_QuantumDotVoid">Quantum dot or nanovoid</entry>
+        <entry key="HelpText_QuantumDotVoid">Dot retains atoms inside a centered sphere and removes periodicity; vacuum surrounds the result. Void removes atoms inside a sphere centered at fractional [0.5 0.5 0.5] and keeps the original periodic cell.</entry>
+        <entry key="HelpTitle_Slab">Surface slab</entry>
+        <entry key="HelpText_Slab">The Miller indices define the surface normal in reciprocal space. Slab thickness is a minimum. Reducing the surface cell may change orientation and site ordering.</entry>
+        <entry key="HelpFormula_Slab">$\mathbf G_{hkl}=h\mathbf b_1+k\mathbf b_2+l\mathbf b_3$</entry>
+        <entry key="HelpSymbols_Slab">Symbols: (h k l) are Miller indices; b1, b2 and b3 are reciprocal-lattice vectors; Ghkl is normal to the selected surface.</entry>
+        <entry key="HelpTitle_AddVacuum">Additional vacuum</entry>
+        <entry key="HelpText_AddVacuum">This value is added to the third lattice-vector length; it is not the final vacuum thickness. Atoms are recentered along that vector, which is assumed to be the surface normal.</entry>
+        <entry key="HelpFormula_AddVacuum">$\mathbf c^{\prime}=\frac{\|\mathbf c\|+\Delta}{\|\mathbf c\|}\mathbf c$</entry>
+        <entry key="HelpSymbols_AddVacuum">Symbols: c and c′ are the third lattice vector before and after the operation; Δ is the requested additional length in Å.</entry>
+        <entry key="HelpTitle_Heterostructure">Layer matching</entry>
+        <entry key="HelpText_Heterostructure">Gap is the separation between the facing atomic surfaces. Maximum strain limits in-plane mismatch. The input layers must already have identical or nearly matched in-plane cells.</entry>
+        <entry key="HelpTitle_Moire">Moiré matching</entry>
+        <entry key="HelpText_Moire">Only hexagonal 2D primitive cells are supported. Integer coincidence cells are ranked by angle error, strain and atom count. A larger index may improve the angle match but increases size and search cost.</entry>
+        <entry key="HelpTitle_NEB">IDPP-NEB path</entry>
+        <entry key="HelpText_NEB">The count excludes fixed endpoints, which must have identical lattices, species and ordering. The IDPP force tolerance is not a physical first-principles force criterion.</entry>
+        <entry key="HelpFormula_NEB">$E_{\mathrm{IDPP}}=\sum_{i&lt;j}\frac{(d_{ij}-d_{ij}^{*})^2}{d_{ij}^{4}}$</entry>
+        <entry key="HelpSymbols_NEB">Symbols: dij is the distance between atoms i and j in an image; d*ij is its interpolated target; EIDPP is the artificial path-smoothing objective.</entry>
+        <entry key="HelpTitle_AdsorptionSites">Adsorption height</entry>
+        <entry key="HelpText_AdsorptionSites">Height places top, bridge and hollow candidates above the surface normal. It is not a predicted equilibrium bond length; relax candidate structures before use.</entry>
+        <entry key="HelpTitle_Passivation">Surface passivation</entry>
+        <entry key="HelpText_Passivation">Under-coordinated atoms are detected with Jmol-radius neighbors inside the surface depth. Target 0 uses the largest observed coordination for each element; thin slabs may require an explicit target. Colliding placements are rejected.</entry>
+        <entry key="HelpTitle_SolventLayer">Solvent-layer packing</entry>
+        <entry key="HelpText_SolventLayer">Clearance starts the packing region above the surface; layer thickness sets its depth; vacuum separates it from the cell boundary. Packmol tolerance avoids overlaps but does not set physical liquid density.</entry>
+        <entry key="HelpTitle_Symmetry">Symmetry tolerances</entry>
+        <entry key="HelpText_Symmetry">Larger distance and angle tolerances usually detect higher symmetry but may hide real distortions. Standard primitive or conventional cells may change orientation, site order and site count.</entry>
 
         <entry key="AtomicEditor">Atomic Editor</entry>
         <entry key="LatticeEditor">Lattice Editor</entry>
@@ -194,7 +285,7 @@
 
         <entry key="Field_species">Element symbol</entry>
         <entry key="Field_coordinates">Coordinates</entry>
-        <entry key="Field_cartesian">Use Cartesian coordinates</entry>
+        <entry key="Field_cartesian">Coordinate system</entry>
         <entry key="Field_indices">Site indices (MATLAB 1-based)</entry>
         <entry key="Field_center">Fractional center</entry>
         <entry key="Field_tolerance">Tolerance (Å)</entry>
@@ -209,7 +300,7 @@
         <entry key="Field_axis">Rotation axis</entry>
         <entry key="Field_anchor">Anchor (Å)</entry>
         <entry key="Field_vector">Translation vector</entry>
-        <entry key="Field_fractional">Use a fractional vector</entry>
+        <entry key="Field_fractional">Coordinate system</entry>
         <entry key="Field_strain">Strain</entry>
         <entry key="Field_matrix">Lattice matrix</entry>
         <entry key="Field_preserveCartesian">Preserve Cartesian positions</entry>

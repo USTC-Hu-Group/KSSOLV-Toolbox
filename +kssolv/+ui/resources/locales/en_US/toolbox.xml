@@ -29,8 +29,7 @@
         <entry key="ProjectStructureButtonTooltip">Import/export structure</entry>
         <entry key="NewStructureListItemLabel">New blank structure</entry>
         <entry key="ImportStructureFromFileListItemLabel">Import structure from file...</entry>
-        <entry key="ImportStructureFromLinkListItemLabel">Import structure from link...</entry>
-        <entry key="ImportStructureFromLibraryListItemLabel">Import structure from material library...</entry>
+        <entry key="ImportStructureFromMaterialsProjectListItemLabel">Import structure from Materials Project...</entry>
         <entry key="ImportStructureFromMatlabListItemLabel">Import structure from MATLAB workspace...</entry>
         <entry key="ProjectWorkflowButtonLabel">Workflow</entry>
         <entry key="ProjectWorkflowButtonTooltip">New default workflow</entry>

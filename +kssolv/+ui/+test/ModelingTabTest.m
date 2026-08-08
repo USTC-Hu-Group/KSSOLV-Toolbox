@@ -198,6 +198,77 @@ classdef ModelingTabTest < matlab.unittest.TestCase
             end
         end
 
+        function structureDraftSavesResetsAndDiscardsTransactionally( ...
+                testCase)
+            addpath(fullfile(KSSOLV_Toolbox.RootDirectory, ...
+                "+kssolv", "+core", "kssolv-3o"));
+            KSSOLV.startup();
+            app = matlab.ui.container.internal.AppContainer( ...
+                struct("Title", "Structure Draft Test", ...
+                "ToolstripEnabled", true));
+            cleanup = onCleanup(@()cleanupDraftApp(app));
+            kssolv.ui.util.DataStorage.setData("AppContainer", app);
+
+            project = kssolv.services.filemanager.Project();
+            folder = project.findChildrenItem("Structure");
+            item = kssolv.services.filemanager.Structure("Editable");
+            original = kssolv.analysis.matgenlab.core.Structure( ...
+                eye(3) * 4, {"Si"}, [0, 0, 0]);
+            item.data = ...
+                kssolv.services.fileparser.ModeledStructureData( ...
+                original, item.label);
+            folder.addChildrenItem(item);
+            project.isDirty = false;
+            kssolv.ui.util.DataStorage.setData("Project", project);
+
+            display = ...
+                kssolv.ui.components.figuredocument.MoleculeDisplay( ...
+                original, "", item.name);
+            changed = original.translate_sites( ...
+                1, [0.2, 0, 0], frac_coords = true);
+            display.applyModel(changed, "Translate");
+
+            testCase.verifyTrue(display.hasUnsavedChanges());
+            testCase.verifyFalse(project.isDirty);
+            testCase.verifyEqual( ...
+                item.data.MatgenlabObject.frac_coords, ...
+                original.frac_coords, AbsTol = 1e-12);
+
+            display.reset();
+            testCase.verifyFalse(display.hasUnsavedChanges());
+            testCase.verifyFalse(display.canUndo());
+            testCase.verifyEqual(display.getModel().frac_coords, ...
+                original.frac_coords, AbsTol = 1e-12);
+
+            display.applyModel(changed, "Translate");
+            display.saveChangesToProject();
+            testCase.verifyFalse(display.hasUnsavedChanges());
+            testCase.verifyTrue(project.isDirty);
+            testCase.verifyEqual( ...
+                item.data.MatgenlabObject.frac_coords, ...
+                changed.frac_coords, AbsTol = 1e-12);
+
+            changedAgain = changed.translate_sites( ...
+                1, [0.1, 0, 0], frac_coords = true);
+            display.applyModel(changedAgain, "Translate again");
+            display.discardChanges(false);
+            testCase.verifyFalse(display.hasUnsavedChanges());
+            testCase.verifyEqual(display.getModel().frac_coords, ...
+                changed.frac_coords, AbsTol = 1e-12);
+            testCase.verifyEqual( ...
+                item.data.MatgenlabObject.frac_coords, ...
+                changed.frac_coords, AbsTol = 1e-12);
+            clear cleanup
+
+            function cleanupDraftApp(value)
+                if ~isempty(value) && isvalid(value)
+                    delete(value);
+                end
+                kssolv.ui.util.DataStorage.removeData("Project");
+                kssolv.ui.util.DataStorage.removeData("AppContainer");
+            end
+        end
+
         function tabFollowsOpenStructureDocuments(testCase)
             app = matlab.ui.container.internal.AppContainer( ...
                 struct("Title", "Modeling Test", ...
@@ -233,6 +304,15 @@ classdef ModelingTabTest < matlab.unittest.TestCase
                 "ModelingSurfacesSection"
                 "ModelingSymmetrySection"
                 ].');
+            historyControls = sections(1).Children(1).Children;
+            testCase.verifyEqual(string({historyControls.Tag}), [
+                "ModelingUndo"
+                "ModelingRedo"
+                "ModelingReset"
+                ].');
+            testCase.verifyEqual(string(historyControls(3).Text), ...
+                string(kssolv.ui.util.Localizer.message( ...
+                "KSSOLV:modeling:Reset")));
             for sectionIndex = 1:numel(sections)
                 columns = sections(sectionIndex).Children;
                 for columnIndex = 1:numel(columns)

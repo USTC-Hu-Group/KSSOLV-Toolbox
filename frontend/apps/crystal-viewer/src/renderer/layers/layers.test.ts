@@ -110,6 +110,9 @@ describe('batched crystal layers', () => {
     const cell = new CellLayer(scene, themes.materials);
     cell.lines.geometry.computeBoundingBox();
     expect(cell.lines.geometry.boundingBox?.max.x).toBeCloseTo(11.28);
+    // Two adjacent visual cells have 20 distinct single-cell edges, including
+    // the four edges of the internal division between them.
+    expect(cell.lines.geometry.getAttribute('position').count).toBe(40);
     const options = defaultViewerOptions();
     const materialsPolyhedra = new PolyhedronLayer(scene, options, themes.materials);
     expect(materialsPolyhedra.mesh?.instanceCount).toBe(1);

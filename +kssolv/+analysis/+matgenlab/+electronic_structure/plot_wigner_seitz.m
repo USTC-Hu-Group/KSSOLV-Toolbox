@@ -6,17 +6,9 @@ facets=lattice.get_wigner_seitz_cell();edges=zeros(0,6);
 for ii=1:numel(facets)
     face=double(facets{ii});
     for aa=1:size(face,1)
-        for bb=aa+1:size(face,1)
-            pair=[face(aa,:),face(bb,:)];shared=0;
-            for jj=1:numel(facets)
-                other=double(facets{jj});
-                if any(all(abs(other-pair(1,1:3))<1e-10,2))&& ...
-                        any(all(abs(other-pair(1,4:6))<1e-10,2))
-                    shared=shared+1;
-                end
-            end
-            if shared>=2,edges(end+1,:)=pair;end %#ok<AGROW>
-        end
+        bb=mod(aa,size(face,1))+1;
+        pair=sortrows(face([aa,bb],:));
+        edges(end+1,:)=[pair(1,:),pair(2,:)]; %#ok<AGROW>
     end
 end
 edges=unique(round(edges,12),"rows");hold(ax,"on");

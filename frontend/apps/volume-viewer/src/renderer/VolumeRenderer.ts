@@ -23,6 +23,7 @@ import type { CrystalCameraAxis } from '@kssolv/three-scene';
 import type { VolumeChannelSpec, VolumeSceneSpec } from '@kssolv/volume-scene';
 
 import type { VolumeOptions } from '../state/volumeStore';
+import { appearanceScale, volumeViewerThemes } from '../themes';
 import { AtomicOverlayLayer } from './AtomicOverlayLayer';
 import {
   decodeValues,
@@ -52,6 +53,9 @@ export class VolumeRenderer implements VolumeRendererApi {
   private readonly camera = new OrthographicCamera(-5, 5, 5, -5, 0.01, 5000);
   private readonly controls: TrackballControls;
   private readonly root = new Group();
+  private readonly ambientLight = new AmbientLight(0xffffff, 1.35);
+  private readonly keyLight = new DirectionalLight(0xffffff, 2.1);
+  private readonly fillLight = new DirectionalLight(0xbfd8ff, 1.1);
   private readonly orientationScene = new Scene();
   private readonly orientationCamera = new OrthographicCamera(-1.35, 1.35, 1.35, -1.35, 0.01, 20);
   private readonly raycaster = new Raycaster();
@@ -90,13 +94,11 @@ export class VolumeRenderer implements VolumeRendererApi {
     this.renderer.outputColorSpace = 'srgb';
     this.container.append(this.renderer.domElement);
     this.scene.add(this.root);
-    this.scene.add(new AmbientLight(0xffffff, 1.35));
-    const key = new DirectionalLight(0xffffff, 2.1);
-    key.position.set(8, 10, 12);
-    this.scene.add(key);
-    const fill = new DirectionalLight(0xbfd8ff, 1.1);
-    fill.position.set(-10, -4, 6);
-    this.scene.add(fill);
+    this.scene.add(this.ambientLight);
+    this.keyLight.position.set(8, 10, 12);
+    this.scene.add(this.keyLight);
+    this.fillLight.position.set(-10, -4, 6);
+    this.scene.add(this.fillLight);
     this.orientationScene.add(new AmbientLight(0xffffff, 1.45));
     const orientationLight = new DirectionalLight(0xffffff, 1.2);
     orientationLight.position.set(2, 3, 5);
@@ -139,6 +141,7 @@ export class VolumeRenderer implements VolumeRendererApi {
       channel.transport.offset,
     );
     this.options = { ...options };
+    this.applyAppearance(options);
     this.volumeLayer?.dispose();
     this.atomicLayer?.dispose();
     if (this.orientationAxes) {
@@ -156,7 +159,7 @@ export class VolumeRenderer implements VolumeRendererApi {
     );
     this.root.add(this.volumeLayer);
     if (scene.atomicOverlay) {
-      this.atomicLayer = new AtomicOverlayLayer(scene.atomicOverlay);
+      this.atomicLayer = new AtomicOverlayLayer(scene.atomicOverlay, options);
       this.atomicLayer.setVisibility(
         effectiveOptions.showAtoms,
         effectiveOptions.showBonds,
@@ -183,15 +186,42 @@ export class VolumeRenderer implements VolumeRendererApi {
       options.periodicWrap !== this.options.periodicWrap ||
       options.sliceAxis !== this.options.sliceAxis ||
       options.sliceIndex !== this.options.sliceIndex ||
+      options.sliceIndices.some(
+        (index, axis) => index !== this.options!.sliceIndices[axis],
+      ) ||
+      options.sliceVisibility.some(
+        (visible, axis) => visible !== this.options!.sliceVisibility[axis],
+      ) ||
       options.interpolation !== this.options.interpolation ||
       options.colormap !== this.options.colormap;
+    const rebuildAtomicOverlay =
+      !this.options ||
+      options.theme !== this.options.theme ||
+      options.colorMode !== this.options.colorMode ||
+      options.radiusMode !== this.options.radiusMode ||
+      options.atomScale !== this.options.atomScale ||
+      options.bondRadius !== this.options.bondRadius ||
+      options.metalness !== this.options.metalness ||
+      options.roughness !== this.options.roughness;
     this.options = { ...options };
+    this.applyAppearance(options);
     if (rebuildVolume) {
       this.volumeLayer?.rebuild(this.effectiveOptions(options, this.sceneSpec));
     } else {
       this.volumeLayer?.updateAppearance(
         this.effectiveOptions(options, this.sceneSpec),
       );
+    }
+    if (rebuildAtomicOverlay && this.sceneSpec.atomicOverlay) {
+      if (this.atomicLayer) {
+        this.root.remove(this.atomicLayer);
+        this.atomicLayer.dispose();
+      }
+      this.atomicLayer = new AtomicOverlayLayer(
+        this.sceneSpec.atomicOverlay,
+        options,
+      );
+      this.root.add(this.atomicLayer);
     }
     this.atomicLayer?.setVisibility(
       options.showAtoms,
@@ -243,6 +273,15 @@ export class VolumeRenderer implements VolumeRendererApi {
     const bounds = gridBounds(this.sceneSpec!.grid);
     if (this.atomicLayer) bounds.union(this.atomicLayer.getBounds());
     return bounds;
+  }
+
+  private applyAppearance(options: VolumeOptions): void {
+    const theme = volumeViewerThemes[options.theme];
+    this.renderer.setClearColor(theme.background, 1);
+    this.ambientLight.intensity = 1.35 * appearanceScale(options.ambientLight);
+    this.keyLight.intensity = 2.1 * appearanceScale(options.directionalLight);
+    this.fillLight.intensity = 1.1 * appearanceScale(options.directionalLight);
+    this.renderer.domElement.style.filter = `brightness(${appearanceScale(options.brightness)}) contrast(${appearanceScale(options.contrast)})`;
   }
 
   screenshot(scale = 1.5): string {
@@ -528,7 +567,14 @@ export class VolumeRenderer implements VolumeRendererApi {
     if (options.mode !== 'volume') return options;
     if (scene.grid.dimensionality === 2) {
       this.onStatus('ready', 'Two-dimensional XSF grids use lattice-aligned slices.');
-      return { ...options, mode: 'slices', sliceAxis: 'k', sliceIndex: 0 };
+      return {
+        ...options,
+        mode: 'slices',
+        sliceAxis: 'k',
+        sliceIndex: 0,
+        sliceIndices: [options.sliceIndices[0], options.sliceIndices[1], 0],
+        sliceVisibility: [false, false, true],
+      };
     }
     const gl = this.renderer.getContext() as WebGL2RenderingContext;
     const max3DTextureSize = gl.getParameter(gl.MAX_3D_TEXTURE_SIZE) as number;
@@ -543,6 +589,12 @@ export class VolumeRenderer implements VolumeRendererApi {
         mode: 'slices',
         sliceAxis: 'k',
         sliceIndex: Math.floor(scene.grid.dimensions[2] / 2),
+        sliceIndices: [
+          options.sliceIndices[0],
+          options.sliceIndices[1],
+          Math.floor(scene.grid.dimensions[2] / 2),
+        ],
+        sliceVisibility: [false, false, true],
       };
     }
     if (

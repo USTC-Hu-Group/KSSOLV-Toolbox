@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 
-import type { AtomicBondAlgorithm, AtomicSceneSpec, ViewerOptions } from '../scene/types';
+import {
+  defaultViewerOptions,
+  type AtomicBondAlgorithm,
+  type AtomicSceneSpec,
+  type ViewerOptions,
+} from '../scene/types';
 import type { SceneActivityPhase } from '../state/viewerStore';
 
 const props = withDefaults(
@@ -39,13 +44,41 @@ const emit = defineEmits<{
 }>();
 
 const algorithm = ref<AtomicBondAlgorithm>('CrystalNN');
-const cell = ref('input');
+type UnitCellRepresentation = 'input' | 'primitive' | 'conventional' | 'niggli' | 'lll';
+
+const unitCellRepresentations: UnitCellRepresentation[] = [
+  'input',
+  'primitive',
+  'conventional',
+  'niggli',
+  'lll',
+];
+const isUnitCellRepresentation = (value: unknown): value is UnitCellRepresentation =>
+  typeof value === 'string' && unitCellRepresentations.includes(value as UnitCellRepresentation);
+
+const cell = ref<UnitCellRepresentation>('input');
 const repeat = ref<[number, number, number]>([1, 1, 1]);
 
 watch(
   () => props.scene?.analysis.algorithm,
   (value) => {
     if (value && value !== 'None') algorithm.value = value;
+  },
+  { immediate: true },
+);
+
+watch(
+  () => props.scene?.analysis.parameters.cell,
+  (value) => {
+    if (isUnitCellRepresentation(value)) cell.value = value;
+  },
+  { immediate: true },
+);
+
+watch(
+  () => (props.scene?.kind === 'crystal' ? props.scene.structure.repeat : undefined),
+  (value) => {
+    if (value) repeat.value = [value[0], value[1], value[2]];
   },
   { immediate: true },
 );
@@ -70,6 +103,36 @@ const isMolecule = computed(() => props.scene?.kind === 'molecule');
 const isBlankStructure = computed(
   () => props.scene?.kind === 'crystal' && props.scene.structure.siteCount === 0,
 );
+const repeatIsDefault = computed(() => repeat.value.every((value) => value === 1));
+const appearanceKeys = [
+  'ambientLight',
+  'directionalLight',
+  'metalness',
+  'roughness',
+  'brightness',
+  'contrast',
+] as const;
+const defaultAppearance = defaultViewerOptions();
+const appearanceIsDefault = computed(() =>
+  appearanceKeys.every((key) => props.modelValue[key] === defaultAppearance[key]),
+);
+
+const percentage = (value: number): string => `${Math.round(value * 100)}%`;
+const rangeFill = (value: number, min: number, max: number): Record<string, string> => ({
+  '--range-fill': `${((value - min) / (max - min)) * 100}%`,
+});
+
+const resetAppearance = (): void => {
+  emit('update:modelValue', {
+    ...props.modelValue,
+    ...Object.fromEntries(appearanceKeys.map((key) => [key, defaultAppearance[key]])),
+  });
+};
+
+const resetRepeat = (): void => {
+  repeat.value = [1, 1, 1];
+  requestAnalysis();
+};
 </script>
 
 <template>
@@ -205,6 +268,13 @@ const isBlankStructure = computed(
           @change="update('showAxes', ($event.target as HTMLInputElement).checked)"
         />Orientation axes</label
       >
+      <label class="check"
+        ><input
+          type="checkbox"
+          :checked="modelValue.depthCueing"
+          @change="update('depthCueing', ($event.target as HTMLInputElement).checked)"
+        />Depth Cueing</label
+      >
       <label v-if="!isMolecule" class="check"
         ><input
           type="checkbox"
@@ -258,6 +328,20 @@ const isBlankStructure = computed(
       <p v-if="isBlankStructure" class="blank-settings-note">
         Bond analysis becomes available after the first atom is added.
       </p>
+      <label v-if="!isMolecule">
+        Change unit cell
+        <select
+          v-model="cell"
+          :disabled="rebuilding || !scene || isBlankStructure"
+          @change="requestAnalysis"
+        >
+          <option value="input">Input cell</option>
+          <option value="primitive">Primitive cell</option>
+          <option value="conventional">Conventional cell</option>
+          <option value="niggli">Reduced cell (Niggli)</option>
+          <option value="lll">Reduced cell (LLL)</option>
+        </select>
+      </label>
       <label>
         Bonding strategy
         <select
@@ -281,20 +365,6 @@ const isBlankStructure = computed(
           </template>
         </select>
       </label>
-      <label v-if="!isMolecule">
-        Unit-cell representation
-        <select
-          v-model="cell"
-          :disabled="rebuilding || !scene || isBlankStructure"
-          @change="requestAnalysis"
-        >
-          <option value="input">Input cell</option>
-          <option value="primitive">Primitive</option>
-          <option value="conventional">Conventional</option>
-          <option value="niggli">Niggli reduced</option>
-          <option value="lll">LLL reduced</option>
-        </select>
-      </label>
       <fieldset v-if="!isMolecule">
         <legend>Repeat cell</legend>
         <label v-for="(_, index) in repeat" :key="index">
@@ -308,6 +378,14 @@ const isBlankStructure = computed(
             @change="requestAnalysis"
           />
         </label>
+        <button
+          type="button"
+          class="repeat-reset-button"
+          :disabled="rebuilding || !scene || isBlankStructure || repeatIsDefault"
+          @click="resetRepeat"
+        >
+          Reset to 1 × 1 × 1
+        </button>
       </fieldset>
       <p
         v-if="rebuildPhase !== 'idle'"
@@ -330,6 +408,127 @@ const isBlankStructure = computed(
           aria-label="Scientific scene progress"
         ></progress>
       </p>
+    </section>
+
+    <section class="appearance-settings">
+      <h3>Lighting &amp; surface</h3>
+
+      <div class="appearance-group" aria-label="Light source settings">
+        <h4>Light sources</h4>
+        <label class="range-label appearance-range">
+          <span>Ambient light</span>
+          <output>{{ percentage(modelValue.ambientLight) }}</output>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.025"
+            :style="rangeFill(modelValue.ambientLight, 0, 1)"
+            :value="modelValue.ambientLight"
+            @input="update('ambientLight', Number(($event.target as HTMLInputElement).value))"
+          />
+          <span class="range-scale" aria-hidden="true"
+            ><span>0</span><span>50</span><span>100%</span></span
+          >
+        </label>
+        <label class="range-label appearance-range">
+          <span>Directional light</span>
+          <output>{{ percentage(modelValue.directionalLight) }}</output>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.025"
+            :style="rangeFill(modelValue.directionalLight, 0, 1)"
+            :value="modelValue.directionalLight"
+            @input="update('directionalLight', Number(($event.target as HTMLInputElement).value))"
+          />
+          <span class="range-scale" aria-hidden="true"
+            ><span>0</span><span>50</span><span>100%</span></span
+          >
+        </label>
+      </div>
+
+      <div class="appearance-group" aria-label="Material settings">
+        <h4>Material response</h4>
+        <label class="range-label appearance-range">
+          <span>Metalness</span>
+          <output>{{ percentage(modelValue.metalness) }}</output>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.025"
+            :style="rangeFill(modelValue.metalness, 0, 1)"
+            :value="modelValue.metalness"
+            @input="update('metalness', Number(($event.target as HTMLInputElement).value))"
+          />
+          <span class="range-scale" aria-hidden="true"
+            ><span>0</span><span>50</span><span>100%</span></span
+          >
+        </label>
+        <label class="range-label appearance-range">
+          <span>Roughness</span>
+          <output>{{ percentage(modelValue.roughness) }}</output>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.025"
+            :style="rangeFill(modelValue.roughness, 0, 1)"
+            :value="modelValue.roughness"
+            @input="update('roughness', Number(($event.target as HTMLInputElement).value))"
+          />
+          <span class="range-scale" aria-hidden="true"
+            ><span>0</span><span>50</span><span>100%</span></span
+          >
+        </label>
+      </div>
+
+      <div class="appearance-group" aria-label="Image settings">
+        <h4>Image</h4>
+        <label class="range-label appearance-range">
+          <span>Brightness</span>
+          <output>{{ percentage(modelValue.brightness) }}</output>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.025"
+            :style="rangeFill(modelValue.brightness, 0, 1)"
+            :value="modelValue.brightness"
+            @input="update('brightness', Number(($event.target as HTMLInputElement).value))"
+          />
+          <span class="range-scale" aria-hidden="true"
+            ><span>0</span><span>50</span><span>100%</span></span
+          >
+        </label>
+        <label class="range-label appearance-range">
+          <span>Contrast</span>
+          <output>{{ percentage(modelValue.contrast) }}</output>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.025"
+            :style="rangeFill(modelValue.contrast, 0, 1)"
+            :value="modelValue.contrast"
+            @input="update('contrast', Number(($event.target as HTMLInputElement).value))"
+          />
+          <span class="range-scale" aria-hidden="true"
+            ><span>0</span><span>50</span><span>100%</span></span
+          >
+        </label>
+      </div>
+
+      <button
+        type="button"
+        class="appearance-reset-button"
+        :disabled="appearanceIsDefault"
+        @click="resetAppearance"
+      >
+        Reset appearance
+      </button>
     </section>
 
     <section v-if="modelValue.theme === 'gleamoe-premiror'" class="hero-settings">

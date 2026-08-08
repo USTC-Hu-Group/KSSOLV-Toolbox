@@ -124,7 +124,13 @@ export const encodeElementMaterialColor = (
 };
 
 /** Adds per-instance art-directed PBR parameters while retaining a single BatchedMesh draw call. */
-export const installElementMaterialShader = (material: MeshPhysicalMaterial): void => {
+export const installElementMaterialShader = (
+  material: MeshPhysicalMaterial,
+  metalness = 0.5,
+  roughness = 0.5,
+): void => {
+  const safeMetalnessScale = Math.max(metalness * 2, 0).toFixed(3);
+  const safeRoughnessScale = Math.max(roughness * 2, 0.01).toFixed(3);
   material.onBeforeCompile = (shader) => {
     shader.fragmentShader = shader.fragmentShader
       .replace(
@@ -146,7 +152,8 @@ export const installElementMaterialShader = (material: MeshPhysicalMaterial): vo
         roughnessFactor = mix(roughnessFactor, 0.16, gleamoeMetal);
         roughnessFactor = mix(roughnessFactor, 0.075, gleamoeGem);
         roughnessFactor = mix(roughnessFactor, 0.12, gleamoeIridescent);
-        roughnessFactor = mix(roughnessFactor, 0.32, gleamoeVacancy);`,
+        roughnessFactor = mix(roughnessFactor, 0.32, gleamoeVacancy);
+        roughnessFactor = clamp(roughnessFactor * ${safeRoughnessScale}, 0.0, 1.0);`,
       )
       .replace(
         '#include <metalnessmap_fragment>',
@@ -154,7 +161,12 @@ export const installElementMaterialShader = (material: MeshPhysicalMaterial): vo
         metalnessFactor = mix(metalnessFactor, 0.68, gleamoeMetal);
         metalnessFactor = mix(metalnessFactor, 0.0, gleamoeGem);
         metalnessFactor = mix(metalnessFactor, 0.38, gleamoeIridescent);
-        metalnessFactor = mix(metalnessFactor, 0.0, gleamoeVacancy);`,
+        metalnessFactor = mix(metalnessFactor, 0.0, gleamoeVacancy);
+        float gleamoeMetalnessScale = ${safeMetalnessScale};
+        metalnessFactor = gleamoeMetalnessScale <= 1.0
+          ? metalnessFactor * gleamoeMetalnessScale
+          : mix(metalnessFactor, 1.0, gleamoeMetalnessScale - 1.0);
+        metalnessFactor = clamp(metalnessFactor, 0.0, 1.0);`,
       )
       .replace(
         'material.clearcoat = clearcoat;',
@@ -173,7 +185,8 @@ export const installElementMaterialShader = (material: MeshPhysicalMaterial): vo
         material.iridescence = mix(material.iridescence, 0.0, gleamoeVacancy);`,
       );
   };
-  material.customProgramCacheKey = () => 'gleamoe-element-materials-v1';
+  material.customProgramCacheKey = () =>
+    `gleamoe-element-materials-v2-${safeMetalnessScale}-${safeRoughnessScale}`;
   material.needsUpdate = true;
 };
 

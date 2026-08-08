@@ -2,6 +2,7 @@ import { BatchedMesh, CylinderGeometry, MeshPhysicalMaterial, Vector3, type Colo
 
 import type { BondInstanceSpec, AtomicSceneSpec, SiteSpec, ViewerOptions } from '../../scene/types';
 import type { ViewerTheme } from '../../themes/themes';
+import { scaledMetalness, scaledRoughness } from '../appearance';
 import { color, cylinderMatrix, geometryCapacity } from '../geometry';
 
 interface BondRecord {
@@ -26,8 +27,8 @@ export class BondLayer {
     const capacity = geometryCapacity([fromGeometry, toGeometry]);
     const material = new MeshPhysicalMaterial({
       color: 0xffffff,
-      metalness: theme.bond.metalness,
-      roughness: theme.bond.roughness,
+      metalness: scaledMetalness(theme.bond.metalness, options.metalness),
+      roughness: scaledRoughness(theme.bond.roughness, options.roughness),
       clearcoat: theme.bond.clearcoat,
       clearcoatRoughness: theme.bond.clearcoatRoughness,
     });
@@ -108,8 +109,8 @@ export class BondLayer {
 
   updateTheme(theme: ViewerTheme): void {
     const material = this.mesh.material as MeshPhysicalMaterial;
-    material.metalness = theme.bond.metalness;
-    material.roughness = theme.bond.roughness;
+    material.metalness = scaledMetalness(theme.bond.metalness, this.options.metalness);
+    material.roughness = scaledRoughness(theme.bond.roughness, this.options.roughness);
     material.clearcoat = theme.bond.clearcoat;
     material.clearcoatRoughness = theme.bond.clearcoatRoughness;
     material.needsUpdate = true;

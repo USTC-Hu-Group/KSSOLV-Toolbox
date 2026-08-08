@@ -24,10 +24,15 @@ const camera = (): OrthographicCamera => {
   return value;
 };
 
-const exportSvg = (overrides: Partial<ReturnType<typeof defaultViewerOptions>> = {}): string => {
+const exportSvg = (
+  overrides: Partial<ReturnType<typeof defaultViewerOptions>> = {},
+  repeat: [number, number, number] = [1, 1, 1],
+): string => {
   const options = { ...defaultViewerOptions(), ...overrides };
+  const scene = createDebugScene();
+  scene.structure.repeat = repeat;
   return buildVectorSvg({
-    scene: createDebugScene(),
+    scene,
     options,
     theme: themes[options.theme],
     camera: camera(),
@@ -115,6 +120,28 @@ describe('vector image export', () => {
 
     expect(edges.size).toBe(12);
     expect(segments.length).toBeGreaterThan(12);
+  });
+
+  it('exports the internal cell divisions of a visual repeat', () => {
+    const svg = exportSvg(
+      {
+        showAtoms: false,
+        showBonds: false,
+        showUnitCell: true,
+        showPolyhedra: false,
+        showAxes: false,
+        showMagmoms: false,
+      },
+      [2, 1, 1],
+    );
+    const document = new DOMParser().parseFromString(svg, 'image/svg+xml');
+    const edges = new Set(
+      [...document.querySelectorAll('line[data-layer="cell"]')].map((segment) =>
+        segment.getAttribute('data-edge'),
+      ),
+    );
+
+    expect(edges.size).toBe(20);
   });
 
   it('uses subdued unit-cell lines and borderless polyhedron faces', () => {

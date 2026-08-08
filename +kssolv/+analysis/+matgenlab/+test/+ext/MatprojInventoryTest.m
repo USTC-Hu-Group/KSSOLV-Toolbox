@@ -147,6 +147,26 @@ classdef MatprojInventoryTest < matlab.unittest.TestCase
                 "kssolv.analysis.matgenlab.core.Structure");
         end
 
+        function boundedSummarySearchDoesNotAutoPaginate(testCase)
+            import kssolv.analysis.matgenlab.ext.matproj.MPRester
+            transport = fixtureTransport();
+            rester = MPRester(testCase.Key, false, ...
+                "transport", transport);
+
+            rester.summary_search( ...
+                "elements", ["Li", "Fe"], ...
+                "nelements", 2, ...
+                "_fields", ["material_id", "formula_pretty"], ...
+                "_limit", 100);
+
+            request = transport.Requests{1};
+            testCase.verifySubstring(request.url, "_limit=100");
+            testCase.verifyFalse(contains(request.url, "_per_page="));
+            testCase.verifyFalse(contains(request.url, "_page="));
+            testCase.verifyEqual(request.payload.elements, "Li,Fe");
+            testCase.verifyEqual(request.payload.nelements, "2");
+        end
+
         function entriesAndChemsysParity(testCase)
             import kssolv.analysis.matgenlab.core.ComputedEntry
             import kssolv.analysis.matgenlab.ext.matproj.MPRester

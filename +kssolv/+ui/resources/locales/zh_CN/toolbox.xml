@@ -29,8 +29,7 @@
         <entry key="ProjectStructureButtonTooltip">导入/导出结构</entry>
         <entry key="NewStructureListItemLabel">新建空白结构</entry>
         <entry key="ImportStructureFromFileListItemLabel">从文件导入结构...</entry>
-        <entry key="ImportStructureFromLinkListItemLabel">从链接导入结构...</entry>
-        <entry key="ImportStructureFromLibraryListItemLabel">从材料库导入结构...</entry>
+        <entry key="ImportStructureFromMaterialsProjectListItemLabel">从 Materials Project 导入结构...</entry>
         <entry key="ImportStructureFromMatlabListItemLabel">从 MATLAB 工作区导入结构...</entry>
         <entry key="ProjectWorkflowButtonLabel">工作流</entry>
         <entry key="ProjectWorkflowButtonTooltip">新建默认工作流</entry>

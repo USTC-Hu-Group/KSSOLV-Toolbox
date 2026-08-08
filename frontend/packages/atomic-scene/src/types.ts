@@ -106,6 +106,7 @@ export interface AtomicSceneBase {
 
 export interface CrystalSceneSpec extends AtomicSceneBase {
   kind: "crystal";
+  viewHint?: "slab";
   structure: {
     formula: string;
     lattice: Matrix3Tuple;
@@ -151,6 +152,7 @@ export interface ViewerOptions {
   showUnitCell: boolean;
   showPolyhedra: boolean;
   showAxes: boolean;
+  depthCueing: boolean;
   showBoundaryAtoms: boolean;
   showBondedOutside: boolean;
   hideIncompleteBonds: boolean;
@@ -160,6 +162,13 @@ export interface ViewerOptions {
   atomScale: number;
   bondRadius: number;
   polyhedronOpacity: number;
+  /** Normalized appearance controls; 0.5 preserves the theme-authored values. */
+  ambientLight: number;
+  directionalLight: number;
+  metalness: number;
+  roughness: number;
+  brightness: number;
+  contrast: number;
   background: string | null;
 }
 
@@ -176,6 +185,7 @@ export const defaultViewerOptions = (): ViewerOptions => ({
   showUnitCell: true,
   showPolyhedra: true,
   showAxes: true,
+  depthCueing: true,
   showBoundaryAtoms: true,
   showBondedOutside: true,
   hideIncompleteBonds: true,
@@ -185,6 +195,12 @@ export const defaultViewerOptions = (): ViewerOptions => ({
   atomScale: 0.44,
   bondRadius: 0.1,
   polyhedronOpacity: 0.28,
+  ambientLight: 0.5,
+  directionalLight: 0.5,
+  metalness: 0.5,
+  roughness: 0.5,
+  brightness: 0.5,
+  contrast: 0.5,
   background: null,
 });
 

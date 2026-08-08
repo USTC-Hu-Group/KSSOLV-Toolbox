@@ -88,7 +88,13 @@ classdef ParameterPresentation
                 kssolv.ui.features.modeling.ParameterPresentation. ...
                 enumChoices(commandId, name);
             if ~isempty(choices)
-                value.control = "enum";
+                if name == "symprec"
+                    value.control = "numericEnum";
+                elseif any(name == ["cartesian", "fractional"])
+                    value.control = "coordinateSystem";
+                else
+                    value.control = "enum";
+                end
                 value.choices = choices;
                 value.choiceLabels = strings(size(choices));
                 for index = 1:numel(choices)
@@ -139,7 +145,21 @@ classdef ParameterPresentation
         function [choices, keys] = enumChoices(commandId, name)
             choices = strings(0, 1);
             keys = strings(0, 1);
-            if commandId == "merge_atoms" && name == "mode"
+            if any(name == ["cartesian", "fractional"])
+                choices = ["fractional"; "cartesian"];
+                keys = [
+                    "ChoiceFractionalCoordinates"; ...
+                    "ChoiceCartesianCoordinates"];
+            elseif any(commandId == ["find_symmetry", ...
+                    "primitive_cell", "conventional_cell"]) && ...
+                    name == "symprec"
+                choices = ["0.0001"; "0.001"; "0.01"; "0.1"];
+                keys = [
+                    "ChoiceToleranceVeryFine"; ...
+                    "ChoiceToleranceFine"; ...
+                    "ChoiceToleranceGood"; ...
+                    "ChoiceToleranceCoarse"];
+            elseif commandId == "merge_atoms" && name == "mode"
                 choices = ["delete"; "sum"; "average"];
                 keys = ["ChoiceDelete"; "ChoiceSum"; "ChoiceAverage"];
             elseif commandId == "create_point_defects" && ...

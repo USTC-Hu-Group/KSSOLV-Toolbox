@@ -10,6 +10,7 @@
         <entry key="EditorsSection">编辑工具</entry>
         <entry key="UndoTooltip">恢复到最近一次建模操作之前的结构。</entry>
         <entry key="RedoTooltip">重新应用最近撤销的建模操作。</entry>
+        <entry key="ResetStructureTooltip">恢复到打开此文档或最近保存时保留的结构副本。</entry>
         <entry key="AtomicEditorTooltip">添加、删除、移动和整理原子。</entry>
         <entry key="LatticeEditorTooltip">编辑晶格矢量，并同步调整原子坐标。</entry>
         <entry key="SupercellLatticeTooltip">构建超胞、重定义晶胞，或对结构施加形变。</entry>
@@ -68,6 +69,96 @@
         <entry key="ChoiceTop">顶部</entry>
         <entry key="ChoiceBottom">底部</entry>
         <entry key="ChoiceBoth">两侧</entry>
+        <entry key="ChoiceFractionalCoordinates">分数坐标</entry>
+        <entry key="ChoiceCartesianCoordinates">笛卡尔坐标</entry>
+        <entry key="ChoiceToleranceVeryFine">极精细（0.0001 Å）</entry>
+        <entry key="ChoiceToleranceFine">精细（0.001 Å）</entry>
+        <entry key="ChoiceToleranceGood">良好（0.01 Å）</entry>
+        <entry key="ChoiceToleranceCoarse">粗略（0.1 Å）</entry>
+        <entry key="HelpInformation">帮助信息</entry>
+
+        <entry key="HelpTitle_CenterAtoms">原子如何居中</entry>
+        <entry key="HelpText_CenterAtoms">所选原子整体平移，使其平均分数坐标到达目标位置。若选择跨越周期边界，请先将原子展开到连续周期像。</entry>
+        <entry key="HelpFormula_CenterAtoms">$\Delta\mathbf{f}=\mathbf{f}_{\mathrm{target}}-\frac{1}{N}\sum_i\mathbf{f}_i$</entry>
+        <entry key="HelpSymbols_CenterAtoms">符号：Δf 是所有所选原子共用的分数坐标平移量；f目标 是目标位置；fi 是第 i 个原子的原分数坐标；N 是所选原子数。</entry>
+        <entry key="HelpTitle_MergeAtoms">合并重合原子</entry>
+        <entry key="HelpText_MergeAtoms">周期最小镜像距离不超过容差的原子会移到平均位置。删除模式保留一个原子；相加模式合并占位；平均模式平均兼容的数值属性。</entry>
+        <entry key="HelpTitle_MirrorAtoms">镜像平面</entry>
+        <entry key="HelpText_MirrorAtoms">笛卡尔法向量和平面点共同定义镜像平面。只移动所选原子，晶格保持不变。</entry>
+        <entry key="HelpFormula_MirrorAtoms">$\hat{\mathbf n}=\frac{\mathbf n}{\|\mathbf n\|},\qquad \mathbf r^{\prime}=\mathbf r-2[(\mathbf r-\mathbf p)\cdot\hat{\mathbf n}]\hat{\mathbf n}$</entry>
+        <entry key="HelpSymbols_MirrorAtoms">符号：r 和 r′ 是镜像前后的笛卡尔位置；p 是平面上的一点；n 是平面法向量；n̂ 是单位法向量；· 表示点积。</entry>
+        <entry key="HelpTitle_Perturbation">随机扰动</entry>
+        <entry key="HelpText_Perturbation">每个受影响原子获得随机方向，位移长度在最小值和最大值之间均匀抽样。相同随机种子可复现结果。当前两个扰动命令都会影响全部原子。</entry>
+        <entry key="HelpTitle_RotateAtoms">旋转原子</entry>
+        <entry key="HelpText_RotateAtoms">旋转轴和中心均采用笛卡尔坐标，中心单位为 Å；正角遵循右手定则。晶格不变，旋转后的原子会折回晶胞。</entry>
+        <entry key="HelpFormula_RotateAtoms">$\mathbf r^{\prime}=\mathbf p+R(\hat{\mathbf n},\theta)(\mathbf r-\mathbf p)$</entry>
+        <entry key="HelpSymbols_RotateAtoms">符号：r 和 r′ 是旋转前后的笛卡尔位置；p 是旋转中心；n̂ 是单位旋转轴；θ 是输入角度；R 是旋转矩阵。</entry>
+        <entry key="HelpTitle_TranslationCoordinates">平移坐标系</entry>
+        <entry key="HelpText_TranslationCoordinates">笛卡尔向量单位为 Å。分数向量以晶格为基底，例如 [1 0 0] 表示平移一个完整的 a 矢量。周期方向会折回晶胞。</entry>
+        <entry key="HelpTitle_Strain">对角应变</entry>
+        <entry key="HelpText_Strain">标量作用于三个方向；三个数值分别指定各轴应变。分数坐标保持不变，暂不支持剪切应变。</entry>
+        <entry key="HelpFormula_Strain">$A^{\prime}=\mathrm{diag}(1+\varepsilon_x,1+\varepsilon_y,1+\varepsilon_z)A$</entry>
+        <entry key="HelpSymbols_Strain">符号：A 和 A′ 是应变前后的晶格矩阵；εx、εy、εz 是无量纲轴向应变。例如 0.01 表示伸长 1%。</entry>
+        <entry key="HelpTitle_EditLattice">编辑晶格</entry>
+        <entry key="HelpText_EditLattice">矩阵三行依次为 a、b、c。关闭“保持笛卡尔坐标”时分数坐标不变，原子随晶格形变；开启时空间位置不变，并重算分数坐标。</entry>
+        <entry key="HelpFormula_EditLattice">$\mathbf r=\mathbf fA$</entry>
+        <entry key="HelpSymbols_EditLattice">符号：A 是以 a、b、c 为行的晶格矩阵；f 是分数坐标行向量；r 是对应的笛卡尔位置。</entry>
+        <entry key="HelpTitle_MirrorLattice">反转晶格矢量</entry>
+        <entry key="HelpText_MirrorLattice">所选基矢反向，分数坐标保持不变；笛卡尔位置和基底手性可能改变。这不是将原子关于空间平面镜像。</entry>
+        <entry key="HelpFormula_MirrorLattice">$\mathbf a_i^{\prime}=-\mathbf a_i$</entry>
+        <entry key="HelpSymbols_MirrorLattice">符号：ai 和 ai′ 是反转前后的所选晶格矢量；i 是所选晶格轴编号。</entry>
+        <entry key="HelpTitle_RotateLattice">刚性旋转晶格</entry>
+        <entry key="HelpText_RotateLattice">晶格和全部原子绕笛卡尔轴共同旋转。晶格长度、角度和内部原子间距保持不变。</entry>
+        <entry key="HelpTitle_SwapAxes">重排晶格轴</entry>
+        <entry key="HelpText_SwapAxes">输入必须是 1、2、3 的排列。[2 1 3] 表示新轴依次为旧 b、a、c；分数坐标同步重排，以保持笛卡尔位置。</entry>
+        <entry key="HelpTitle_BuildSupercell">超胞变换</entry>
+        <entry key="HelpText_BuildSupercell">输入为整数变换矩阵。[2 2 2] 生成 8 倍超胞；非对角矩阵可生成倾斜或重新定向的超胞。</entry>
+        <entry key="HelpFormula_BuildSupercell">$A^{\prime}=SA,\qquad N^{\prime}=|\det S|N$</entry>
+        <entry key="HelpSymbols_BuildSupercell">符号：S 是整数变换矩阵；A 和 A′ 是原晶格与新晶格；N 和 N′ 是对应原子数；|det S| 是晶胞体积倍数。</entry>
+        <entry key="HelpTitle_RedefineLattice">重定义晶胞</entry>
+        <entry key="HelpText_RedefineLattice">替换晶格时保持原子的笛卡尔位置不变。程序不会自动增加或删除周期像，请确保新晶胞能合理容纳当前结构。</entry>
+        <entry key="HelpTitle_OrthogonalizeCell">搜索正交晶胞</entry>
+        <entry key="HelpText_OrthogonalizeCell">程序搜索晶格角接近 90°且边长满足范围的整数超胞。增大边长或原子数上限、放宽角度容差可提高找到结果的可能性。</entry>
+        <entry key="HelpTitle_PointDefects">点缺陷类型</entry>
+        <entry key="HelpText_PointDefects">空位删除一个位点；替位改变一个位点的元素；间隙在指定坐标增加原子；反位交换两个位点的元素。</entry>
+        <entry key="HelpTitle_SQS">SQS 搜索</entry>
+        <entry key="HelpText_SQS">SQS 保持无序合金组成，并拟合理想随机合金的原子对关联。标量 k 表示约 k 倍晶胞体积，不是各轴均放大 k 倍。小空间精确枚举，大空间使用限时 Monte Carlo 搜索。</entry>
+        <entry key="HelpTitle_Nanotube">纳米管手性</entry>
+        <entry key="HelpText_Nanotube">手性矢量卷成圆周。对六方层，(n,0) 为 zigzag，(n,n) 为 armchair；轴向重复数决定管轴周期长度。</entry>
+        <entry key="HelpFormula_Nanotube">$\mathbf C_h=n\mathbf a_1+m\mathbf a_2,\qquad R=\frac{\|\mathbf C_h\|}{2\pi}$</entry>
+        <entry key="HelpSymbols_Nanotube">符号：(n,m) 是手性指数；a1、a2 是面内晶格矢量；Ch 是卷成圆周的矢量；R 是管半径。</entry>
+        <entry key="HelpTitle_Nanoribbon">纳米带宽度与边缘</entry>
+        <entry key="HelpText_Nanoribbon">宽度表示横向晶格重复次数，不是 Å。Zigzag 和 armchair 选择不同边缘方向。生成结果仅沿带轴保持周期。</entry>
+        <entry key="HelpTitle_Nanowire">纳米线方向与半径</entry>
+        <entry key="HelpText_Nanowire">整数指标定义纳米线轴向。程序保留指定笛卡尔半径圆柱内的原子，最终仅沿线轴方向保持周期。</entry>
+        <entry key="HelpFormula_Nanowire">$\mathbf t=u\mathbf a+v\mathbf b+w\mathbf c$</entry>
+        <entry key="HelpSymbols_Nanowire">符号：[u v w] 是整数方向指标；a、b、c 是晶格矢量；t 是笛卡尔空间中的纳米线轴向。</entry>
+        <entry key="HelpTitle_QuantumDotVoid">量子点或纳米空洞</entry>
+        <entry key="HelpText_QuantumDotVoid">量子点保留中心球内原子、取消周期并添加真空；纳米空洞删除以分数坐标 [0.5 0.5 0.5] 为中心的球内原子，并保留原周期晶胞。</entry>
+        <entry key="HelpTitle_Slab">表面模型</entry>
+        <entry key="HelpText_Slab">米勒指数在倒空间中定义表面法向。表面模型厚度是下限；约简表面晶胞可能改变晶格方向和原子顺序。</entry>
+        <entry key="HelpFormula_Slab">$\mathbf G_{hkl}=h\mathbf b_1+k\mathbf b_2+l\mathbf b_3$</entry>
+        <entry key="HelpSymbols_Slab">符号：(h k l) 是米勒指数；b1、b2、b3 是倒格矢；Ghkl 是所选表面的法向量。</entry>
+        <entry key="HelpTitle_AddVacuum">新增真空层</entry>
+        <entry key="HelpText_AddVacuum">该值会增加第三晶格矢量的长度，不是最终总真空厚度。原子会沿该矢量重新居中；程序假定它是表面法向。</entry>
+        <entry key="HelpFormula_AddVacuum">$\mathbf c^{\prime}=\frac{\|\mathbf c\|+\Delta}{\|\mathbf c\|}\mathbf c$</entry>
+        <entry key="HelpSymbols_AddVacuum">符号：c 和 c′ 是操作前后的第三晶格矢量；Δ 是输入的新增长度，单位为 Å。</entry>
+        <entry key="HelpTitle_Heterostructure">层间匹配</entry>
+        <entry key="HelpText_Heterostructure">层间距是两个相对原子表面之间的距离；最大应变限制面内失配。输入的上下层必须已具有相同或近似匹配的面内晶胞。</entry>
+        <entry key="HelpTitle_Moire">莫尔周期匹配</entry>
+        <entry key="HelpText_Moire">仅支持六方二维原胞。整数匹配候选按角度误差、应变和原子数排序。增大匹配指数可能改善角度匹配，但会增加结构尺寸和搜索成本。</entry>
+        <entry key="HelpTitle_NEB">IDPP-NEB 路径</entry>
+        <entry key="HelpText_NEB">中间构型数不含固定端点；端点必须具有相同晶格、元素和顺序。IDPP 力阈值不是第一性原理计算中的真实力阈值。</entry>
+        <entry key="HelpFormula_NEB">$E_{\mathrm{IDPP}}=\sum_{i&lt;j}\frac{(d_{ij}-d_{ij}^{*})^2}{d_{ij}^{4}}$</entry>
+        <entry key="HelpSymbols_NEB">符号：dij 是某个构型中原子 i、j 的距离；d*ij 是插值得到的目标距离；EIDPP 是用于平滑路径的人工目标函数。</entry>
+        <entry key="HelpTitle_AdsorptionSites">吸附高度</entry>
+        <entry key="HelpText_AdsorptionSites">该高度沿表面法向放置 top、bridge、hollow 等候选点，不是预测的平衡键长。候选结构仍需弛豫验证。</entry>
+        <entry key="HelpTitle_Passivation">表面钝化</entry>
+        <entry key="HelpText_Passivation">程序在表面深度内用 Jmol 半径近邻识别配位不足原子。目标配位 0 表示采用同元素观察到的最大配位；薄层可能需手动指定。发生碰撞的放置会被拒绝。</entry>
+        <entry key="HelpTitle_SolventLayer">溶剂层排布</entry>
+        <entry key="HelpText_SolventLayer">表面间隙决定排布区域起点，层厚决定区域深度，真空分隔溶剂与晶胞边界。Packmol 容差用于避免重叠，不代表真实液体密度。</entry>
+        <entry key="HelpTitle_Symmetry">对称性容差</entry>
+        <entry key="HelpText_Symmetry">增大距离和角度容差通常会识别出更高对称性，但可能忽略真实畸变。标准原胞或惯用胞可能改变晶格方向、原子顺序和原子数。</entry>
 
         <entry key="AtomicEditor">原子编辑</entry>
         <entry key="LatticeEditor">晶格编辑</entry>
@@ -194,7 +285,7 @@
 
         <entry key="Field_species">元素符号</entry>
         <entry key="Field_coordinates">原子坐标</entry>
-        <entry key="Field_cartesian">坐标使用笛卡尔表示</entry>
+        <entry key="Field_cartesian">坐标系</entry>
         <entry key="Field_indices">原子序号（从 1 开始）</entry>
         <entry key="Field_center">目标中心（分数坐标）</entry>
         <entry key="Field_tolerance">容差（Å）</entry>
@@ -209,7 +300,7 @@
         <entry key="Field_axis">旋转轴</entry>
         <entry key="Field_anchor">旋转中心（Å）</entry>
         <entry key="Field_vector">平移向量</entry>
-        <entry key="Field_fractional">平移向量使用分数坐标</entry>
+        <entry key="Field_fractional">坐标系</entry>
         <entry key="Field_strain">应变</entry>
         <entry key="Field_matrix">晶格矩阵（a、b、c 为行）</entry>
         <entry key="Field_preserveCartesian">保持笛卡尔坐标不变</entry>

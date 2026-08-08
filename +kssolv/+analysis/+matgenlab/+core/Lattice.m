@@ -724,8 +724,16 @@ classdef Lattice < kssolv.analysis.matgenlab.util.MSONable
             end
             polyVertices = vertices(vertexIndices, :);
             triangles = convhulln(polyVertices);
-            planeKeys = strings(size(triangles, 1), 1);
+            planeGroups = zeros(size(triangles, 1), 1);
             normals = zeros(size(triangles, 1), 3);
+            representativeNormals = zeros(size(triangles, 1), 3);
+            representativeOffsets = zeros(size(triangles, 1), 1);
+            groupCount = 0;
+            coordinateScale = max(1, max(vecnorm(polyVertices, 2, 2)));
+            % Numeric clustering avoids splitting a plane when nearly
+            % identical coefficients straddle a decimal-rounding boundary.
+            normalTolerance = 1e-8;
+            offsetTolerance = 1e-8 * coordinateScale;
             for idx = 1:size(triangles, 1)
                 triangle = polyVertices(triangles(idx, :), :);
                 normalVector = cross(triangle(2,:) - triangle(1,:), ...
@@ -737,14 +745,23 @@ classdef Lattice < kssolv.analysis.matgenlab.util.MSONable
                     offset = -offset;
                 end
                 normals(idx,:) = normalVector;
-                rounded = round([normalVector, offset], 8);
-                rounded(abs(rounded) < 5e-8) = 0;
-                planeKeys(idx) = sprintf("%.8f,", rounded);
+                matchingGroup = find( ...
+                    max(abs(representativeNormals(1:groupCount, :) - ...
+                    normalVector), [], 2) ...
+                    <= normalTolerance & ...
+                    abs(representativeOffsets(1:groupCount) - offset) ...
+                    <= offsetTolerance, 1);
+                if isempty(matchingGroup)
+                    groupCount = groupCount + 1;
+                    matchingGroup = groupCount;
+                    representativeNormals(matchingGroup, :) = normalVector;
+                    representativeOffsets(matchingGroup, 1) = offset;
+                end
+                planeGroups(idx) = matchingGroup;
             end
-            uniqueKeys = unique(planeKeys, "stable");
-            facets = cell(numel(uniqueKeys), 1);
-            for idx = 1:numel(uniqueKeys)
-                triangleRows = find(planeKeys == uniqueKeys(idx));
+            facets = cell(groupCount, 1);
+            for idx = 1:numel(facets)
+                triangleRows = find(planeGroups == idx);
                 vertexIds = unique(triangles(triangleRows, :), "stable");
                 face = polyVertices(vertexIds, :);
                 faceCenter = mean(face, 1);

@@ -269,6 +269,7 @@ classdef CrystalSceneBuilderTest < matlab.unittest.TestCase
             testCase.verifyEqual(scene.requestId, "modeled-slab");
             testCase.verifyEqual(scene.structure.siteCount, slab.num_sites);
             testCase.verifyEqual(scene.structure.periodic, slab.pbc);
+            testCase.verifyEqual(scene.viewHint, "slab");
             testCase.verifyEqual(scene.analysis.algorithm, "CutOffDictNN");
             testCase.verifyFalse(any( ...
                 contains(string({scene.warnings.code}), ...

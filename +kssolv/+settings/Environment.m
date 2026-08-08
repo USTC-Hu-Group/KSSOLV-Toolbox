@@ -24,6 +24,8 @@ classdef Environment
                 getenv('KSSOLV_OLLAMA_ENDPOINT'))), ...
                 'OpenAIBaseURL', string(strtrim(getenv('OPENAI_PROXY_URL'))), ...
                 'OpenAIAPIKey', string(getenv('OPENAI_API_KEY')), ...
+                'MaterialsProjectAPIKey', ...
+                kssolv.settings.Environment.materialsProjectAPIKey(), ...
                 'OpenAIModelList', string(strtrim(getenv('OPENAI_MODEL_LIST'))));
         end
 
@@ -45,6 +47,10 @@ classdef Environment
 
             if isfield(settings, 'OpenAIAPIKey')
                 setenv('OPENAI_API_KEY', char(string(settings.OpenAIAPIKey)));
+            end
+            if isfield(settings, 'MaterialsProjectAPIKey')
+                setenv('MP_API_KEY', ...
+                    char(string(settings.MaterialsProjectAPIKey)));
             end
 
             if strcmpi(string(settings.LLMType), 'OpenAICompatible')
@@ -87,6 +93,16 @@ classdef Environment
             rawValue = lower(strip(string(rawValue)));
             value = isscalar(rawValue) && ...
                 ismember(rawValue, ["1", "true", "yes", "on"]);
+        end
+
+        function value = materialsProjectAPIKey()
+            value = string(getenv('MP_API_KEY'));
+            if strlength(strip(value)) == 0
+                value = string(getenv('PMG_MAPI_KEY'));
+            end
+            if strlength(strip(value)) == 0
+                value = string(getenv('MAPI_KEY'));
+            end
         end
     end
 end

@@ -5,6 +5,15 @@ classdef MPRester < handle
     % A transport accepts one request struct and returns a response struct
     % with status_code plus text/content fields. This makes the complete
     % request contract deterministic and testable without credentials.
+    %
+    % Example (compatible with the official mp-api summary search):
+    %   mpr = kssolv.analysis.matgenlab.ext.matproj.MPRester();
+    %   docs = mpr.summary_search("elements", ["Li", "Fe", "O"], ...
+    %       "_fields", ["material_id", "formula_pretty"]);
+    %   structure = mpr.get_structure_by_material_id("mp-19017");
+    %
+    % Explicit MP_API_KEY, PMG_MAPI_KEY, MAPI_KEY, or settings-file values
+    % take precedence over KSSOLV's encrypted bundled default.
 
     properties (Constant)
         MATERIALS_DOCS = [ ...
@@ -60,8 +69,8 @@ classdef MPRester < handle
     methods
         function obj = MPRester(apiKey, includeUserAgent, varargin)
             if nargin < 1 || isempty(apiKey)
-                apiKey = kssolv.analysis.matgenlab.core.Settings.get( ...
-                    "PMG_MAPI_KEY", "");
+                apiKey = kssolv.analysis.matgenlab.ext.matproj. ...
+                    MPRester.default_api_key();
             end
             if nargin < 2 || isempty(includeUserAgent)
                 includeUserAgent = true;
@@ -118,13 +127,14 @@ classdef MPRester < handle
             perPage = 1000;
             page = 1;
             allData = cell(1, 0);
-            paginationDisabled = false;
+            paginationDisabled = ~isempty(regexp(url, ...
+                "[?&]_(?:limit|skip|page|per_page)=", "once"));
             while true
                 if paginationDisabled
                     actualUrl = url;
                 else
-                    actualUrl = url + "&_per_page=" + perPage + ...
-                        "&_page=" + page;
+                    actualUrl = appendQuery(url, "_per_page", perPage);
+                    actualUrl = appendQuery(actualUrl, "_page", page);
                 end
                 requestData = struct( ...
                     "url", actualUrl, ...
@@ -442,6 +452,43 @@ classdef MPRester < handle
             end
             value = kssolv.analysis.matgenlab.phonon. ...
                 CompletePhononDos.from_dict(data);
+        end
+    end
+
+    methods (Static)
+        function value = default_api_key()
+            %DEFAULT_API_KEY Resolve official and pymatgen-compatible keys.
+            value = "";
+            try
+                applicationSettings = kssolv.settings.Settings.load();
+                value = string( ...
+                    applicationSettings.MaterialsProjectAPIKey);
+            catch
+                % Settings are optional for headless/library-only use.
+            end
+            if value == ""
+                value = string( ...
+                    kssolv.analysis.matgenlab.core.Settings.get( ...
+                    "MP_API_KEY", ""));
+            end
+            if value == ""
+                value = string( ...
+                    kssolv.analysis.matgenlab.core.Settings.get( ...
+                    "PMG_MAPI_KEY", ""));
+            end
+            if value == ""
+                value = string(getenv("MP_API_KEY"));
+            end
+            if value == ""
+                value = string(getenv("PMG_MAPI_KEY"));
+            end
+            if value == ""
+                value = string(getenv("MAPI_KEY"));
+            end
+            if value == ""
+                value = kssolv.settings.BundledCredentials. ...
+                    readMaterialsProjectAPIKey();
+            end
         end
     end
 
@@ -814,12 +861,13 @@ import matlab.net.http.HTTPOptions
 import matlab.net.http.HeaderField
 import matlab.net.http.MessageBody
 import matlab.net.http.RequestMessage
+import matlab.net.http.RequestMethod
 url = string(request.url);
 if upper(string(request.method)) == "GET" && isstruct(request.payload)
     names = fieldnames(request.payload);
     for index = 1:numel(names)
-        url = url + "&" + percentEncode(names{index}) + "=" + ...
-            percentEncode(commaCat(request.payload.(names{index})));
+        url = appendQuery(url, names{index}, ...
+            request.payload.(names{index}));
     end
 end
 headerNames = fieldnames(request.headers);
@@ -832,9 +880,9 @@ end
 method = upper(string(request.method));
 if method == "POST"
     body = MessageBody(request.payload);
-    message = RequestMessage("post", headers, body);
+    message = RequestMessage(RequestMethod.POST, headers, body);
 else
-    message = RequestMessage("get", headers);
+    message = RequestMessage(RequestMethod.GET, headers);
 end
 reply = message.send(URI(url), ...
     HTTPOptions("ConnectTimeout", request.timeout));
@@ -852,6 +900,17 @@ end
 response = struct("status_code", double(reply.StatusCode), ...
     "text", text, "content", content, ...
     "reason", string(reply.StatusLine.ReasonPhrase));
+end
+
+function url = appendQuery(url, name, value)
+url = string(url);
+if contains(url, "?")
+    separator = "&";
+else
+    separator = "?";
+end
+url = url + separator + percentEncode(name) + "=" + ...
+    percentEncode(commaCat(value));
 end
 
 function value = percentEncode(input)

@@ -133,6 +133,79 @@ classdef SessionRegistry < handle
             value = this.count() > 0;
         end
 
+        function exitFullscreen(this)
+            %EXITFULLSCREEN Let each viewer check and leave fullscreen.
+            this.removeInvalidSessions();
+            keys = this.Sessions.keys;
+            for index = 1:numel(keys)
+                entry = this.Sessions(keys{index});
+                entry.display.exitFullscreen();
+            end
+        end
+
+        function waitForFullscreenExit(this, timeout)
+            %WAITFORFULLSCREENEXIT Process viewer acknowledgements briefly.
+            arguments
+                this
+                timeout (1,1) double {mustBeNonnegative} = 1
+            end
+            started = tic;
+            while toc(started) < timeout
+                this.removeInvalidSessions();
+                pending = false;
+                keys = this.Sessions.keys;
+                for index = 1:numel(keys)
+                    entry = this.Sessions(keys{index});
+                    if entry.display.isFullscreenExitPending()
+                        pending = true;
+                        break
+                    end
+                end
+                if ~pending
+                    return
+                end
+                drawnow
+                pause(0.01)
+            end
+        end
+
+        function value = hasUnsavedChanges(this)
+            this.removeInvalidSessions();
+            value = false;
+            keys = this.Sessions.keys;
+            for index = 1:numel(keys)
+                entry = this.Sessions(keys{index});
+                if entry.display.hasUnsavedChanges()
+                    value = true;
+                    return
+                end
+            end
+        end
+
+        function saveAllChangesToProject(this)
+            %SAVEALLCHANGESTOPROJECT Commit every open structure draft.
+            this.removeInvalidSessions();
+            keys = this.Sessions.keys;
+            for index = 1:numel(keys)
+                entry = this.Sessions(keys{index});
+                entry.display.saveChangesToProject();
+            end
+        end
+
+        function discardAllChanges(this, render)
+            %DISCARDALLCHANGES Restore all initial copies without persistence.
+            arguments
+                this
+                render (1,1) logical = false
+            end
+            this.removeInvalidSessions();
+            keys = this.Sessions.keys;
+            for index = 1:numel(keys)
+                entry = this.Sessions(keys{index});
+                entry.display.discardChanges(render);
+            end
+        end
+
         function clear(this)
             keys = this.Sessions.keys;
             for index = 1:numel(keys)

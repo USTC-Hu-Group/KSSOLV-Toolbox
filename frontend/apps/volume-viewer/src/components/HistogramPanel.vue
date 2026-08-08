@@ -12,7 +12,7 @@ import {
   type HistogramThresholdSign,
 } from './histogramInteraction';
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   channel: VolumeChannelSpec;
   counts?: Uint32Array;
   positiveThreshold: number;
@@ -20,7 +20,12 @@ const props = defineProps<{
   rangeMinimum: number;
   rangeMaximum: number;
   interaction: 'threshold' | 'range';
-}>();
+  displayScale?: number;
+  displayUnits?: string;
+}>(), {
+  displayScale: 1,
+  displayUnits: '',
+});
 const emit = defineEmits<{
   'select-threshold': [sign: HistogramThresholdSign, value: number];
   'select-range': [bound: HistogramRangeBound, value: number];
@@ -255,8 +260,8 @@ const stopDrag = (event: PointerEvent): void => {
       </template>
     </svg>
     <div class="histogram-labels">
-      <span>{{ channel.minimum.toPrecision(4) }}</span>
-      <span>{{ channel.maximum.toPrecision(4) }} {{ channel.units }}</span>
+      <span>{{ (channel.minimum * displayScale).toPrecision(4) }}</span>
+      <span>{{ (channel.maximum * displayScale).toPrecision(4) }} {{ displayUnits || channel.units }}</span>
     </div>
   </div>
 </template>

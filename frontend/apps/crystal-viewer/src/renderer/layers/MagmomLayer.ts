@@ -7,6 +7,7 @@ import {
 } from 'three';
 
 import type { AtomicSceneSpec, Vector3Tuple, ViewerOptions } from '../../scene/types';
+import { scaledMetalness, scaledRoughness } from '../appearance';
 import { color, cylinderMatrix, geometryCapacity } from '../geometry';
 
 interface ArrowGeometry {
@@ -45,7 +46,11 @@ export class MagmomLayer {
       atoms.length * 2,
       capacity.vertices,
       capacity.indices,
-      new MeshStandardMaterial({ color: 0xffffff, roughness: 0.36 }),
+      new MeshStandardMaterial({
+        color: 0xffffff,
+        metalness: scaledMetalness(0.08, options.metalness),
+        roughness: scaledRoughness(0.36, options.roughness),
+      }),
     );
     this.mesh.name = 'crystal-magnetic-moments';
     const shaftId = this.mesh.addGeometry(geometries.shaft);

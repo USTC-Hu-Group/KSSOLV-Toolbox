@@ -15,6 +15,7 @@ import { ConvexGeometry } from 'three/examples/jsm/geometries/ConvexGeometry.js'
 
 import type { AtomicSceneSpec, ViewerOptions } from '../../scene/types';
 import type { ViewerTheme } from '../../themes/themes';
+import { scaledMetalness, scaledRoughness } from '../appearance';
 import { color, geometryCapacity } from '../geometry';
 
 interface GeometryRecord {
@@ -52,8 +53,8 @@ export class PolyhedronLayer {
     const capacity = geometryCapacity(records.map((record) => record.geometry));
     const material = new MeshPhysicalMaterial({
       color: 0xffffff,
-      roughness: premium ? 0.085 : 0.5,
-      metalness: premium ? 0.015 : 0,
+      roughness: scaledRoughness(premium ? 0.085 : 0.5, options.roughness),
+      metalness: scaledMetalness(premium ? 0.015 : 0, options.metalness),
       clearcoat: premium ? 1 : 0,
       clearcoatRoughness: premium ? 0.035 : 0,
       ior: premium ? 1.52 : 1.5,

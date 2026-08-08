@@ -18,6 +18,7 @@ classdef ModelingTab < handle
         CurrentDisplay = []
         UndoButton
         RedoButton
+        ResetButton
         Executing (1,1) logical = false
     end
 
@@ -99,22 +100,34 @@ classdef ModelingTab < handle
                 "KSSOLV:modeling:Redo"), ...
                 kssolv.ui.features.modeling.CommandPresentationCatalog. ...
                 utilityIcon("redo"));
+            this.ResetButton = Button( ...
+                kssolv.ui.util.Localizer.message( ...
+                "KSSOLV:modeling:Reset"), ...
+                kssolv.ui.features.modeling.CommandPresentationCatalog. ...
+                utilityIcon("undo"));
             this.UndoButton.Tag = "ModelingUndo";
             this.RedoButton.Tag = "ModelingRedo";
+            this.ResetButton.Tag = "ModelingReset";
             this.UndoButton.Description = ...
                 kssolv.ui.util.Localizer.message( ...
                 "KSSOLV:modeling:UndoTooltip");
             this.RedoButton.Description = ...
                 kssolv.ui.util.Localizer.message( ...
                 "KSSOLV:modeling:RedoTooltip");
+            this.ResetButton.Description = ...
+                kssolv.ui.util.Localizer.message( ...
+                "KSSOLV:modeling:ResetStructureTooltip");
             column.add(this.UndoButton);
             column.add(this.RedoButton);
+            column.add(this.ResetButton);
             historySection.add(column);
             this.Tab.add(historySection);
             addlistener(this.UndoButton, "ButtonPushed", ...
                 @(~, ~)this.undo());
             addlistener(this.RedoButton, "ButtonPushed", ...
                 @(~, ~)this.redo());
+            addlistener(this.ResetButton, "ButtonPushed", ...
+                @(~, ~)this.reset());
         end
 
         function buildEditorsSection(this)
@@ -614,14 +627,22 @@ classdef ModelingTab < handle
             this.refreshHistoryButtons();
         end
 
+        function reset(this)
+            display = this.requireCurrentDisplay();
+            display.reset();
+            this.refreshHistoryButtons();
+        end
+
         function refreshHistoryButtons(this)
             display = this.Registry.getCurrentDisplay();
             if this.Executing || isempty(display)
                 this.UndoButton.Enabled = false;
                 this.RedoButton.Enabled = false;
+                this.ResetButton.Enabled = false;
             else
                 this.UndoButton.Enabled = display.canUndo();
                 this.RedoButton.Enabled = display.canRedo();
+                this.ResetButton.Enabled = display.canReset();
             end
         end
 

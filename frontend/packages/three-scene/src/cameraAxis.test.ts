@@ -8,6 +8,7 @@ import {
   cameraAxisFrameFromVectors,
   latticeAxisDirections,
   reciprocalAxisDirections,
+  slabCameraFrame,
 } from './cameraAxis';
 
 const scene = {
@@ -51,5 +52,30 @@ describe('crystallographic camera axes', () => {
     expect(Math.abs(frame.direction.dot(directA.normalize()))).toBeLessThan(1e-12);
     expect(Math.abs(frame.direction.dot(directC.normalize()))).toBeLessThan(1e-12);
     expect(Math.abs(frame.direction.dot(frame.up))).toBeLessThan(1e-12);
+  });
+
+  it('projects the exact slab normal onto the vertical screen direction', () => {
+    const skewedSlab = {
+      ...scene,
+      structure: {
+        ...scene.structure,
+        lattice: [
+          [3, 0.2, 1],
+          [0.4, 2.7, 0.6],
+          [0.5, 0.7, 5],
+        ],
+      },
+    } as CrystalSceneSpec;
+    const frame = slabCameraFrame(skewedSlab);
+    const normal = new Vector3(...skewedSlab.structure.lattice[0])
+      .cross(new Vector3(...skewedSlab.structure.lattice[1]))
+      .normalize();
+    const projectedNormal = normal
+      .clone()
+      .addScaledVector(frame.direction, -normal.dot(frame.direction))
+      .normalize();
+
+    expect(frame.up.dot(projectedNormal)).toBeCloseTo(1, 12);
+    expect(frame.up.dot(frame.direction)).toBeCloseTo(0, 12);
   });
 });

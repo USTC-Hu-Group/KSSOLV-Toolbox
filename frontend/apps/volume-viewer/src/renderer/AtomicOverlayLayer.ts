@@ -12,24 +12,108 @@ import {
   MeshPhongMaterial,
   MeshPhysicalMaterial,
   SphereGeometry,
+  type Material,
   Vector3,
 } from 'three';
 import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
 
-import type { AtomicSceneSpec, BondInstanceSpec, RgbTuple } from '@kssolv/atomic-scene';
+import {
+  defaultViewerOptions,
+  type AtomicSceneSpec,
+  type BondInstanceSpec,
+  type RgbTuple,
+} from '@kssolv/atomic-scene';
+
+import type { VolumeOptions } from '../state/volumeStore';
+import {
+  appearanceScale,
+  scaledMetalness,
+  scaledRoughness,
+  volumeViewerThemes,
+  type VolumeViewerTheme,
+} from '../themes';
 
 const color = (rgb: RgbTuple): Color => new Color(rgb[0] / 255, rgb[1] / 255, rgb[2] / 255);
 
-const bondMesh = (bond: BondInstanceSpec, radius: number, tint: Color): Mesh => {
-  const start = new Vector3(...bond.start);
-  const end = new Vector3(...bond.end);
+export type AtomicOverlayStyle = Pick<
+  VolumeOptions,
+  | 'theme'
+  | 'colorMode'
+  | 'radiusMode'
+  | 'atomScale'
+  | 'bondRadius'
+  | 'metalness'
+  | 'roughness'
+>;
+
+const viewerDefaults = defaultViewerOptions();
+export const defaultAtomicOverlayStyle = (): AtomicOverlayStyle => ({
+  theme: viewerDefaults.theme,
+  colorMode: viewerDefaults.colorMode,
+  radiusMode: viewerDefaults.radiusMode,
+  atomScale: viewerDefaults.atomScale,
+  bondRadius: viewerDefaults.bondRadius,
+  metalness: viewerDefaults.metalness,
+  roughness: viewerDefaults.roughness,
+});
+
+const atomicTint = (
+  rgb: RgbTuple,
+  theme: VolumeViewerTheme,
+): Color => {
+  const tint = color(rgb);
+  if (theme.id === 'materials') tint.offsetHSL(0, 0.08, 0.01);
+  return tint;
+};
+
+const atomMaterial = (
+  tint: Color,
+  style: AtomicOverlayStyle,
+  theme: VolumeViewerTheme,
+): Material =>
+  theme.atom.model === 'phong'
+    ? new MeshPhongMaterial({
+        color: tint,
+        shininess:
+          theme.atom.shininess /
+          Math.max(appearanceScale(style.roughness), 0.2),
+        specular: new Color(0x8f8f8f).multiplyScalar(
+          appearanceScale(style.metalness),
+        ),
+      })
+    : new MeshPhysicalMaterial({
+        color: tint,
+        metalness: scaledMetalness(theme.atom.metalness, style.metalness),
+        roughness: scaledRoughness(theme.atom.roughness, style.roughness),
+        clearcoat: theme.atom.clearcoat,
+        clearcoatRoughness: theme.atom.clearcoatRoughness,
+      });
+
+const bondMaterial = (
+  tint: Color,
+  style: AtomicOverlayStyle,
+  theme: VolumeViewerTheme,
+): MeshPhysicalMaterial =>
+  new MeshPhysicalMaterial({
+    color: tint,
+    metalness: scaledMetalness(theme.bond.metalness, style.metalness),
+    roughness: scaledRoughness(theme.bond.roughness, style.roughness),
+    clearcoat: theme.bond.clearcoat,
+    clearcoatRoughness: theme.bond.clearcoatRoughness,
+  });
+
+const bondMesh = (
+  startPoint: BondInstanceSpec['start'],
+  endPoint: BondInstanceSpec['end'],
+  radius: number,
+  material: Material,
+): Mesh => {
+  const start = new Vector3(...startPoint);
+  const end = new Vector3(...endPoint);
   const midpoint = start.clone().add(end).multiplyScalar(0.5);
   const direction = end.clone().sub(start);
-  const geometry = new CylinderGeometry(radius, radius, direction.length(), 12);
-  const mesh = new Mesh(
-    geometry,
-    new MeshPhongMaterial({ color: tint, shininess: 70, specular: 0xffffff }),
-  );
+  const geometry = new CylinderGeometry(radius, radius, direction.length(), 16);
+  const mesh = new Mesh(geometry, material);
   mesh.position.copy(midpoint);
   mesh.quaternion.setFromUnitVectors(new Vector3(0, 1, 0), direction.normalize());
   return mesh;
@@ -42,29 +126,67 @@ export class AtomicOverlayLayer extends Group {
   private cellGroup = new Group();
   private polyhedronGroup = new Group();
 
-  constructor(scene: AtomicSceneSpec) {
+  constructor(
+    scene: AtomicSceneSpec,
+    style: AtomicOverlayStyle = defaultAtomicOverlayStyle(),
+  ) {
     super();
+    const theme = volumeViewerThemes[style.theme];
     this.add(this.polyhedronGroup, this.bondGroup, this.atomGroup, this.cellGroup);
     const sites = new Map(scene.sites.map((site) => [site.siteIndex, site]));
     for (const atom of scene.atomInstances) {
       const site = sites.get(atom.siteIndex);
       if (!site) continue;
       const species = site.species[0];
-      const geometry = new SphereGeometry(Math.max(0.18, species.atomicRadius * 0.34), 28, 20);
-      const material = new MeshPhongMaterial({
-        color: color(species.colorVesta),
-        shininess: 95,
-        specular: 0xffffff,
-      });
+      const radius =
+        style.radiusMode === 'uniform'
+          ? 0.5 * style.atomScale
+          : Math.max(species.atomicRadius, 0.35) * style.atomScale;
+      const geometry = new SphereGeometry(radius, 32, 24);
+      const material = atomMaterial(
+        atomicTint(
+          style.colorMode === 'vesta' ? species.colorVesta : species.colorJmol,
+          theme,
+        ),
+        style,
+        theme,
+      );
       this.resources.push(geometry, material);
       const mesh = new Mesh(geometry, material);
       mesh.position.fromArray(atom.position);
       this.atomGroup.add(mesh);
     }
     for (const bond of scene.bondInstances) {
-      const mesh = bondMesh(bond, 0.075, new Color(0x8d95a3));
-      this.resources.push(mesh.geometry, mesh.material as MeshPhongMaterial);
-      this.bondGroup.add(mesh);
+      const midpoint = bond.start.map(
+        (entry, index) => (entry + bond.end[index]) * 0.5,
+      ) as BondInstanceSpec['start'];
+      const fromSpecies = sites.get(bond.fromSiteIndex)?.species[0];
+      const toSpecies = sites.get(bond.toSiteIndex)?.species[0];
+      const speciesTint = (species: typeof fromSpecies): Color =>
+        species
+          ? atomicTint(
+              style.colorMode === 'vesta' ? species.colorVesta : species.colorJmol,
+              theme,
+            )
+          : new Color(0x8d95a3);
+      const halves = [
+        bondMesh(
+          bond.start,
+          midpoint,
+          style.bondRadius,
+          bondMaterial(speciesTint(fromSpecies), style, theme),
+        ),
+        bondMesh(
+          midpoint,
+          bond.end,
+          style.bondRadius,
+          bondMaterial(speciesTint(toSpecies), style, theme),
+        ),
+      ];
+      for (const mesh of halves) {
+        this.resources.push(mesh.geometry, mesh.material as Material);
+        this.bondGroup.add(mesh);
+      }
     }
     for (const polyhedron of scene.polyhedra) {
       if (polyhedron.vertices.length < 4) continue;
@@ -75,8 +197,8 @@ export class AtomicOverlayLayer extends Group {
         color: color(polyhedron.color),
         transparent: true,
         opacity: 0.24,
-        roughness: 0.55,
-        metalness: 0,
+        roughness: scaledRoughness(0.55, style.roughness),
+        metalness: scaledMetalness(0.04, style.metalness),
         depthWrite: false,
         side: DoubleSide,
       });
@@ -104,7 +226,7 @@ export class AtomicOverlayLayer extends Group {
       const positions = edgeIndices.flatMap((index) => vertices[index].toArray());
       const geometry = new BufferGeometry();
       geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
-      const material = new LineBasicMaterial({ color: 0x6d7480, transparent: true, opacity: 0.62 });
+      const material = new LineBasicMaterial({ color: theme.cell, transparent: true, opacity: 0.62 });
       this.resources.push(geometry, material);
       this.cellGroup.add(new LineSegments(geometry, material));
     }

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { VolumeGridSpec } from '@kssolv/volume-scene';
 
-import type { VolumeOptions } from '../state/volumeStore';
+import { defaultVolumeAppearance, type VolumeOptions } from '../state/volumeStore';
 import {
   createDirectVolumeMaterial,
   updateDirectVolumeMaterial,
@@ -24,6 +24,7 @@ const grid: VolumeGridSpec = {
 };
 
 const options: VolumeOptions = {
+  ...defaultVolumeAppearance(),
   mode: 'volume',
   isovalueMode: 'absolute',
   channelId: 'density',
@@ -39,6 +40,8 @@ const options: VolumeOptions = {
   rangeMaximum: 3,
   sliceAxis: 'k',
   sliceIndex: 2,
+  sliceIndices: [2, 2, 2],
+  sliceVisibility: [true, true, true],
   interpolation: 'linear',
   volumeQuality: 'high',
   gradientOpacity: 0.4,

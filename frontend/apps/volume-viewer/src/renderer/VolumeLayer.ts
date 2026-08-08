@@ -286,23 +286,35 @@ export class VolumeLayer extends Group {
     const fullMap = paletteTexture(options.colormap);
     this.colorMaps.push(positiveMap, negativeMap, fullMap);
     if (options.mode === 'slices') {
-      const texture = createSliceTexture(
-        this.values,
-        this.grid,
-        options.sliceAxis,
-        options.sliceIndex,
-        options.interpolation,
+      const axes = ['i', 'j', 'k'] as const;
+      let visibleCount = 0;
+      axes.forEach((axis, axisIndex) => {
+        if (!options.sliceVisibility[axisIndex]) return;
+        const index = options.sliceIndices[axisIndex];
+        const texture = createSliceTexture(
+          this.values,
+          this.grid,
+          axis,
+          index,
+          options.interpolation,
+        );
+        const geometry = sliceGeometry(this.grid, axis, index);
+        const material = sliceMaterial(texture, fullMap, [
+          options.rangeMinimum,
+          options.rangeMaximum,
+        ]);
+        this.textures.push(texture);
+        this.geometries.push(geometry);
+        this.materials.push(material);
+        this.add(new Mesh(geometry, material));
+        visibleCount += 1;
+      });
+      this.onStatus(
+        'ready',
+        visibleCount === 0
+          ? 'Orthogonal slices hidden'
+          : `${visibleCount} orthogonal ${visibleCount === 1 ? 'slice' : 'slices'} ready`,
       );
-      const geometry = sliceGeometry(this.grid, options.sliceAxis, options.sliceIndex);
-      const material = sliceMaterial(texture, fullMap, [
-        options.rangeMinimum,
-        options.rangeMaximum,
-      ]);
-      this.textures.push(texture);
-      this.geometries.push(geometry);
-      this.materials.push(material);
-      this.add(new Mesh(geometry, material));
-      this.onStatus('ready', 'Slice ready');
       return;
     }
 

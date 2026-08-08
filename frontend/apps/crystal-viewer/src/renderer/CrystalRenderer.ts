@@ -8,7 +8,7 @@ import {
   CylinderGeometry,
   DirectionalLight,
   DoubleSide,
-  FogExp2,
+  Fog,
   Group,
   Mesh,
   MeshBasicMaterial,
@@ -53,6 +53,7 @@ import {
   cameraAxisFrame,
   defaultCameraDirection,
   latticeAxisDirections,
+  slabCameraFrame,
   type CrystalCameraAxis,
 } from './cameraAxis';
 import { cylinderMatrix, projectedFitHeight, vector, type FitSphere } from './geometry';
@@ -80,6 +81,7 @@ import {
   type ImageExportFormat,
 } from './imageExport';
 import { bestHeroDirection, cinematicPalette } from './artDirection';
+import { appearanceScale } from './appearance';
 import {
   exportPixelRatio,
   gleamoeExportPixelRatio,
@@ -95,6 +97,7 @@ import {
   type ProgressiveTileGrid,
 } from './progressiveTiles';
 import { viewportLayout } from './viewport';
+import { depthCueRange } from './depthCueing';
 import { GleamoePathTracer } from './GleamoePathTracer';
 import { GleamoePostProcessing } from './GleamoePostProcessing';
 import { GleamoeAtmosphere } from './GleamoeAtmosphere';
@@ -464,7 +467,12 @@ export class CrystalRenderer {
   }
 
   setScene(scene: AtomicSceneSpec, preserveCamera = false): void {
-    const snapshot = preserveCamera && this.sceneSpec ? this.cameraSnapshot() : undefined;
+    const enteringSlab =
+      scene.kind === 'crystal' &&
+      scene.viewHint === 'slab' &&
+      (this.sceneSpec?.kind !== 'crystal' || this.sceneSpec.viewHint !== 'slab');
+    const snapshot =
+      preserveCamera && this.sceneSpec && !enteringSlab ? this.cameraSnapshot() : undefined;
     this.clearHover();
     this.clearSelection();
     this.clearMeasurementSelection();
@@ -556,17 +564,26 @@ export class CrystalRenderer {
     const renderQualityChanged =
       options.renderMode !== this.options.renderMode ||
       options.renderQuality !== this.options.renderQuality;
+    const tracedLightingChanged =
+      !!this.gleamoePathTracer &&
+      (options.ambientLight !== this.options.ambientLight ||
+        options.directionalLight !== this.options.directionalLight);
     const rebuild =
       themeChanged ||
       renderQualityChanged ||
+      tracedLightingChanged ||
       options.colorMode !== this.options.colorMode ||
       options.radiusMode !== this.options.radiusMode ||
       options.atomScale !== this.options.atomScale ||
       options.bondRadius !== this.options.bondRadius ||
-      options.showBondOrders !== this.options.showBondOrders;
+      options.showBondOrders !== this.options.showBondOrders ||
+      options.metalness !== this.options.metalness ||
+      options.roughness !== this.options.roughness;
     this.options = { ...options };
     if (themeChanged || renderQualityChanged) {
       this.applyTheme(options.theme);
+    } else {
+      this.applyAppearanceSettings();
     }
     if (rebuild && this.sceneSpec) {
       this.setScene(this.sceneSpec, true);
@@ -633,11 +650,15 @@ export class CrystalRenderer {
 
   resetView = (animated = true): void => {
     if (!this.sceneSpec) return;
+    const frame =
+      this.sceneSpec.kind === 'crystal' && this.sceneSpec.viewHint === 'slab'
+        ? slabCameraFrame(this.sceneSpec)
+        : { direction: defaultCameraDirection(), up: undefined };
     if (!animated) {
-      this.fitScene(defaultCameraDirection());
+      this.fitScene(frame.direction, frame.up);
       return;
     }
-    void this.animateToDirection(defaultCameraDirection(), undefined, 560);
+    void this.animateToDirection(frame.direction, frame.up, 560);
   };
 
   centerView = (): void => {
@@ -686,7 +707,7 @@ export class CrystalRenderer {
     }
   }
 
-  private fitScene(direction: Vector3): void {
+  private fitScene(direction: Vector3, upOverride?: Vector3): void {
     if (!this.sceneSpec) return;
     const bounds = this.sceneBounds(this.sceneSpec);
     const center = bounds.getCenter(new Vector3());
@@ -694,8 +715,10 @@ export class CrystalRenderer {
     const distance = Math.max(sphere.radius * 3.5, 3);
     const viewDirection = direction.clone().normalize();
     this.camera.position.copy(center).addScaledVector(viewDirection, distance * 1.7);
-    this.camera.up.set(0, 0, 1);
-    if (Math.abs(viewDirection.dot(this.camera.up)) > 0.98) this.camera.up.set(0, 1, 0);
+    this.camera.up.copy(upOverride ?? new Vector3(0, 0, 1));
+    if (!upOverride && Math.abs(viewDirection.dot(this.camera.up)) > 0.98) {
+      this.camera.up.set(0, 1, 0);
+    }
     this.controls.target.copy(center);
     this.viewHeight = projectedFitHeight(
       this.sceneFitSpheres(this.sceneSpec),
@@ -1326,14 +1349,10 @@ export class CrystalRenderer {
     this.keyLight.shadow.normalBias = 0.018;
     this.keyLight.shadow.radius = this.options.renderQuality === 'ultra' ? 5 : 3;
     const physicalMaterials = this.options.renderMode === 'quality';
-    this.ambientLight.intensity = gleamoe ? 0.3 : physicalMaterials ? 0.82 : 0.92;
-    this.keyLight.intensity = gleamoe ? 4.8 : physicalMaterials ? 1.05 : 0.68;
-    this.fillLight.intensity = gleamoe ? 1.25 : physicalMaterials ? 0.3 : 0.26;
-    this.rimLight.intensity = gleamoe ? 1.9 : 0;
+    this.applyAppearanceSettings();
     this.fillLight.color.set(gleamoe ? 0x8dd7ff : 0xffffff);
     this.materialsAxes.visible = !gleamoe;
     this.gleamoeAxes.visible = gleamoe;
-    this.scene.fog = gleamoe ? new FogExp2(theme.background, 0.006) : null;
     this.shadowFloor.visible = gleamoe && physicalMaterials;
     if (!gleamoe && this.gleamoePathTracer) {
       this.gleamoePathTracer.dispose();
@@ -1347,6 +1366,7 @@ export class CrystalRenderer {
       this.disposeGleamoeAtmosphere();
     }
     this.updateRendererBackground();
+    this.updateDepthCueing();
     this.selectionHaloMaterial.color.set(selectionHaloColor);
     this.selectionHaloMaterial.opacity = 0.58;
     this.selectionHaloMaterial.needsUpdate = true;
@@ -1391,6 +1411,26 @@ export class CrystalRenderer {
       this.options.background ?? theme.background,
       transparentHeroPreview ? 0 : 1,
     );
+  }
+
+  private updateDepthCueing(): void {
+    if (!this.options.depthCueing || !this.sceneSpec) {
+      this.scene.fog = null;
+      return;
+    }
+    const bounds = this.sceneBounds(this.sceneSpec);
+    const sphere = bounds.getBoundingSphere(new Sphere());
+    const cameraDirection = this.camera.getWorldDirection(new Vector3());
+    const centerDepth = sphere.center.clone().sub(this.camera.position).dot(cameraDirection);
+    const { near, far } = depthCueRange(centerDepth, sphere.radius);
+    const color = this.options.background ?? themes[this.options.theme].background;
+    if (this.scene.fog instanceof Fog) {
+      this.scene.fog.color.set(color);
+      this.scene.fog.near = near;
+      this.scene.fog.far = far;
+      return;
+    }
+    this.scene.fog = new Fog(color, near, far);
   }
 
   private readonly handleControlsEnd = (): void => {
@@ -1590,10 +1630,6 @@ export class CrystalRenderer {
     this.clearAtomSelectionMarkers();
     this.selectedBondId = undefined;
     this.bondSelectionMarker.visible = false;
-    this.gleamoePostProcessing?.setFocusPoint(this.gleamoeStageCenter);
-    this.gleamoePostProcessing?.setFocusEmphasis(false);
-    this.gleamoePathTracer?.setSuspended(false);
-    this.setGleamoeFocusLighting(false);
     if (notify && hadSelection) this.callbacks.onSelection?.();
   }
 
@@ -1612,15 +1648,14 @@ export class CrystalRenderer {
     marker.position.copy(vector(selected.atom.position));
     marker.scale.setScalar(selected.radius);
     marker.quaternion.copy(this.camera.quaternion);
+    // Selection is an overlay-only interaction. Changing scene lighting, material
+    // environment intensity, or the active render path here also recolors every
+    // unselected atom in Gleamoe Noir.
     this.selectionMarkers.add(marker);
     this.selectedAtoms.set(selected.atom.id, {
       siteIndex: selected.atom.siteIndex,
       marker,
     });
-    this.gleamoePostProcessing?.setFocusPoint(marker.position);
-    this.gleamoePostProcessing?.setFocusEmphasis(true);
-    this.gleamoePathTracer?.setSuspended(true);
-    this.setGleamoeFocusLighting(true);
   }
 
   private removeAtomSelection(atomId: string): void {
@@ -1628,12 +1663,6 @@ export class CrystalRenderer {
     if (!selected) return;
     this.selectionMarkers.remove(selected.marker);
     this.selectedAtoms.delete(atomId);
-    const remainingSelections = [...this.selectedAtoms.values()];
-    const remaining = remainingSelections[remainingSelections.length - 1]?.marker;
-    this.gleamoePostProcessing?.setFocusPoint(remaining?.position ?? this.gleamoeStageCenter);
-    this.gleamoePostProcessing?.setFocusEmphasis(!!remaining);
-    this.gleamoePathTracer?.setSuspended(!!remaining);
-    this.setGleamoeFocusLighting(!!remaining);
   }
 
   private clearHover(): void {
@@ -1819,10 +1848,6 @@ export class CrystalRenderer {
       this.bondSelectionMarker.matrixWorldNeedsUpdate = true;
       this.bondSelectionMarker.visible = true;
       this.selectedBondId = bond.id;
-      this.gleamoePostProcessing?.setFocusPoint(vector(bond.start).lerp(vector(bond.end), 0.5));
-      this.gleamoePostProcessing?.setFocusEmphasis(true);
-      this.gleamoePathTracer?.setSuspended(true);
-      this.setGleamoeFocusLighting(true);
       this.callbacks.onSelection?.(
         {
           kind: 'bond',
@@ -2002,15 +2027,18 @@ export class CrystalRenderer {
     this.keyLight.shadow.needsUpdate = true;
   }
 
-  private setGleamoeFocusLighting(active: boolean): void {
-    if (this.options.theme !== 'gleamoe-premiror') return;
-    this.ambientLight.intensity = active ? 0.08 : 0.3;
-    this.keyLight.intensity = active ? 0.45 : 4.8;
-    this.fillLight.intensity = active ? 0.12 : 1.25;
-    this.rimLight.intensity = active ? 0.2 : 1.9;
-    this.renderer.toneMappingExposure = active ? 0.72 : 1.08;
-    this.shadowFloorMaterial.opacity = active ? 0.16 : 0.42;
-    this.atomLayer?.setCinematicFocus(active);
+  private applyAppearanceSettings(): void {
+    const gleamoe = this.options.theme === 'gleamoe-premiror';
+    const physicalMaterials = this.options.renderMode === 'quality';
+    const ambientBase = gleamoe ? 0.3 : physicalMaterials ? 0.82 : 0.92;
+    const keyBase = gleamoe ? 4.8 : physicalMaterials ? 1.05 : 0.68;
+    const fillBase = gleamoe ? 1.25 : physicalMaterials ? 0.3 : 0.26;
+    const rimBase = gleamoe ? 1.9 : 0;
+    this.ambientLight.intensity = ambientBase * appearanceScale(this.options.ambientLight);
+    this.keyLight.intensity = keyBase * appearanceScale(this.options.directionalLight);
+    this.fillLight.intensity = fillBase * appearanceScale(this.options.directionalLight);
+    this.rimLight.intensity = rimBase * appearanceScale(this.options.directionalLight);
+    this.canvas.style.filter = `brightness(${appearanceScale(this.options.brightness)}) contrast(${appearanceScale(this.options.contrast)})`;
   }
 
   private renderGleamoeOverlays(): void {
@@ -2109,6 +2137,7 @@ export class CrystalRenderer {
   private render(): void {
     if (this.disposed) return;
     const startedAt = performance.now();
+    this.updateDepthCueing();
     // WebGLRenderer.setViewport/setScissor accept CSS-pixel dimensions and
     // apply pixelRatio internally. canvas.width/height are already multiplied
     // by devicePixelRatio; passing them here doubles the viewport on Retina

@@ -123,8 +123,8 @@ After notarization completes successfully, a signed and notarized `.dmg` archive
 
 ## Active Development Plans
 
-- [Modeling system P1-P10 development and acceptance plan](../modeling-development-plan.zh-CN.md)
-- [Materials Studio modeling gap analysis](../materials-studio-modeling-gap-analysis.zh-CN.md)
-- [Modeling user guide](../modeling-user-guide.zh-CN.md)
-- [Modeling API v1](../modeling-api.md)
-- [Volume viewer development plan](../volume-viewer-development-plan.zh-CN.md)
+- [Modeling system P1-P10 development and acceptance plan](../../modeling/docs/modeling-development-plan.zh-CN.md)
+- [Materials Studio modeling gap analysis](../../modeling/docs/materials-studio-modeling-gap-analysis.zh-CN.md)
+- [Modeling user guide](../../../docs/modeling-user-guide.zh-CN.md)
+- [Modeling API v1](../../../docs/modeling-api.md)
+- [Volume viewer development plan](../../volume-viewer/docs/volume-viewer-development-plan.zh-CN.md)

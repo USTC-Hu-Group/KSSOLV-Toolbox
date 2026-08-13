@@ -123,9 +123,9 @@ integral when physically meaningful
 
 ### 4.3 阶段输出
 
-- `docs/adr/volume-viewer-*.md`
+- `dev/volume-viewer/docs/adr/volume-viewer-*.md`
 - `+kssolv/+ui/+test/+fixtures/+volume/manifest.json`
-- `docs/volume-viewer-baseline.md`
+- `dev/volume-viewer/docs/volume-viewer-baseline.md`
 
 ## 5. 阶段 P1：共享前端基础与原子查看器回归保护
 

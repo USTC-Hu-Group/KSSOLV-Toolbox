@@ -32,6 +32,7 @@ resources
 derived
 buildfile.m
 buildInstaller.m
+examples
 scripts
 
 **/*.mltbx
@@ -46,7 +47,7 @@ Release
 **/test_*.*
 **/*_test.*
 **/doc/**/*
-**/docs/**/*
++kssolv/**/docs/**/*
 
 % buildfile.m explicitly adds only the non-test KSSOLV-3o runtime payload
 % after these repository-wide test exclusions have been applied.

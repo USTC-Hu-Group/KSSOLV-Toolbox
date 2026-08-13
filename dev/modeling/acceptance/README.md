@@ -2,7 +2,7 @@
 
 This directory contains executable acceptance scenarios and generated evidence
 for the P1-P10 modeling program documented in
-[`docs/modeling-development-plan.zh-CN.md`](../../../docs/modeling-development-plan.zh-CN.md).
+[`dev/modeling/docs/modeling-development-plan.zh-CN.md`](../docs/modeling-development-plan.zh-CN.md).
 
 ## Rules
 

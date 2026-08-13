@@ -26,9 +26,28 @@
 .buildtool/
 
 # Debug scipts
+/examples/
 dev/*
+!dev/docs/
+dev/docs/*
+!dev/docs/development/
+!dev/docs/development/*.md
+!dev/crystal-viewer/
+dev/crystal-viewer/*
+!dev/crystal-viewer/docs/
+!dev/crystal-viewer/docs/**
+!dev/volume-viewer/
+dev/volume-viewer/*
+!dev/volume-viewer/docs/
+!dev/volume-viewer/docs/**
 !dev/modeling/
 dev/modeling/*
+!dev/modeling/generateModelingExamples.m
+!dev/modeling/examples/
+dev/modeling/examples/*
+!dev/modeling/examples/README.zh-CN.md
+!dev/modeling/docs/
+!dev/modeling/docs/**
 !dev/modeling/acceptance/
 dev/modeling/acceptance/*
 !dev/modeling/acceptance/README.md

@@ -5,11 +5,18 @@ function kssolvStart(ksFile, hostInBrowser)
 % 用于编译独立应用程序时作为程序的主入口，以保持界面的持续显示。
 
 % 开发者：杨柳
-% 版权 2024-2025 合肥瀚海量子科技有限公司
+% 版权 2024-2026 合肥瀚海量子科技有限公司
 
 arguments
     ksFile string = ""
     hostInBrowser (1, 1) logical = kssolv.settings.Environment.hostInBrowser()
+end
+
+% 安装程序会使用该参数用来完成 MATLAB Runtime 的用户级初始化。
+% Runtime 初始化发生在调用本入口之前，正常返回即可结束预热进程。
+if ksFile == "--prewarm"
+    prefdir(1);
+    return
 end
 
 try

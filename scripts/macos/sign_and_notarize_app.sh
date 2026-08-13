@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
-RELEASE_DIR="$SCRIPTS_DIR/../Release/StandaloneDesktopApp"
+RELEASE_DIR="$SCRIPTS_DIR/../../Release/StandaloneDesktopApp"
 DEV_ID="Developer ID Application: Liu Yang (T3ML58STY8)"
 NOTARY_PROFILE="AC_PASSWORD"
 ENTITLEMENTS="$SCRIPTS_DIR/entitlements.plist"

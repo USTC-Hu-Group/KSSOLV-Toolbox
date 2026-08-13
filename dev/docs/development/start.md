@@ -110,11 +110,22 @@ On macOS, additional notarization is required to allow installation on other mac
 Once you have updated the scripts, execute them from the project root:
 
 ```bash
-./scripts/sign_and_notarize_app.sh
-./scripts/package_dmg.sh
+./scripts/macos/sign_and_notarize_app.sh
+./scripts/macos/package_dmg.sh
 ```
 
 After notarization completes successfully, a signed and notarized `.dmg` archive will be produced. This file can be safely distributed and installed on other macOS systems.
+
+To create a `.pkg` that registers the silent MATLAB Runtime prewarm
+LaunchAgent after installation, run:
+
+```bash
+./scripts/macos/package_pkg.sh
+```
+
+This step requires a `Developer ID Installer` certificate. To validate the
+local package structure without signing, set `KSSOLV_SKIP_SIGNING=1` when
+running the script.
 
 ## Notes
 

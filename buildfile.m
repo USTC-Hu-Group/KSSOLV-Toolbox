@@ -7,6 +7,9 @@ function plan = buildfile
 import matlab.buildtool.tasks.CodeIssuesTask
 
 plan = buildplan(localfunctions);
+toolboxFolder = fileparts(mfilename('fullpath'));
+stagingFolder = fullfile(toolboxFolder, ".buildtool", "staging");
+validationFolder = fullfile(toolboxFolder, ".buildtool", "validation");
 
 sourceFiles = plan.files("**/*.m");
 coreFolder = string(filesep) + fullfile("+kssolv", "+core") + string(filesep);
@@ -20,14 +23,31 @@ plan("check").Dependencies = "init";
 packagedSources = plan.files("+kssolv/**/*.m");
 packagedSources = packagedSources.select(@shouldPcodeSource);
 plan("pcode").Inputs = packagedSources;
-plan("pcode").Outputs = plan("pcode").Inputs.replace(".m",".p");
+stagedPcodeFiles = stagingPaths(packagedSources.paths, ...
+    toolboxFolder, stagingFolder);
+stagedPcodeFiles = replaceFileExtension(stagedPcodeFiles, ".p");
+plan("pcode").Outputs = plan.files(stagedPcodeFiles);
 plan("pcode").Dependencies = "check";
 
-plan("package").Dependencies = "pcode";
+packagingAssets = getPackagingAssetFiles(toolboxFolder);
+stagedAssets = stagingPaths(packagingAssets, toolboxFolder, stagingFolder);
+plan("stage").Inputs = plan.files(packagingAssets);
+plan("stage").Outputs = plan.files(stagedAssets);
+plan("stage").Dependencies = "check";
 
-plan.DefaultTasks = "cleanPcode";
-plan("cleanPcode").Inputs = plan("pcode").Outputs;
-plan("cleanPcode").Dependencies = "package";
+outputFileName = sprintf('KSSOLV_Toolbox_V%s.mltbx', ...
+    KSSOLV_Toolbox.Version);
+outputFile = fullfile(toolboxFolder, "Release", outputFileName);
+plan("package").Inputs = plan.files([stagedPcodeFiles; stagedAssets]);
+plan("package").Outputs = plan.files(outputFile);
+plan("package").Dependencies = ["pcode", "stage"];
+
+validationStamp = fullfile(validationFolder, outputFileName + ".ok");
+plan("validate").Inputs = plan("package").Outputs;
+plan("validate").Outputs = plan.files(validationStamp);
+plan("validate").Dependencies = "package";
+
+plan.DefaultTasks = "validate";
 
 plan("stats").Inputs = "**/*.m";
 plan("stats").Dependencies = "init";
@@ -42,104 +62,137 @@ end
 end
 
 function pcodeTask(context)
-% 将所有 .m 结尾的工程文件加密混淆为 .p 文件
-filePaths = context.Task.Inputs.paths;
-pcode(filePaths{:}, "-inplace", "-R2022a");
+% 增量生成 P-Code，并将输出持久化到 staging 目录。
+toolboxFolder = fileparts(mfilename('fullpath'));
+stagingFolder = fullfile(toolboxFolder, ".buildtool", "staging");
+cacheFolder = fullfile(toolboxFolder, ".buildtool", "pcode-cache");
+sourceCacheFolder = fullfile(cacheFolder, "sources");
+versionFile = fullfile(cacheFolder, "version.txt");
+cacheVersion = "R2022a-v1";
+
+inputPaths = context.Task.Inputs.paths;
+sourcePaths = string(inputPaths(:));
+pcodePaths = replaceFileExtension(stagingPaths( ...
+    sourcePaths, toolboxFolder, stagingFolder), ".p");
+cachedSources = stagingPaths(sourcePaths, toolboxFolder, sourceCacheFolder);
+
+forceRebuild = ~isfile(versionFile) || ...
+    string(strtrim(readTextFile(versionFile))) ~= cacheVersion;
+needsPcode = forceRebuild | ~isfile(pcodePaths);
+for index = find(~needsPcode).'
+    needsPcode(index) = ~filesHaveSameContents( ...
+        sourcePaths(index), cachedSources(index));
 end
 
-function packageTask(~)
+temporarySources = replaceFileExtension(pcodePaths(needsPcode), ".m");
+cleanup = onCleanup(@() deleteExistingFiles(temporarySources));
+changedSources = sourcePaths(needsPcode);
+changedCacheFiles = cachedSources(needsPcode);
+for index = 1:numel(changedSources)
+    ensureParentFolder(temporarySources(index));
+    copyfile(changedSources(index), temporarySources(index), "f");
+end
+
+if ~isempty(temporarySources)
+    temporarySourceCells = cellstr(temporarySources);
+    pcode(temporarySourceCells{:}, "-inplace", "-R2022a");
+    for index = 1:numel(changedSources)
+        ensureParentFolder(changedCacheFiles(index));
+        copyfile(changedSources(index), changedCacheFiles(index), "f");
+    end
+end
+
+ensureParentFolder(versionFile);
+writelines(cacheVersion, versionFile);
+deleteOrphanedFiles(fullfile(stagingFolder, "+kssolv"), ...
+    "*.p", pcodePaths);
+deleteOrphanedFiles(fullfile(sourceCacheFolder, "+kssolv"), ...
+    "*.m", cachedSources);
+clear cleanup
+end
+
+function stageTask(context)
+% 将非 P-Code 发布资源增量复制到 staging 目录。
+toolboxFolder = fileparts(mfilename('fullpath'));
+stagingFolder = fullfile(toolboxFolder, ".buildtool", "staging");
+manifestFile = fullfile(toolboxFolder, ".buildtool", ...
+    "package-cache", "assets.txt");
+inputPaths = context.Task.Inputs.paths;
+sourcePaths = string(inputPaths(:));
+outputPaths = stagingPaths(sourcePaths, toolboxFolder, stagingFolder);
+
+for index = 1:numel(sourcePaths)
+    if ~filesHaveSameContents(sourcePaths(index), outputPaths(index))
+        ensureParentFolder(outputPaths(index));
+        copyfile(sourcePaths(index), outputPaths(index), "f");
+    end
+end
+
+if isfile(manifestFile)
+    previousOutputs = string(readlines(manifestFile));
+    removedOutputs = setdiff(previousOutputs, outputPaths);
+    deleteExistingFiles(removedOutputs);
+end
+ensureParentFolder(manifestFile);
+writelines(outputPaths, manifestFile);
+end
+
+function packageTask(context)
 % 将 KSSOLV Toolbox 打包为 .mltbx 文件
 toolboxFolder = fileparts(mfilename('fullpath'));
-outputFileName = sprintf('KSSOLV_Toolbox_V%s.mltbx', KSSOLV_Toolbox.Version);
+stagingFolder = fullfile(toolboxFolder, ".buildtool", "staging");
+inputPaths = context.Task.Inputs.paths;
+toolboxFiles = string(inputPaths(:));
+outputPaths = context.Task.Outputs.paths;
 
 options = matlab.addons.toolbox.ToolboxOptions( ...
-    toolboxFolder, KSSOLV_Toolbox.Identifier, ...
-    ToolboxMatlabPath = toolboxFolder);
+    stagingFolder, KSSOLV_Toolbox.Identifier, ...
+    ToolboxFiles = toolboxFiles, ...
+    ToolboxMatlabPath = stagingFolder);
 options.AuthorName = KSSOLV_Toolbox.Author;
 options.AuthorEmail = KSSOLV_Toolbox.AuthorEmail;
 options.AuthorCompany = KSSOLV_Toolbox.AuthorCompany;
 options.Description = KSSOLV_Toolbox.Description;
 options.Summary = KSSOLV_Toolbox.Summary;
 
-options.OutputFile = fullfile(toolboxFolder, 'Release', outputFileName);
+options.OutputFile = outputPaths{1};
 options.ToolboxName = KSSOLV_Toolbox.Name;
 options.ToolboxVersion = KSSOLV_Toolbox.Version;
-options.ToolboxImageFile = fullfile(KSSOLV_Toolbox.UIResourcesDirectory, 'icons', 'companyLOGO.png');
-options.AppGalleryFiles = "kssolv.m";
+options.ToolboxImageFile = fullfile(stagingFolder, "+kssolv", ...
+    "+ui", "resources", "icons", "companyLOGO.png");
+options.AppGalleryFiles = fullfile(stagingFolder, "kssolv.m");
 options.SupportedPlatforms.Win64 = true;
 options.SupportedPlatforms.Mac = true;
 options.SupportedPlatforms.Glnxa64 = true;
 options.SupportedPlatforms.MatlabOnline = true;
 options.MinimumMatlabRelease = KSSOLV_Toolbox.MinimumMATLABVersion;
 options.MaximumMatlabRelease = "";
-%{
-options.RequiredAddons = struct( ...
-    "Name", "Large Language Models (LLMs) with MATLAB", ...
-    "Identifier", "ea932835-80d6-44d7-90e4-48fdefd221fa", ...
-    "EarliestVersion", "4.4.0", ...
-    "LatestVersion", "4.5.0", ...
-    "DownloadURL", "https://www.mathworks.com/matlabcentral/mlc-downloads/downloads/ea932835-80d6-44d7-90e4-48fdefd221fa/ade2cad8-f069-4490-96a0-08a2605dacf6/packages/zip?src=addons_ml_desktop");
-%}
-
-toolboxFiles = string(options.ToolboxFiles(:));
-relativeFiles = packagingRelativePaths(toolboxFiles, toolboxFolder);
-isTest = hasPackagingPathSegment(relativeFiles, ...
-    ["+test", "+tests", "test", "tests"]) | ...
-    hasPackagingTestFileName(relativeFiles);
-excludedRoot = startsWith(relativeFiles, [ ...
-    ".buildtool/", ".claude/", "Release/", "derived/", ...
-    "dev/", "examples/", "frontend/", "output/", "scripts/", "tmp/"]);
-excludedFile = ismember(relativeFiles, [ ...
-    ".env", "fmt", "buildfile.m", "buildInstaller.m"]) | ...
-    endsWith(relativeFiles, [ ...
-    ".mltbx", ".DS_Store", ".keep", ".gitignore", ...
-    ".gitattributes"]);
-isProtectedSource = startsWith(relativeFiles, "+kssolv/") & ...
-    endsWith(relativeFiles, ".m");
-filteredConditions = ~excludedRoot & ~excludedFile & ...
-    ~isTest & ~isProtectedSource;
-options.ToolboxFiles = toolboxFiles(filteredConditions);
-
-requiredToolboxFiles = [ ...
-    fullfile(toolboxFolder, ".env.example")
-    fullfile(toolboxFolder, "ks.ks")
-    fullfile(toolboxFolder, "docs", "README.md")
-    fullfile(toolboxFolder, "docs", "usage", "start.md")
-    fullfile(toolboxFolder, "docs", "modeling-user-guide.zh-CN.md")
-    fullfile(toolboxFolder, "docs", "modeling-api.md")
-    fullfile(toolboxFolder, "docs", "volume-viewer-user-guide.zh-CN.md")
-    fullfile(toolboxFolder, "docs", "images", "modeling-shortcuts.svg")
-    ];
-missingFiles = requiredToolboxFiles(~isfile(requiredToolboxFiles));
-if ~isempty(missingFiles)
-    error('KSSOLV:Build:RequiredToolboxFileMissing', ...
-        'Required Toolbox files were not found:\n%s', ...
-        char(join(missingFiles, newline)));
-end
-options.ToolboxFiles = unique([ ...
-    string(options.ToolboxFiles(:)); ...
-    requiredToolboxFiles; ...
-    getToolboxKssolv3oFiles(toolboxFolder)], 'stable');
-
 matlab.addons.toolbox.packageToolbox(options);
-validateToolboxArchive(options.OutputFile, toolboxFolder);
 end
 
-function cleanPcodeTask(context)
-% 删除生成的 .p 文件
-% 先释放由 .p 文件定义的持久对象。否则在对应 .p 文件删除后再触发
-% 析构，MATLAB 将无法解析类的 delete 方法。
-registry = kssolv.ui.util.DataStorage.getData( ...
-    "ModelingSessionRegistry");
-if ~isempty(registry) && isvalid(registry)
-    delete(registry);
+function validateTask(context)
+% 仅在 Toolbox 归档变化后重新执行完整解压校验。
+toolboxFolder = fileparts(mfilename('fullpath'));
+inputPaths = context.Task.Inputs.paths;
+outputPaths = context.Task.Outputs.paths;
+validateToolboxArchive(inputPaths{1}, toolboxFolder);
+stampFile = outputPaths{1};
+ensureParentFolder(stampFile);
+writelines("validated", stampFile);
 end
-clear registry
 
-filePaths = context.Task.Inputs.paths;
-for i = 1:length(filePaths)
-    if isfile(filePaths{i})
-        delete(filePaths{i});
+function cleanTask(~)
+% 删除可再生的增量构建缓存；保留 Release 中的发布包。
+toolboxFolder = fileparts(mfilename('fullpath'));
+buildFolders = [ ...
+    fullfile(toolboxFolder, ".buildtool", "staging")
+    fullfile(toolboxFolder, ".buildtool", "pcode-cache")
+    fullfile(toolboxFolder, ".buildtool", "package-cache")
+    fullfile(toolboxFolder, ".buildtool", "validation")
+    ];
+for folder = buildFolders.'
+    if isfolder(folder)
+        rmdir(folder, "s");
     end
 end
 end
@@ -203,6 +256,152 @@ function matches = hasPackagingTestFileName(paths)
 baseNames = lower(baseNames);
 matches = startsWith(baseNames, "test_") | ...
     endsWith(baseNames, ["_test", "test", "tests"]);
+end
+
+function assetFiles = getPackagingAssetFiles(toolboxFolder)
+% 解析发布资源一次，供 stage 任务声明精确的输入和输出。
+rootEntries = dir(toolboxFolder);
+rootEntries = rootEntries(~ismember(string({rootEntries.name}), [".", ".."]));
+excludedDirectories = [ ...
+    ".buildtool", ".claude", ".git", "Release", "derived", ...
+    "dev", "examples", "frontend", "output", "resources", ...
+    "scripts", "tmp", "fmt"];
+includedDirectories = rootEntries([rootEntries.isdir] & ...
+    ~ismember(string({rootEntries.name}), excludedDirectories));
+rootFiles = rootEntries(~[rootEntries.isdir]);
+toolboxFiles = string(fullfile({rootFiles.folder}, {rootFiles.name}));
+for directoryIndex = 1:numel(includedDirectories)
+    directory = includedDirectories(directoryIndex);
+    entries = dir(fullfile(directory.folder, directory.name, "**", "*"));
+    entries = entries(~[entries.isdir]);
+    entryFiles = string(fullfile({entries.folder}, {entries.name}));
+    toolboxFiles = [toolboxFiles(:); entryFiles(:)];
+end
+relativeFiles = packagingRelativePaths(toolboxFiles, toolboxFolder);
+isTest = hasPackagingPathSegment(relativeFiles, ...
+    ["+test", "+tests", "test", "tests"]) | ...
+    hasPackagingTestFileName(relativeFiles);
+excludedPath = hasPackagingPathSegment(relativeFiles, [ ...
+    "node_modules", ".vite", "coverage", "__pycache__", "doc"]) | ...
+    (startsWith(relativeFiles, "+kssolv/") & ...
+    hasPackagingPathSegment(relativeFiles, "docs"));
+excludedFile = ismember(relativeFiles, [ ...
+    ".env", "fmt", "buildfile.m", "buildInstaller.m", ...
+    "package.ignore"]) | ...
+    endsWith(relativeFiles, [ ...
+    ".mltbx", ".DS_Store", ".keep", ".gitignore", ".gitattributes", ...
+    ".asv", ".m~", ".swp", ".pyc", ".pyo", ".prj", ".prj.bak"]);
+excludedFile = excludedFile | ...
+    (endsWith(relativeFiles, ".ks") & relativeFiles ~= "ks.ks") | ...
+    contains("/" + relativeFiles, "/.git");
+isProtectedCode = startsWith(relativeFiles, "+kssolv/") & ...
+    endsWith(relativeFiles, [".m", ".p"]);
+filteredConditions = ~excludedPath & ~excludedFile & ...
+    ~isTest & ~isProtectedCode;
+assetFiles = toolboxFiles(filteredConditions);
+
+requiredToolboxFiles = [ ...
+    fullfile(toolboxFolder, ".env.example")
+    fullfile(toolboxFolder, "ks.ks")
+    fullfile(toolboxFolder, "docs", "README.md")
+    fullfile(toolboxFolder, "docs", "usage", "start.md")
+    fullfile(toolboxFolder, "docs", "modeling-user-guide.zh-CN.md")
+    fullfile(toolboxFolder, "docs", "modeling-api.md")
+    fullfile(toolboxFolder, "docs", "volume-viewer-user-guide.zh-CN.md")
+    fullfile(toolboxFolder, "docs", "images", "modeling-shortcuts.svg")
+    ];
+missingFiles = requiredToolboxFiles(~isfile(requiredToolboxFiles));
+if ~isempty(missingFiles)
+    error('KSSOLV:Build:RequiredToolboxFileMissing', ...
+        'Required Toolbox files were not found:\n%s', ...
+        char(join(missingFiles, newline)));
+end
+assetFiles = unique([ ...
+    string(assetFiles(:)); ...
+    requiredToolboxFiles; ...
+    getToolboxKssolv3oFiles(toolboxFolder)], 'stable');
+end
+
+function outputPaths = stagingPaths(inputPaths, toolboxFolder, stagingFolder)
+relativePaths = packagingRelativePaths(inputPaths, toolboxFolder);
+outputPaths = fullfile(stagingFolder, relativePaths);
+outputPaths = string(outputPaths(:));
+end
+
+function outputPaths = replaceFileExtension(inputPaths, extension)
+[folders, names] = fileparts(string(inputPaths));
+outputPaths = fullfile(folders, names + extension);
+outputPaths = string(outputPaths(:));
+end
+
+function same = filesHaveSameContents(firstFile, secondFile)
+if ~isfile(firstFile) || ~isfile(secondFile)
+    same = false;
+    return
+end
+firstInfo = dir(firstFile);
+secondInfo = dir(secondFile);
+if firstInfo.bytes ~= secondInfo.bytes
+    same = false;
+    return
+end
+firstId = fopen(firstFile, "rb");
+if firstId < 0
+    error('KSSOLV:Build:FileOpenFailed', ...
+        'Unable to open file: %s', firstFile);
+end
+firstCleanup = onCleanup(@() fclose(firstId));
+secondId = fopen(secondFile, "rb");
+if secondId < 0
+    error('KSSOLV:Build:FileOpenFailed', ...
+        'Unable to open file: %s', secondFile);
+end
+secondCleanup = onCleanup(@() fclose(secondId));
+firstBytes = fread(firstId, Inf, "*uint8");
+secondBytes = fread(secondId, Inf, "*uint8");
+same = isequal(firstBytes, secondBytes);
+clear firstCleanup secondCleanup
+end
+
+function text = readTextFile(filePath)
+fileId = fopen(filePath, "r");
+if fileId < 0
+    error('KSSOLV:Build:FileOpenFailed', ...
+        'Unable to open file: %s', filePath);
+end
+cleanup = onCleanup(@() fclose(fileId));
+text = fread(fileId, Inf, "*char").';
+clear cleanup
+end
+
+function ensureParentFolder(filePath)
+parentFolder = fileparts(string(filePath));
+if ~isfolder(parentFolder)
+    [created, detail] = mkdir(parentFolder);
+    if ~created
+        error('KSSOLV:Build:DirectoryCreationFailed', ...
+            'Unable to create directory %s: %s', parentFolder, detail);
+    end
+end
+end
+
+function deleteExistingFiles(filePaths)
+for filePath = string(filePaths(:)).'
+    if isfile(filePath)
+        delete(filePath);
+    end
+end
+end
+
+function deleteOrphanedFiles(rootFolder, pattern, expectedFiles)
+if ~isfolder(rootFolder)
+    return
+end
+entries = dir(fullfile(rootFolder, "**", pattern));
+entries = entries(~[entries.isdir]);
+existingFiles = string(fullfile({entries.folder}, {entries.name}));
+orphanedFiles = setdiff(existingFiles, string(expectedFiles));
+deleteExistingFiles(orphanedFiles);
 end
 
 function runtimeFiles = getToolboxKssolv3oFiles(toolboxFolder)

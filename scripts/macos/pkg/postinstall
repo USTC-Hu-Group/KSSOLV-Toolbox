@@ -1,0 +1,29 @@
+#!/bin/bash
+set -u
+
+LABEL="com.gleamoe.kssolv.prewarm"
+PLIST="/Library/LaunchAgents/$LABEL.plist"
+
+/usr/sbin/chown root:wheel "$PLIST" \
+    "/Library/Application Support/KSSOLV Toolbox/prewarm.sh"
+/bin/chmod 0644 "$PLIST"
+/bin/chmod 0755 "/Library/Application Support/KSSOLV Toolbox/prewarm.sh"
+
+# 没有已登录的 Aqua 用户时无需失败；/Library/LaunchAgents 中的任务会在
+# 用户下次登录时由 launchd 自动载入。
+CONSOLE_USER=$(/usr/bin/stat -f '%Su' /dev/console)
+case "$CONSOLE_USER" in
+    ""|root|loginwindow|_mbsetupuser)
+        exit 0
+        ;;
+esac
+
+USER_ID=$(/usr/bin/id -u "$CONSOLE_USER") || exit 0
+DOMAIN="gui/$USER_ID"
+SERVICE="$DOMAIN/$LABEL"
+
+# 升级安装时撤销上一次预热成功留下的 disabled 状态。
+/bin/launchctl enable "$SERVICE" >/dev/null 2>&1 || true
+/bin/launchctl bootstrap "$DOMAIN" "$PLIST" >/dev/null 2>&1 || true
+/bin/launchctl kickstart -k "$SERVICE" >/dev/null 2>&1 || true
+exit 0

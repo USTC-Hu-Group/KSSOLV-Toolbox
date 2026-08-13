@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
 import {
   expectedSelectionCount,
@@ -20,7 +20,18 @@ const props = defineProps<{
   measurementKind?: MeasurementKind;
   measurementSelectionCount?: number;
 }>();
-defineEmits<{ closeMeasurement: [] }>();
+const emit = defineEmits<{
+  closeMeasurement: [];
+  editMeasurement: [
+    request: {
+      kind: 'distance' | 'angle' | 'dihedral';
+      siteIndices: number[];
+      value: number;
+      scope: 'atom' | 'subtree' | 'fragment';
+      referenceCoordinates: Array<[number, number, number]>;
+    },
+  ];
+}>();
 
 const showsMeasurement = computed(() => !!props.measurement || !!props.measurementError);
 const showsMeasurementGuide = computed(() => !!props.measurementKind && !showsMeasurement.value);
@@ -178,6 +189,73 @@ const showsMeasurementGeometry = computed(() => {
     measurement.siteLabels?.length === measurement.diagram.points.length
   );
 });
+
+const editableMeasurement = computed(() => {
+  const measurement = props.measurement;
+  return !!(
+    measurement?.siteIndices?.length &&
+    measurement.numericValue !== undefined &&
+    (measurement.kind === 'distance' ||
+      measurement.kind === 'angle' ||
+      measurement.kind === 'dihedral')
+  );
+});
+const editValue = ref('');
+const editScope = ref<'atom' | 'subtree' | 'fragment'>('subtree');
+const fixedEnd = ref<'first' | 'last'>('first');
+const editError = ref('');
+watch(
+  () => props.measurement,
+  (measurement) => {
+    editValue.value =
+      measurement?.numericValue?.toFixed(measurement.kind === 'distance' ? 5 : 3) ?? '';
+    editScope.value = 'subtree';
+    fixedEnd.value = 'first';
+    editError.value = '';
+  },
+  { immediate: true },
+);
+
+const applyMeasurementEdit = (): void => {
+  const measurement = props.measurement;
+  const value = Number(editValue.value);
+  if (
+    !measurement?.siteIndices ||
+    !(
+      measurement.kind === 'distance' ||
+      measurement.kind === 'angle' ||
+      measurement.kind === 'dihedral'
+    ) ||
+    !Number.isFinite(value) ||
+    (measurement.kind === 'distance' && value <= 0) ||
+    (measurement.kind === 'angle' && (value <= 0 || value >= 180)) ||
+    (measurement.kind === 'dihedral' && (value < -180 || value > 180))
+  ) {
+    editError.value = 'Enter a valid target value for this measurement.';
+    return;
+  }
+  const siteIndices = [...measurement.siteIndices];
+  const referenceCoordinates = measurement.annotation.points.map(
+    (point) => [...point] as [number, number, number],
+  );
+  if (new Set(siteIndices).size !== siteIndices.length) {
+    editError.value =
+      'Exact editing requires distinct source atoms; choose a path without repeated periodic images.';
+    return;
+  }
+  if (fixedEnd.value === 'last') {
+    siteIndices.reverse();
+    referenceCoordinates.reverse();
+  }
+  editError.value = '';
+  emit('editMeasurement', {
+    kind: measurement.kind,
+    siteIndices,
+    value,
+    scope: editScope.value,
+    referenceCoordinates,
+  });
+};
 </script>
 
 <template>
@@ -347,6 +425,35 @@ const showsMeasurementGeometry = computed(() => {
           {{ measurementSummaryDisplay.value }}
         </strong>
       </div>
+      <form
+        v-if="editableMeasurement"
+        class="measurement-editor"
+        aria-label="Edit measured geometry"
+        @submit.prevent="applyMeasurementEdit"
+        @keydown.enter.prevent="applyMeasurementEdit"
+      >
+        <label class="measurement-value-field">
+          <span>Target value</span>
+          <input v-model="editValue" type="number" step="any" aria-label="Target value" />
+        </label>
+        <label class="measurement-scope-field">
+          <span>Move scope</span>
+          <select v-model="editScope" aria-label="Move scope">
+            <option value="atom">Atom</option>
+            <option value="subtree">Subtree</option>
+            <option value="fragment">Fragment</option>
+          </select>
+        </label>
+        <label class="measurement-fixed-end-field">
+          <span>Fixed end</span>
+          <select v-model="fixedEnd" aria-label="Fixed end">
+            <option value="first">First side</option>
+            <option value="last">Last side</option>
+          </select>
+        </label>
+        <button type="submit">Apply geometry</button>
+        <p v-if="editError" class="measurement-error" role="alert">{{ editError }}</p>
+      </form>
       <ol
         v-if="
           measurement?.neighbors &&

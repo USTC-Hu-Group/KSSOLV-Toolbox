@@ -9,7 +9,7 @@ import {
 import type { CrystalSceneSpec } from '@kssolv/atomic-scene';
 import { describe, expect, it } from 'vitest';
 
-import { defaultVolumeAppearance } from '../state/volumeStore';
+import { defaultVolumeAppearance, type VolumeOptions } from '../state/volumeStore';
 import { AtomicOverlayLayer } from './AtomicOverlayLayer';
 
 const scene = (): CrystalSceneSpec => ({
@@ -105,6 +105,86 @@ describe('atomic overlay bounds', () => {
       .material;
     expect(cellMaterial).toBeInstanceOf(LineBasicMaterial);
     expect((cellMaterial as LineBasicMaterial).color.getHex()).toBe(0x85bde7);
+    layer.dispose();
+  });
+
+  it('matches crystal visibility rules for image atoms, bonded atoms, bonds, and magmoms', () => {
+    const fixture = scene();
+    fixture.sites[0].magmom = [0, 0, 2];
+    fixture.atomInstances = [
+      { ...fixture.atomInstances[0], id: 'base', position: [0, 0, 0], visibility: 'base' },
+      { ...fixture.atomInstances[0], id: 'boundary', position: [2, 0, 0], visibility: 'boundary' },
+      { ...fixture.atomInstances[0], id: 'bonded', position: [3, 0, 0], visibility: 'bonded' },
+    ];
+    fixture.bondInstances = [{
+      id: 'bonded-bond',
+      relationId: 'relation',
+      fromSiteIndex: 0,
+      toSiteIndex: 0,
+      fromImage: [0, 0, 0],
+      toImage: [1, 0, 0],
+      start: [0, 0, 0],
+      end: [3, 0, 0],
+      distance: 3,
+      visibility: 'bonded',
+    }];
+    fixture.polyhedra = [{
+      id: 'bonded-polyhedron',
+      centerSiteIndex: 0,
+      center: [0, 0, 0],
+      vertices: [[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]],
+      color: [35, 69, 250],
+      visibility: 'bonded',
+    }];
+    const layer = new AtomicOverlayLayer(fixture);
+    const visibility = {
+      showAtoms: true,
+      showBonds: true,
+      showCell: true,
+      showPolyhedra: true,
+      showBoundaryAtoms: false,
+      showBondedOutside: false,
+      hideIncompleteBonds: true,
+      showMagmoms: false,
+    } as VolumeOptions;
+
+    layer.setVisibility(visibility);
+    expect(layer.children[2].children.map((child) => child.visible)).toEqual([
+      true, false, false,
+    ]);
+    expect(layer.children[1].children.map((child) => child.visible)).toEqual([false, false]);
+    expect(layer.children[0].children[0].visible).toBe(false);
+    expect(layer.children[4].visible).toBe(false);
+    expect(layer.pickableObjects()).toHaveLength(1);
+    expect(layer.selectionForObject(layer.children[2].children[0])).toMatchObject({
+      kind: 'atom',
+      id: 'base',
+      site: { siteIndex: 0 },
+    });
+
+    layer.setVisibility({
+      ...visibility,
+      showBoundaryAtoms: true,
+      showBondedOutside: true,
+      showMagmoms: true,
+    });
+    expect(layer.children[2].children.every((child) => child.visible)).toBe(true);
+    expect(layer.children[1].children.every((child) => child.visible)).toBe(true);
+    expect(layer.children[0].children[0].visible).toBe(true);
+    expect(layer.children[4].children).toHaveLength(2);
+    expect(layer.children[4].visible).toBe(true);
+    expect(layer.pickableObjects()).toHaveLength(5);
+    expect(layer.selectionForObject(layer.children[1].children[0])).toMatchObject({
+      kind: 'bond',
+      id: 'bonded-bond',
+      bond: { distance: 3 },
+    });
+
+    layer.setVisibility({
+      ...visibility,
+      hideIncompleteBonds: false,
+    });
+    expect(layer.children[1].children.map((child) => child.visible)).toEqual([true, false]);
     layer.dispose();
   });
 });

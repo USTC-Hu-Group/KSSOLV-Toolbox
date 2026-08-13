@@ -103,9 +103,11 @@ classdef CrystalSceneSerializer
                 "visibility", string(visibility));
         end
 
-        function value = warning(code, message, severity)
+        function value = warning(code, message, severity, siteIndices)
+            if nargin < 4, siteIndices = zeros(1, 0); end
             value = struct("code", string(code), ...
-                "message", string(message), "severity", string(severity));
+                "message", string(message), "severity", string(severity), ...
+                "siteIndices", reshape(double(siteIndices), 1, []) - 1);
         end
 
         function value = transportScene(scene)
@@ -117,11 +119,49 @@ classdef CrystalSceneSerializer
             % singleton, and multi-element payloads shape-stable for uihtml.
             value = scene;
             fields = ["sites", "atomInstances", "bondRelations", ...
-                "bondInstances", "polyhedra", "warnings"];
+                "bondInstances", "polyhedra"];
             for field = fields
                 name = char(field);
                 value.(name) = reshape(num2cell(scene.(name)), 1, []);
             end
+            % Nested numeric singleton arrays have the same JSON ambiguity
+            % as top-level singleton struct arrays. Keep the scientific
+            % scene numeric, but make warning references shape-stable only
+            % at the uihtml transport boundary.
+            warnings=scene.warnings;
+            for index=1:numel(warnings)
+                warnings(index).siteIndices=num2cell(reshape( ...
+                    double(warnings(index).siteIndices),1,[]));
+            end
+            value.warnings=reshape(num2cell(warnings),1,[]);
+        end
+
+        function value = modeling(scene, userFragments)
+            %MODELING Serialize traceable interactive-modeling resources.
+            arguments
+                scene struct
+                userFragments struct = struct([])
+            end
+            siteSymbols = strings(1, 0);
+            for siteIndex = 1:numel(scene.sites)
+                site = scene.sites(siteIndex);
+                for speciesIndex = 1:numel(site.species)
+                    if iscell(site.species)
+                        species = site.species{speciesIndex};
+                    else
+                        species = site.species(speciesIndex);
+                    end
+                    siteSymbols(end + 1) = ...
+                        string(species.symbol); %#ok<AGROW>
+                end
+            end
+            constructionBonds = kssolv.modeling.forcefield. ...
+                GeometryParameterProvider.constructionBonds(siteSymbols);
+            value = struct( ...
+                "adsorbateFragments", ...
+                {reshape(num2cell(userFragments), 1, [])}, ...
+                "constructionBonds", ...
+                {reshape(num2cell(constructionBonds), 1, [])});
         end
     end
 

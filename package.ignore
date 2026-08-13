@@ -8,6 +8,19 @@
 
 **/*.DS_Store
 **/*.asv
+**/*.m~
+**/*.swp
+**/__pycache__/**/*
+**/*.pyc
+**/*.pyo
+
+**/node_modules/**/*
+**/.vite/**/*
+**/coverage/**/*
+.claude
+output
+tmp
+fmt
 
 **/*.prj
 **/*.prj.bak
@@ -25,11 +38,22 @@ scripts
 Release
 
 **/+test/**/*
+**/+tests/**/*
+**/test/**/*
+**/tests/**/*
+**/*Test.*
+**/*Tests.*
+**/test_*.*
+**/*_test.*
 **/doc/**/*
 **/docs/**/*
+
+% buildfile.m explicitly adds only the non-test KSSOLV-3o runtime payload
+% after these repository-wide test exclusions have been applied.
 
 *.ks
 !ks.ks
 .env
+% .env.example is intentionally included as deployment documentation.
 
 dev

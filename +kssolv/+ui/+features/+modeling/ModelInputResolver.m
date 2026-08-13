@@ -24,6 +24,34 @@ classdef ModelInputResolver
                             kssolv.ui.features.modeling.ModelInputResolver. ...
                             resolve(parameters.solventStructureName);
                     end
+                case {"place_adsorbate", "locate_adsorbate"}
+                    if ~isfield(parameters,"adsorbateModel")
+                        if isfield(parameters, "adsorbateStructureNames")
+                            reference = parameters.adsorbateStructureNames;
+                        else
+                            reference = parameters.adsorbateStructureName;
+                        end
+                        offsets = zeros(0, 3);
+                        if isfield(parameters, "adsorbateComponentOffsets")
+                            offsets = double( ...
+                                parameters.adsorbateComponentOffsets);
+                        end
+                        parameters.adsorbateModel = ...
+                            kssolv.ui.features.modeling.ModelInputResolver. ...
+                            resolveAdsorbate(reference, offsets);
+                    end
+                case "pack_mixture"
+                    if ~isfield(parameters,"otherComponents")
+                        parameters.otherComponents = { ...
+                            kssolv.ui.features.modeling.ModelInputResolver. ...
+                            resolve(parameters.mixtureStructureName)};
+                    end
+                case {"pack_into_existing_box","pack_around_nanoparticle"}
+                    if ~isfield(parameters,"otherComponents")
+                        parameters.otherComponents={ ...
+                            kssolv.ui.features.modeling.ModelInputResolver. ...
+                            resolve(parameters.componentStructureName)};
+                    end
             end
         end
 
@@ -47,6 +75,31 @@ classdef ModelInputResolver
                     "Project structure '%s' was not found.", nameOrId);
             end
             model = item.data.MatgenlabObject.copy();
+        end
+
+        function model = resolveAdsorbate(namesOrIds, offsets)
+            arguments
+                namesOrIds
+                offsets double = zeros(0, 3)
+            end
+            values = reshape(string(namesOrIds), 1, []);
+            if isscalar(values)
+                values = strip(split(values, [",", ";"]));
+                values = reshape(values(values ~= ""), 1, []);
+            end
+            if isempty(values)
+                error("KSSOLV:Modeling:StructureReference", ...
+                    "At least one project adsorbate reference is required.");
+            end
+            components = arrayfun(@(value) ...
+                kssolv.ui.features.modeling.ModelInputResolver. ...
+                resolve(value), values, "UniformOutput", false);
+            if isscalar(components)
+                model = components{1};
+                return
+            end
+            model = kssolv.modeling.adsorption.AdsorbateAssembly. ...
+                combine(components, Offsets = offsets);
         end
 
         function value = suggestOther(display)

@@ -545,11 +545,18 @@ classdef IMolecule < kssolv.analysis.matgenlab.core.SiteCollection & ...
                 options.properties (1,1) struct = struct()
             end
             sites=reshape(sites,1,[]);
-            species = cellfun(@(site) site.species, sites, ...
-                "UniformOutput", false);
-            coordinates = cell2mat(cellfun(@(site) site.coords, sites, ...
-                "UniformOutput", false).');
-            labels = cellfun(@(site) site.label, sites, "UniformOutput", false);
+            if isempty(sites)
+                species = cell(1, 0);
+                coordinates = zeros(0, 3);
+                labels = cell(1, 0);
+            else
+                species = cellfun(@(site) site.species, sites, ...
+                    "UniformOutput", false);
+                coordinates = cell2mat(cellfun(@(site) site.coords, sites, ...
+                    "UniformOutput", false).');
+                labels = cellfun(@(site) site.label, sites, ...
+                    "UniformOutput", false);
+            end
             names = strings(0, 1);
             for index = 1:numel(sites)
                 names = [names; string(fieldnames(sites{index}.site_properties))]; %#ok<AGROW>

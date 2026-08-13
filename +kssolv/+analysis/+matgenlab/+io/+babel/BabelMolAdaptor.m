@@ -27,14 +27,11 @@ classdef BabelMolAdaptor < handle
                     error("KSSOLV:Matgenlab:Babel:Disordered", ...
                         "OpenBabel Molecule only supports ordered molecules.");
                 end
-                molecule = kssolv.analysis.matgenlab.core.Molecule( ...
-                    mol.species_and_occu, mol.cart_coords, ...
-                    charge = mol.charge, ...
-                    spin_multiplicity = mol.spin_multiplicity, ...
-                    charge_spin_check = false);
-                molecule = centerMolecule(molecule);
+                molecule = mol.copy();
+                [bonds, bondOrigin] = bondsForMolecule(molecule);
                 obj.data_ = kssolv.analysis.matgenlab.io.babel. ...
-                    BabelMolData(molecule, inferBonds(molecule), 3);
+                    BabelMolData(molecule, bonds, ...
+                    coordinateDimension(molecule), [], bondOrigin);
                 if ~isempty(backend)
                     obj.backend_state_ = callBackend(backend, ...
                         "from_molecule", molecule);
@@ -339,28 +336,34 @@ end
 
 function data = dataFromMolecule(molecule)
 molecule = normalizeMolecule(molecule);
+[bonds, bondOrigin] = bondsForMolecule(molecule);
 data = kssolv.analysis.matgenlab.io.babel.BabelMolData( ...
-    molecule, inferBonds(molecule), coordinateDimension(molecule));
+    molecule, bonds, coordinateDimension(molecule), [], bondOrigin);
 end
 
 function molecule = normalizeMolecule(value)
 if isa(value, "kssolv.analysis.matgenlab.core.IMolecule")
-    molecule = kssolv.analysis.matgenlab.core.Molecule( ...
-        value.species_and_occu, value.cart_coords, ...
-        charge = value.charge, ...
-        spin_multiplicity = value.spin_multiplicity, ...
-        charge_spin_check = false);
+    molecule = value.copy();
 else
     error("KSSOLV:Matgenlab:Babel:BackendMolecule", ...
         "The injected backend must return a matgenlab Molecule.");
 end
 end
 
-function molecule = centerMolecule(molecule)
-if molecule.num_sites > 0
-    coordinates = molecule.cart_coords;
-    molecule = molecule.translate_sites(1:molecule.num_sites, ...
-        -0.5 * (min(coordinates, [], 1) + max(coordinates, [], 1)));
+function [bonds, origin] = bondsForMolecule(molecule)
+properties = molecule.properties;
+if isfield(properties, "topology") && ...
+        isstruct(properties.topology) && ...
+        isscalar(properties.topology) && ...
+        isfield(properties.topology, "bonds")
+    bonds = double(properties.topology.bonds);
+    origin = "source";
+    if isfield(properties.topology, "origin")
+        origin = string(properties.topology.origin);
+    end
+else
+    bonds = inferBonds(molecule);
+    origin = "inferred";
 end
 end
 

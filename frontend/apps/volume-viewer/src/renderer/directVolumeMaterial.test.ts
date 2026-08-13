@@ -38,10 +38,7 @@ const options: VolumeOptions = {
   colormap: 'coolwarm',
   rangeMinimum: -2,
   rangeMaximum: 3,
-  sliceAxis: 'k',
-  sliceIndex: 2,
-  sliceIndices: [2, 2, 2],
-  sliceVisibility: [true, true, true],
+  millerIndices: [0, 0, 1],
   interpolation: 'linear',
   volumeQuality: 'high',
   gradientOpacity: 0.4,
@@ -53,6 +50,12 @@ const options: VolumeOptions = {
   showCell: true,
   showPolyhedra: true,
   showAxes: true,
+  depthCueing: true,
+  showBoundaryAtoms: true,
+  showBondedOutside: true,
+  hideIncompleteBonds: true,
+  showMagmoms: true,
+  showStatistics: false,
 };
 
 describe('direct volume material', () => {

@@ -135,6 +135,18 @@ classdef MatprojInventoryTest < matlab.unittest.TestCase
                     string(oracle.pagination.error));
             end
 
+            blocked = fixtureTransport({rawResponse(403, struct( ...
+                "error", "Your IP address or ASN has been temporarily blocked", ...
+                "version", "blocked"))});
+            rester = MPRester(testCase.Key, false, "transport", blocked);
+            try
+                rester.request("materials/summary/?_limit=1");
+                testCase.assertFail("The blocked request did not fail.");
+            catch exception
+                testCase.verifySubstring(string(exception.message), ...
+                    "temporarily blocked");
+            end
+
             structure = simpleStructure();
             envelope = struct("data", ...
                 {{struct("structure", structure.as_dict())}});
@@ -149,11 +161,14 @@ classdef MatprojInventoryTest < matlab.unittest.TestCase
 
         function boundedSummarySearchDoesNotAutoPaginate(testCase)
             import kssolv.analysis.matgenlab.ext.matproj.MPRester
-            transport = fixtureTransport();
+            expectedMetadata = struct("total_doc", 321, ...
+                "api_version", "test");
+            transport = fixtureTransport( ...
+                {response(cell(1, 0), expectedMetadata)});
             rester = MPRester(testCase.Key, false, ...
                 "transport", transport);
 
-            rester.summary_search( ...
+            [~, metadata] = rester.summary_search( ...
                 "elements", ["Li", "Fe"], ...
                 "nelements", 2, ...
                 "_fields", ["material_id", "formula_pretty"], ...
@@ -165,6 +180,7 @@ classdef MatprojInventoryTest < matlab.unittest.TestCase
             testCase.verifyFalse(contains(request.url, "_page="));
             testCase.verifyEqual(request.payload.elements, "Li,Fe");
             testCase.verifyEqual(request.payload.nelements, "2");
+            testCase.verifyEqual(metadata, expectedMetadata);
         end
 
         function entriesAndChemsysParity(testCase)
@@ -299,9 +315,11 @@ transport = kssolv.analysis.matgenlab.test.ext.fixtures. ...
     MatprojMockTransport(responses);
 end
 
-function value = response(docs)
+function value = response(docs, metadata)
+if nargin < 2, metadata = struct(); end
 envelope = struct();
 envelope.data = docs;
+if ~isempty(fieldnames(metadata)), envelope.meta = metadata; end
 value = struct("status_code", 200, "data", envelope);
 end
 

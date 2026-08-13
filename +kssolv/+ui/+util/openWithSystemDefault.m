@@ -16,7 +16,7 @@ if ispc
     return
 end
 
-quotedPath = "'" + replace(filePath, "'", "'\"'\"'") + "'";
+quotedPath = kssolv.ui.util.shellQuote(filePath);
 if ismac
     [status, output] = system("open " + quotedPath);
 else

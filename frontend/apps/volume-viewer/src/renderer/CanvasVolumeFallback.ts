@@ -5,9 +5,14 @@ import type { VolumeOptions } from '../state/volumeStore';
 import { appearanceScale } from '../themes';
 import { decodeValues } from './gridMath';
 import {
+  encodeCanvasImage,
+  rgbaToTiffBlob,
+  type ImageExportFormat,
+} from './imageExport';
+import {
   encodeSliceCsv,
   encodeSlicePng,
-  extractScalarSlice,
+  extractMillerSlice,
   sliceRgba,
 } from './sliceExport';
 import type {
@@ -18,7 +23,7 @@ import type {
 
 /**
  * Scientific 2D fallback for systems where WebGL2 cannot be created. It keeps
- * file inspection, lattice-aligned slices, CSV, and PNG usable instead of
+ * file inspection, Miller-plane slices, CSV, and PNG usable instead of
  * leaving a blank uihtml document.
  */
 export class CanvasVolumeFallback implements VolumeRendererApi {
@@ -88,6 +93,10 @@ export class CanvasVolumeFallback implements VolumeRendererApi {
     // A two-dimensional fallback has no orbiting camera.
   }
 
+  setAutoRotation(_enabled: boolean): void {
+    // A two-dimensional fallback has no orbiting camera.
+  }
+
   screenshot(scale = 1.5): string {
     const output = document.createElement('canvas');
     output.width = Math.max(1, Math.round(this.canvas.width * scale));
@@ -97,6 +106,25 @@ export class CanvasVolumeFallback implements VolumeRendererApi {
     context.imageSmoothingEnabled = false;
     context.drawImage(this.canvas, 0, 0, output.width, output.height);
     return output.toDataURL('image/png');
+  }
+
+  async exportImage(format: ImageExportFormat, scale = 1.5): Promise<Blob> {
+    const output = document.createElement('canvas');
+    output.width = Math.max(1, Math.round(this.canvas.width * scale));
+    output.height = Math.max(1, Math.round(this.canvas.height * scale));
+    const context = output.getContext('2d');
+    if (!context) throw new Error('Canvas2D is unavailable for image export.');
+    context.imageSmoothingEnabled = false;
+    context.drawImage(this.canvas, 0, 0, output.width, output.height);
+    if (format === 'tiff') {
+      const pixels = context.getImageData(0, 0, output.width, output.height);
+      return rgbaToTiffBlob(
+        new Uint8Array(pixels.data),
+        output.width,
+        output.height,
+      );
+    }
+    return encodeCanvasImage(output, format);
   }
 
   async exportIsosurface(
@@ -135,7 +163,14 @@ export class CanvasVolumeFallback implements VolumeRendererApi {
   }
 
   diagnostics(): VolumeRendererDiagnostics {
-    return { contextLost: false, geometries: 0, textures: 0, programs: 0 };
+    return {
+      contextLost: false,
+      geometries: 0,
+      textures: 0,
+      programs: 0,
+      drawCalls: 1,
+      triangles: 2,
+    };
   }
 
   dispose(): void {
@@ -159,11 +194,11 @@ export class CanvasVolumeFallback implements VolumeRendererApi {
     if (!this.scene || !this.values || !this.options) {
       throw new Error('No volume slice is available.');
     }
-    return extractScalarSlice(
+    return extractMillerSlice(
       this.values,
       this.scene.grid,
-      this.options.sliceAxis,
-      this.options.sliceIndex,
+      this.options.millerIndices,
+      this.options.interpolation,
     );
   }
 
@@ -208,7 +243,7 @@ export class CanvasVolumeFallback implements VolumeRendererApi {
     );
     this.onStatus(
       'ready',
-      'CPU lattice slice ready; WebGL2 representations are unavailable.',
+      'CPU Miller-plane slice ready; WebGL2 representations are unavailable.',
     );
   }
 }

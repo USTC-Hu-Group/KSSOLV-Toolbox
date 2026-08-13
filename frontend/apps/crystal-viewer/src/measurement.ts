@@ -50,6 +50,8 @@ export interface MeasurementRecord {
   neighbors?: NeighborMeasurement[];
   siteLabels?: string[];
   diagram?: MeasurementDiagram;
+  siteIndices?: number[];
+  numericValue?: number;
 }
 
 export interface NeighborMeasurement {
@@ -249,6 +251,7 @@ const geometricRecord = (
   record: MeasurementRecord,
 ): MeasurementRecord => ({
   ...record,
+  siteIndices: [...indices],
   siteLabels: measurementSiteLabels(scene, indices),
   diagram: intrinsicMeasurementDiagram(record.annotation),
 });
@@ -597,6 +600,7 @@ export const measureScene = (
       kind,
       title,
       summary,
+      numericValue: value,
       details: siteText,
       annotation: baseAnnotation(id, kind, summary, coordinates, [
         segment(coordinates[0], coordinates[1]),
@@ -617,6 +621,7 @@ export const measureScene = (
       kind,
       title,
       summary,
+      numericValue: value,
       details: siteText,
       annotation: baseAnnotation(id, kind, summary, coordinates, [
         segment(coordinates[1], coordinates[0]),
@@ -644,6 +649,7 @@ export const measureScene = (
       kind,
       title,
       summary,
+      numericValue: value,
       details: siteText,
       annotation: baseAnnotation(
         id,

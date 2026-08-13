@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "application": "crystal-viewer",
+  "applicationVersion": "1.0.0",
+  "sourceRevision": "ea4824851aa7ab998ef469152d3a2a0bf2cd269b-dirty",
+  "builtAtUtc": "2026-08-12T11:36:25.481Z",
+  "entryFile": "index.html",
+  "entrySha256": "a400c49dec305bbe16e96d7ed168c5dae383e9b7e46cb39a5c267ff06ebf1b75"
+}

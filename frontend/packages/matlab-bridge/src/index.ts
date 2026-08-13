@@ -105,3 +105,30 @@ export class MatlabBridge {
 }
 
 export const matlabBridge = new MatlabBridge();
+
+/**
+ * Prevent Chromium/CEF page zoom while preserving ordinary scrolling and
+ * application-owned canvas zoom. Embedded KSSOLV surfaces must stay aligned
+ * with the native MATLAB layout even when a trackpad emits pinch gestures.
+ */
+export const installEmbeddedBrowserZoomGuard = (target: Window = window): (() => void) => {
+  const preventModifiedWheel = (event: WheelEvent): void => {
+    if (event.ctrlKey || event.metaKey) event.preventDefault();
+  };
+  const preventGesture = (event: Event): void => event.preventDefault();
+  const preventZoomChord = (event: KeyboardEvent): void => {
+    const primaryModifier = event.ctrlKey !== event.metaKey && (event.ctrlKey || event.metaKey);
+    if (!primaryModifier || !['+', '=', '-', '_', '0'].includes(event.key)) return;
+    event.preventDefault();
+  };
+  target.addEventListener('wheel', preventModifiedWheel, { capture: true, passive: false });
+  target.addEventListener('keydown', preventZoomChord, true);
+  target.addEventListener('gesturestart', preventGesture, true);
+  target.addEventListener('gesturechange', preventGesture, true);
+  return () => {
+    target.removeEventListener('wheel', preventModifiedWheel, true);
+    target.removeEventListener('keydown', preventZoomChord, true);
+    target.removeEventListener('gesturestart', preventGesture, true);
+    target.removeEventListener('gesturechange', preventGesture, true);
+  };
+};

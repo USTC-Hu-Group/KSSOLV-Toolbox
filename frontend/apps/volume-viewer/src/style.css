@@ -35,7 +35,7 @@ main {
 .viewport canvas:active { cursor: grabbing; }
 .viewport canvas[data-interaction='pan'] { cursor: move; }
 
-.info-card, .settings-panel, .viewer-toolbar, .probe-card, .histogram, .status {
+.info-card, .settings-panel, .fractional-coordinates-panel, .viewer-toolbar, .probe-card, .histogram, .status, .performance-badge, .selection-inspector {
   position: absolute;
   z-index: 2;
   border: 1px solid var(--viewer-panel-border);
@@ -83,6 +83,7 @@ main {
   padding: 6px;
   border-radius: 13px;
 }
+.viewer-toolbar.has-open-export-menu { z-index: 6; }
 .viewer-toolbar button,
 .close-button {
   display: grid;
@@ -117,6 +118,7 @@ main {
   height: 20px;
   stroke-width: 1.6;
 }
+.viewer-toolbar svg.auto-rotate-icon { width: 20px; height: 20px; }
 .viewer-toolbar svg.export-image-icon {
   width: 21px;
   height: 21px;
@@ -137,6 +139,7 @@ main {
   outline: none;
   box-shadow: none;
 }
+.viewer-toolbar button:disabled { cursor: not-allowed; opacity: .34; }
 .viewer-toolbar .axis-button {
   font-family: Georgia, serif;
   font-style: italic;
@@ -152,6 +155,47 @@ main {
   margin: 3px auto;
   background: var(--viewer-panel-border);
 }
+.toolbar-export-menu { position: relative; }
+.toolbar-export-popover {
+  position: absolute;
+  z-index: 4;
+  top: -6px;
+  right: calc(100% + 12px);
+  display: grid;
+  width: 190px;
+  padding: 6px;
+  overflow-y: auto;
+  border: 1px solid var(--viewer-panel-border);
+  border-radius: 12px;
+  background: var(--viewer-panel);
+  box-shadow: var(--viewer-shadow);
+  backdrop-filter: blur(18px) saturate(130%);
+  overscroll-behavior: contain;
+  gap: 2px;
+}
+.toolbar-image-export-popover.is-positioning {
+  visibility: hidden;
+  pointer-events: none;
+}
+.viewer-toolbar .toolbar-export-option {
+  display: grid;
+  width: 100%;
+  height: auto;
+  min-height: 43px;
+  padding: 6px 9px;
+  text-align: left;
+  place-items: initial;
+}
+.toolbar-export-option strong {
+  color: var(--viewer-foreground);
+  font-size: 12px;
+  line-height: 1.25;
+}
+.toolbar-export-option span {
+  color: var(--viewer-muted);
+  font-size: 10px;
+  line-height: 1.3;
+}
 
 .settings-panel {
   z-index: 4;
@@ -164,6 +208,27 @@ main {
   overscroll-behavior: contain;
   border-radius: 14px;
 }
+.fractional-coordinates-panel {
+  z-index: 4;
+  top: 18px;
+  right: 72px;
+  display: flex;
+  flex-direction: column;
+  width: min(520px, calc(100% - 104px));
+  max-height: calc(100% - 36px);
+  overflow: hidden;
+  border-radius: 12px;
+  color: var(--viewer-foreground);
+}
+.fractional-coordinates-panel header { display: flex; align-items: center; justify-content: space-between; min-height: 42px; padding: 6px 8px 6px 14px; border-bottom: 1px solid var(--viewer-panel-border); background: var(--viewer-panel); backdrop-filter: blur(18px); }
+.fractional-coordinates-panel h2 { margin: 0; font-size: 14px; line-height: 1.2; }
+.fractional-coordinates-table-wrap { min-height: 0; flex: 1 1 auto; overflow: auto; overscroll-behavior: contain; }
+.fractional-coordinates-panel table { width: 100%; min-width: 475px; border-collapse: collapse; font-size: 11px; font-variant-numeric: tabular-nums; }
+.fractional-coordinates-panel th, .fractional-coordinates-panel td { padding: 6px 8px; border-bottom: 1px solid var(--viewer-panel-border); text-align: center; white-space: nowrap; }
+.fractional-coordinates-panel th { position: sticky; z-index: 1; top: 0; color: var(--viewer-muted); background: var(--viewer-panel); font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.fractional-coordinates-panel tbody tr:last-child td { border-bottom: 0; }
+.fractional-coordinates-panel td:nth-child(n + 4) { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+.fractional-coordinates-empty { margin: 0; padding: 17px; color: var(--viewer-muted); font-size: 12px; }
 .settings-panel header {
   position: sticky;
   z-index: 1;
@@ -308,16 +373,41 @@ main {
   outline: none;
 }
 .settings-panel .appearance-reset-button:disabled { cursor: not-allowed; opacity: .45; }
-.slice-row {
+.selection-inspector {
+  top: 50%;
+  left: 18px;
+  width: 248px;
+  max-height: calc(100% - 36px);
+  padding: 15px 16px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  border-radius: 12px;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  transform: translateY(-50%);
+}
+.selection-inspector h2 { margin: 0; font-size: 16px; line-height: 1.2; }
+.selection-heading { display: flex; align-items: center; margin-bottom: 12px; gap: 8px; }
+.selection-heading span { padding: 3px 7px; border-radius: 999px; color: var(--viewer-muted); background: color-mix(in srgb, var(--viewer-foreground) 6%, transparent); font-size: 10.5px; }
+.atom-coordinate-stack { display: grid; margin-bottom: 10px; gap: 6px; }
+.atom-coordinate-field { padding: 7px 9px 8px; border-radius: 8px; background: color-mix(in srgb, var(--viewer-foreground) 3.5%, transparent); }
+.atom-coordinate-field header { display: flex; min-height: 20px; align-items: center; justify-content: space-between; color: var(--viewer-muted); font-size: 10.5px; font-weight: 620; }
+.atom-coordinate-field p { margin: 2px 0 0; font-size: 11.5px; line-height: 1.3; letter-spacing: -.015em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.coordinate-copy { display: grid; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 5px; color: var(--viewer-muted); background: transparent; cursor: pointer; place-items: center; }
+.coordinate-copy:hover, .coordinate-copy.copied { color: var(--viewer-accent); background: color-mix(in srgb, var(--viewer-accent) 10%, transparent); }
+.coordinate-copy svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.atom-metadata-grid { padding: 0 2px; }
+.selection-inspector dl { display: grid; grid-template-columns: 72px minmax(0, 1fr); margin: 0; font-size: 12px; line-height: 1.35; gap: 8px 12px; }
+.selection-inspector dt { color: var(--viewer-muted); }
+.selection-inspector dd { margin: 0; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.miller-index-row {
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) 32px;
-  align-items: center;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 9px;
   margin: 10px 0;
 }
-.settings-panel .slice-row label.slice-toggle { margin: 0; gap: 5px; font-weight: 700; }
-.slice-row input[type="range"] { width: 100%; min-width: 0; accent-color: var(--viewer-accent); }
-.slice-row output { text-align: right; color: var(--viewer-foreground); font-size: 12px; font-variant-numeric: tabular-nums; }
+.settings-panel .miller-index-row label { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 6px; margin: 0; font-weight: 700; }
+.settings-panel .miller-index-row input[type="number"] { width: 100%; min-width: 0; text-align: center; font-variant-numeric: tabular-nums; }
 .setting-hint { margin: 9px 0 0; color: var(--viewer-muted); font-size: 11px; line-height: 1.4; }
 .clip-row { display: grid; grid-template-columns: 1fr minmax(0,68px) minmax(0,68px); align-items: center; gap: 7px; margin: 8px 0; color: var(--viewer-muted); font-size: 12px; }
 .settings-panel .clip-row input[type="number"] { width: 100%; min-width: 0; }
@@ -372,6 +462,7 @@ main {
 
 .status { bottom: 18px; left: 50%; transform: translateX(-50%); padding: 9px 14px; border-radius: 999px; color: #5d6673; font-size: 12px; animation: status-in .16s ease-out; }
 .status.error { color: #b42318; border-color: #f2b8b5; }
+.performance-badge { bottom: 18px; left: 18px; padding: 8px 11px; border-radius: 9px; color: var(--viewer-muted); font: 11px/1.3 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
 @keyframes status-in {
   from { opacity: 0; transform: translate(-50%, 4px); }
   to { opacity: 1; transform: translate(-50%, 0); }
@@ -412,6 +503,7 @@ main {
 .theme-gleamoe-premiror .info-card,
 .theme-gleamoe-premiror .viewer-toolbar,
 .theme-gleamoe-premiror .settings-panel,
+.theme-gleamoe-premiror .fractional-coordinates-panel,
 .theme-gleamoe-premiror .probe-card,
 .theme-gleamoe-premiror .histogram {
   border-color: rgb(137 204 255 / 18%);
@@ -429,6 +521,7 @@ main {
 .theme-materials .info-card,
 .theme-materials .viewer-toolbar,
 .theme-materials .settings-panel,
+.theme-materials .fractional-coordinates-panel,
 .theme-materials .probe-card,
 .theme-materials .histogram {
   border-radius: 3px;
@@ -451,7 +544,7 @@ main {
     order: 1;
   }
 
-  .toolbar-fullscreen {
+  .toolbar-auto-rotate {
     order: 2;
   }
 
@@ -483,15 +576,26 @@ main {
     order: 9;
   }
 
-  .toolbar-image-export {
+  .toolbar-information {
     order: 10;
   }
 
-  .toolbar-file-export {
+  .toolbar-image-menu {
     order: 11;
   }
 
-  .settings-panel {
+  .toolbar-file-export {
+    order: 12;
+  }
+
+  .toolbar-fullscreen {
+    grid-column: 1 / -1;
+    order: 13;
+    justify-self: center;
+  }
+
+  .settings-panel,
+  .fractional-coordinates-panel {
     top: 10px;
     right: 102px;
     max-height: calc(100% - 20px);
@@ -512,12 +616,14 @@ main {
     order: 1;
   }
 
-  .toolbar-settings {
+  .toolbar-auto-rotate {
     order: 2;
   }
 
   .toolbar-fullscreen {
+    grid-column: 3;
     order: 3;
+    justify-self: auto;
   }
 
   .viewer-toolbar [data-toolbar-axis='a'] {
@@ -544,15 +650,25 @@ main {
     order: 9;
   }
 
-  .toolbar-image-export {
+  .toolbar-image-menu {
+    order: 12;
+  }
+
+  .toolbar-settings {
     order: 10;
   }
 
-  .toolbar-file-export {
+  .toolbar-information {
     order: 11;
   }
 
-  .settings-panel {
+  .toolbar-file-export {
+    grid-column: 2;
+    order: 13;
+  }
+
+  .settings-panel,
+  .fractional-coordinates-panel {
     top: 8px;
     right: 135px;
     max-height: calc(100% - 16px);
@@ -567,17 +683,21 @@ main {
   .info-card { top: 10px; left: 10px; width: min(220px, calc(100% - 76px)); }
   .histogram { right: 10px; bottom: 10px; width: min(260px, calc(100% - 20px)); }
   .viewer-toolbar { top: 10px; right: 10px; }
-  .settings-panel { top: 10px; right: 56px; width: min(330px, calc(100% - 66px)); max-height: calc(100% - 20px); }
+  .settings-panel, .fractional-coordinates-panel { top: 10px; right: 56px; max-height: calc(100% - 20px); }
+  .settings-panel { width: min(330px, calc(100% - 66px)); }
+  .fractional-coordinates-panel { width: calc(100% - 66px); }
 }
 
 @media (max-width: 720px) and (max-height: 540px) {
-  .settings-panel {
+  .settings-panel,
+  .fractional-coordinates-panel {
     right: 94px;
   }
 }
 
 @media (max-width: 720px) and (max-height: 300px) {
-  .settings-panel {
+  .settings-panel,
+  .fractional-coordinates-panel {
     right: 127px;
   }
 }

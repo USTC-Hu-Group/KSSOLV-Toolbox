@@ -6,37 +6,51 @@
         <entry key="ImportStructureFromFile">选择要导入的结构文件</entry>
         <!-- MaterialsProjectDialog -->
         <entry key="MaterialsProjectDialogTitle">从 Materials Project 导入结构</entry>
-        <entry key="MaterialsProjectAPIKey">API Key：</entry>
-        <entry key="MaterialsProjectDashboard">获取 API Key</entry>
         <entry key="MaterialsProjectQuery">化学式 / MP ID：</entry>
+        <entry key="MaterialsProjectElementsQuery">元素：</entry>
+        <entry key="MaterialsProjectFormulaPlaceholder">LiFePO4 或 mp-169</entry>
+        <entry key="MaterialsProjectElementsPlaceholder">请在下方选择元素</entry>
+        <entry key="MaterialsProjectFormulaTooltip">输入化学式或 Materials Project ID，例如 LiFePO4 或 mp-169。</entry>
+        <entry key="MaterialsProjectOnlyElementsTooltip">请在下方选择一个或多个元素；仅检索只包含这些元素的材料。</entry>
+        <entry key="MaterialsProjectAtLeastElementsTooltip">请在下方选择一个或多个元素；检索至少包含这些元素的材料。</entry>
         <entry key="MaterialsProjectSearch">检索</entry>
         <entry key="MaterialsProjectOnlyElements">仅这些元素</entry>
         <entry key="MaterialsProjectAtLeastElements">至少包含这些元素</entry>
         <entry key="MaterialsProjectFormulaOrId">化学式 / MP ID</entry>
-        <entry key="MaterialsProjectShowAPIKey">显示 API Key</entry>
-        <entry key="MaterialsProjectHideAPIKey">隐藏 API Key</entry>
-        <entry key="MaterialsProjectNoElementsSelected">尚未选择元素</entry>
-        <entry key="MaterialsProjectSelectedElements">已选元素：%s</entry>
         <entry key="MaterialsProjectIdColumn">Material ID</entry>
         <entry key="MaterialsProjectFormulaColumn">化学式</entry>
+        <entry key="MaterialsProjectChemsysColumn">化学体系</entry>
+        <entry key="MaterialsProjectCrystalSystemColumn">晶系</entry>
         <entry key="MaterialsProjectSpaceGroupColumn">空间群</entry>
+        <entry key="MaterialsProjectVolumeColumn">体积 (Å³)</entry>
+        <entry key="MaterialsProjectDensityColumn">密度 (g/cm³)</entry>
         <entry key="MaterialsProjectBandGapColumn">带隙 (eV)</entry>
+        <entry key="MaterialsProjectFormationEnergyColumn">形成能 (eV/atom)</entry>
         <entry key="MaterialsProjectHullColumn">凸包能 (eV/atom)</entry>
         <entry key="MaterialsProjectStableColumn">稳定</entry>
         <entry key="MaterialsProjectSitesColumn">原子数</entry>
-        <entry key="MaterialsProjectReady">选择元素或输入化学式 / MP ID 后开始检索。最多显示前 100 条结果。</entry>
+        <entry key="MaterialsProjectReady">选择元素或输入化学式 / MP ID 后开始检索。</entry>
+        <entry key="MaterialsProjectPageSizeTooltip">每页显示的结果数</entry>
+        <entry key="MaterialsProjectExperimentalLegend">★ 实验中已观测到</entry>
         <entry key="MaterialsProjectClearElements">清除元素</entry>
         <entry key="MaterialsProjectImportSelected">导入所选结构</entry>
         <entry key="MaterialsProjectInvalidSearch">无法开始检索</entry>
-        <entry key="MaterialsProjectAPIKeyRequired">请输入有效的 32 位 Materials Project API Key。也可以通过 MP_API_KEY 或 PMG_MAPI_KEY 环境变量配置。</entry>
+        <entry key="MaterialsProjectAPIKeyRequired">请先在“设置 → Materials Project”中配置有效的 32 位 API Key，也可以通过 MP_API_KEY 或 PMG_MAPI_KEY 环境变量配置。</entry>
         <entry key="MaterialsProjectQueryRequired">请输入化学式或 Materials Project ID。</entry>
         <entry key="MaterialsProjectElementsRequired">请至少选择一个元素。</entry>
         <entry key="MaterialsProjectSearching">正在检索 Materials Project…</entry>
         <entry key="MaterialsProjectNoResults">没有找到符合条件的材料。</entry>
         <entry key="MaterialsProjectResultsFound">找到 %d 条结果。请选择表格中的结构后导入。</entry>
+        <entry key="MaterialsProjectResultsFoundPaged">共找到 %d 条结果，当前显示第 %d–%d 条。请选择结构后导入。</entry>
+        <entry key="MaterialsProjectFirstPage">首页</entry>
+        <entry key="MaterialsProjectPreviousPage">上一页</entry>
+        <entry key="MaterialsProjectNextPage">下一页</entry>
+        <entry key="MaterialsProjectLastPage">末页</entry>
+        <entry key="MaterialsProjectPageStatus">第 %d / %d 页</entry>
         <entry key="MaterialsProjectDownloading">正在下载 %s 的晶体结构…</entry>
         <entry key="MaterialsProjectImported">已将 %s 导入当前项目。</entry>
-        <entry key="MaterialsProjectAuthenticationFailed">Materials Project 身份验证失败。请检查 API Key。</entry>
+        <entry key="MaterialsProjectAuthenticationFailed">Materials Project 身份验证失败。请在“设置 → Materials Project”中检查 API Key。</entry>
+        <entry key="MaterialsProjectAccessBlocked">Materials Project 已临时限制当前网络 IP/ASN 的访问。这不是 API Key 错误；请稍后重试、切换网络，或按 Materials Project 提示联系其支持团队。</entry>
         <entry key="MaterialsProjectTimedOut">Materials Project 请求超时，请检查网络后重试。</entry>
         <entry key="MaterialsProjectNetworkFailed">无法连接 Materials Project，请检查网络、代理或安全连接设置。</entry>
         <entry key="MaterialsProjectUnexpectedError">Materials Project 操作失败：%s</entry>
@@ -75,6 +89,13 @@
         <entry key="StructureCanCloseSave">保存到 Project</entry>
         <entry key="StructureCanCloseDiscard">放弃变更</entry>
         <entry key="StructureCanCloseCancel">取消</entry>
+        <entry key="RecoveryTitle">恢复建模草稿</entry>
+        <entry key="RecoveryMessage">发现保存于 %s 的建模自动恢复草稿（修订 %d）。</entry>
+        <entry key="RecoveryRestore">恢复草稿</entry>
+        <entry key="RecoveryDiscard">丢弃快照</entry>
+        <entry key="RecoveryLater">稍后决定</entry>
+        <entry key="RecoveryCorruptTitle">恢复快照需要处理</entry>
+        <entry key="RecoveryCorruptMessage">自动保存验证失败，未恢复模型：%s\n\n文件已保留用于诊断：\n%s</entry>
 
         <!-- HomeTab: callbackFileProjectButton -->
         <entry key="OpenKSFileTitle">打开 KSSOLV 项目文件</entry>
@@ -129,6 +150,7 @@
         <entry key="AboutDialogVersion">版本 %s · 发布日期 %s</entry>
         <entry key="AboutDialogCopyright">版权所有 © 2024–2026 %s。保留所有权利。</entry>
         <entry key="AboutDialogRepositoryButton">GitHub 仓库</entry>
+        <entry key="AboutDialogModelingSchema">建模架构 v%d · %s · MATLAB %s</entry>
 
         <!-- SettingsDialog -->
         <entry key="SettingsDialogName">设置</entry>
@@ -143,7 +165,7 @@
         <entry key="SettingsDialogMaterialsProjectKeyPlaceholder">输入 32 位 API Key</entry>
         <entry key="SettingsDialogMaterialsProjectOpenAPIPage">查看我的 API Key</entry>
         <entry key="SettingsDialogMaterialsProjectKeyNote">用户 API Key 将加密保存并优先使用。点击上方按钮可在系统浏览器中打开 Materials Project API 页面。</entry>
-        <entry key="SettingsDialogMaterialsProjectInvalidAPIKey">Materials Project API Key 必须为 32 位字符，或留空以使用内置默认密钥。</entry>
+        <entry key="SettingsDialogMaterialsProjectInvalidAPIKey">Materials Project API Key 必须为 32 位字符，或留空以使用 MP_API_KEY 或 PMG_MAPI_KEY。</entry>
         <entry key="SettingsDialogMaterialsProjectOpenErrorTitle">无法打开 Materials Project</entry>
         <entry key="SettingsDialogMaterialsProjectOpenFailed">无法在系统浏览器中打开 Materials Project API 页面。</entry>
         <!-- SettingsDialog/GeneralTab/LanguagePanel -->

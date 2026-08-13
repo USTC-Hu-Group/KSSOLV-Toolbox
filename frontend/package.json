@@ -13,6 +13,7 @@
     "test:crystal-viewer": "pnpm --filter @kssolv/crystal-viewer test",
     "test:volume-viewer": "pnpm --filter @kssolv/volume-viewer test",
     "sync:runtime": "node scripts/sync-runtime.mjs",
+    "verify:runtime": "node scripts/verify-runtime.mjs",
     "deploy": "pnpm build && pnpm sync:runtime"
   },
   "packageManager": "pnpm@11.17.0"

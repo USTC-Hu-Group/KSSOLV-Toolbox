@@ -120,6 +120,42 @@ classdef Structure < kssolv.services.filemanager.AbstractItem
             end
         end
 
+        function structure = createBlankMolecule(this, showDisplay)
+            %CREATEBLANKMOLECULE Add and display an empty sketch document.
+            arguments
+                this
+                showDisplay (1, 1) logical = true
+            end
+            existingLabels = strings(numel(this.children), 1);
+            for childIndex = 1:numel(this.children)
+                existingLabels(childIndex) = ...
+                    string(this.children{childIndex}.label);
+            end
+            moleculeIndex = 1;
+            structureLabel = "Molecule " + string(moleculeIndex);
+            while any(existingLabels == structureLabel)
+                moleculeIndex = moleculeIndex + 1;
+                structureLabel = "Molecule " + string(moleculeIndex);
+            end
+            properties = struct("name", structureLabel, ...
+                "topology", struct("bonds", zeros(0, 3), ...
+                "origin", "source", "schemaVersion", 1));
+            model = kssolv.analysis.matgenlab.core.Molecule( ...
+                cell(1, 0), zeros(0, 3), charge_spin_check = false, ...
+                properties = properties);
+            structure = kssolv.services.filemanager.Structure(structureLabel);
+            structure.data = ...
+                kssolv.services.fileparser.ModeledStructureData( ...
+                model, structure.label);
+            this.addChildrenItem(structure);
+            if showDisplay
+                displayObj = ...
+                    kssolv.ui.components.figuredocument.MoleculeDisplay( ...
+                    model, "", structure.name);
+                displayObj.Display();
+            end
+        end
+
         function structure = importMaterialsProjectStructure(this, model, ...
                 materialId, formula, showDisplay)
             %IMPORTMATERIALSPROJECTSTRUCTURE Add an MP crystal to Project.

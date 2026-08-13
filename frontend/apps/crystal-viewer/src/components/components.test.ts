@@ -13,10 +13,127 @@ import ElementLegend from './ElementLegend.vue';
 import FractionalCoordinatesPanel from './FractionalCoordinatesPanel.vue';
 import HeroToolbar from './HeroToolbar.vue';
 import SelectionInspector from './SelectionInspector.vue';
+import ShortcutHelpDialog from './ShortcutHelpDialog.vue';
 import SettingsPanel from './SettingsPanel.vue';
 import ViewerToolbar from './ViewerToolbar.vue';
 
 describe('viewer controls', () => {
+  it('groups fixed modeling shortcuts and presents mouse combinations consistently', () => {
+    const wrapper = mount(ShortcutHelpDialog);
+
+    expect(wrapper.find('.shortcut-tier-heading').exists()).toBe(false);
+    expect(wrapper.findAll('[role="tab"]').map((tab) => tab.text())).toEqual([
+      'Everyday controls22',
+      'Modeling tools14',
+    ]);
+    expect(wrapper.get('#shortcut-tab-common').attributes('aria-selected')).toBe('true');
+    expect(wrapper.get('#shortcut-tier-common').attributes('hidden')).toBeUndefined();
+    expect(wrapper.get('#shortcut-tier-advanced').attributes('hidden')).toBeDefined();
+    expect(wrapper.findAll('.shortcut-group').map((group) => group.find('h4').text())).toEqual([
+      'Mouse & view',
+      'Selection',
+      'Edit & history',
+      'Direct transform',
+      'Molecule 3D sketch',
+      'Surface adsorbate sketch',
+      'Precise tools & interface',
+    ]);
+    expect(wrapper.findAll('.shortcut-row')).toHaveLength(36);
+    expect(wrapper.get('[aria-label="Add or remove atom keys"]').text()).toContain(
+      'Shift/Ctrl+ Click',
+    );
+    expect(wrapper.text()).toContain('Double-click');
+    expect(wrapper.text()).not.toContain('Start here · Everyday controls');
+    expect(wrapper.text()).not.toContain('Advanced · Modeling tools');
+    expect(wrapper.text()).not.toContain(
+      'The view, selection, edit, and direct-transform controls used most often.',
+    );
+    expect(wrapper.text()).not.toContain(
+      'Longer modeling workflows are listed after the common controls, one action per row.',
+    );
+    expect(wrapper.text()).toContain('Increase interface zoom');
+    expect(wrapper.text()).toContain('⌘/Ctrl+ 0');
+    expect(wrapper.text()).toContain('Shift+ Middle-drag');
+    expect(wrapper.text()).toContain('Shift+ Right-drag');
+    expect(wrapper.text()).toContain('Atomthen Drag to atom');
+    expect(wrapper.text()).toContain('Modeling tabthen Move atoms');
+    expect(wrapper.text()).toContain('Othen Surface atomthen Left-drag');
+    expect(wrapper.text()).toContain('Choose a preset, project molecule, or user fragment');
+    expect(wrapper.text()).toContain('Rotate adsorbate about host bond');
+    expect(wrapper.get('[aria-label="Box selection keys"]').text()).toContain('Bthen Drag');
+    expect(wrapper.text()).toContain('then Drag');
+    expect(wrapper.text()).toContain('?or /');
+    expect(wrapper.findAll('input')).toHaveLength(0);
+    expect(wrapper.text()).not.toContain('Single-letter keys are editable');
+    expect(wrapper.text()).not.toContain('Shortcuts pause while typing');
+    expect(wrapper.find('.shortcut-copy span').exists()).toBe(false);
+    expect(wrapper.findAll('.shortcut-tier--advanced .shortcut-group')).toHaveLength(3);
+    expect(wrapper.findAll('.shortcut-mouse').length).toBeGreaterThanOrEqual(12);
+    expect(
+      wrapper.get('[aria-label="Rotate view keys"] .shortcut-mouse rect').attributes('x'),
+    ).toBe('3.45');
+    expect(wrapper.get('[aria-label="Zoom view keys"] .shortcut-mouse rect').attributes('x')).toBe(
+      '7.15',
+    );
+    expect(wrapper.get('[aria-label="Pan view keys"] .shortcut-mouse rect').attributes('x')).toBe(
+      '8.75',
+    );
+
+    expect(wrapper.find('.shortcut-reset-button').exists()).toBe(false);
+  });
+
+  it('switches between compact common and advanced shortcut sections', async () => {
+    const wrapper = mount(ShortcutHelpDialog);
+
+    await wrapper.get('#shortcut-tab-advanced').trigger('click');
+
+    expect(wrapper.get('#shortcut-tab-advanced').attributes('aria-selected')).toBe('true');
+    expect(wrapper.get('#shortcut-tab-common').attributes('tabindex')).toBe('-1');
+    expect(wrapper.get('#shortcut-tier-common').attributes('hidden')).toBeDefined();
+    expect(wrapper.get('#shortcut-tier-advanced').attributes('hidden')).toBeUndefined();
+    expect(wrapper.get('#shortcut-tier-advanced').text()).toContain(
+      'Choose a preset, project molecule, or user fragment',
+    );
+  });
+
+  it('moves shortcut section focus with left and right arrow keys', async () => {
+    const wrapper = mount(ShortcutHelpDialog, { attachTo: document.body });
+    const common = wrapper.get<HTMLButtonElement>('#shortcut-tab-common');
+    common.element.focus();
+
+    await common.trigger('keydown', { key: 'ArrowRight' });
+    await nextTick();
+
+    expect(wrapper.get('#shortcut-tab-advanced').attributes('aria-selected')).toBe('true');
+    expect(document.activeElement).toBe(wrapper.get('#shortcut-tab-advanced').element);
+    wrapper.unmount();
+  });
+
+  it('renders the shortcut hierarchy in Simplified Chinese without changing its order', () => {
+    const wrapper = mount(ShortcutHelpDialog, {
+      props: { locale: 'zh-CN', initialTier: 'advanced' },
+    });
+    expect(wrapper.get('.shortcut-help-dialog').attributes('lang')).toBe('zh-CN');
+    expect(wrapper.get('.shortcut-help-dialog').attributes('data-initial-tier')).toBe('advanced');
+    expect(wrapper.get('h2').text()).toBe('键盘与鼠标快捷键');
+    expect(wrapper.find('.shortcut-tier-heading').exists()).toBe(false);
+    expect(wrapper.get('#shortcut-tab-advanced').attributes('aria-selected')).toBe('true');
+    expect(wrapper.findAll('.shortcut-group h4').map((heading) => heading.text())).toEqual([
+      '鼠标与视图',
+      '选择',
+      '编辑与历史',
+      '直接变换',
+      '分子 3D 草绘',
+      '表面吸附质草绘',
+      '精确工具与界面',
+    ]);
+    expect(wrapper.text()).toContain('选择预置、项目分子或用户片段');
+    expect(wrapper.text()).toContain('输入精确笛卡尔或分数坐标位移');
+    expect(wrapper.text()).toContain('原子然后 拖到原子');
+    expect(wrapper.text()).toContain('放大界面内容');
+    expect(wrapper.findAll('.shortcut-row')).toHaveLength(36);
+  });
+
   it('shows fractional crystal coordinates without a selected column', () => {
     const scene = createDebugScene();
     scene.sites[0].label = 'Na1';
@@ -785,11 +902,16 @@ describe('viewer controls', () => {
           title: 'Bond length',
           summary: 'Distance: 1.23456 Å',
           details: 'Sites: #1 C – #2 O',
+          siteIndices: [0, 1],
+          numericValue: 1.23456,
           annotation: {
             id: 'measurement-2',
             kind: 'distance',
             label: 'Distance: 1.23456 Å',
-            points: [],
+            points: [
+              [0, 0, 0],
+              [1.23456, 0, 0],
+            ],
             segments: [],
             planePoints: [],
           },
@@ -805,6 +927,31 @@ describe('viewer controls', () => {
     ]);
     expect(wrapper.findAll('.measurement-path-arrow')).toHaveLength(1);
     expect(wrapper.text()).not.toContain('Site 1');
+    expect(wrapper.get('[aria-label="Target value"]').element).toHaveProperty('value', '1.23456');
+    expect(wrapper.get('.measurement-value-field').find('input').exists()).toBe(true);
+    expect(wrapper.get('.measurement-scope-field').find('select').exists()).toBe(true);
+    expect(wrapper.get('.measurement-fixed-end-field').find('select').exists()).toBe(true);
+    await wrapper.get('[aria-label="Target value"]').setValue('1.5');
+    await wrapper.get('[aria-label="Move scope"]').setValue('fragment');
+    await wrapper.get('[aria-label="Fixed end"]').setValue('last');
+    await wrapper.get('[aria-label="Edit measured geometry"]').trigger('submit');
+    expect(wrapper.emitted('editMeasurement')).toEqual([
+      [
+        {
+          kind: 'distance',
+          siteIndices: [1, 0],
+          value: 1.5,
+          scope: 'fragment',
+          referenceCoordinates: [
+            [1.23456, 0, 0],
+            [0, 0, 0],
+          ],
+        },
+      ],
+    ]);
+    await wrapper.get('[aria-label="Target value"]').setValue('1.6');
+    await wrapper.get('[aria-label="Target value"]').trigger('keydown', { key: 'Enter' });
+    expect(wrapper.emitted('editMeasurement')).toHaveLength(2);
     await wrapper.get('[aria-label="Close measurement result"]').trigger('click');
     expect(wrapper.emitted('closeMeasurement')).toHaveLength(1);
     expect(wrapper.get('[aria-live="polite"]').attributes('aria-live')).toBe('polite');
@@ -892,6 +1039,35 @@ describe('viewer controls', () => {
     expect(`${projection.attributes('cx')},${projection.attributes('cy')}`).not.toBe(
       `${match?.[1]},${match?.[2]}`,
     );
+  });
+
+  it('explains why repeated periodic images cannot be exact-edited', async () => {
+    const repeated: MeasurementRecord = {
+      id: 'repeated-periodic-path',
+      kind: 'dihedral',
+      title: 'Dihedral angle',
+      summary: 'Dihedral: 109.471°',
+      details: 'Sites: #6 Si – #2 Si – #4 Si – #6 Si',
+      siteIndices: [5, 1, 3, 5],
+      numericValue: 109.471,
+      annotation: {
+        id: 'repeated-periodic-path',
+        kind: 'dihedral',
+        label: 'Dihedral: 109.471°',
+        points: [
+          [0, 0, 0],
+          [1, 0, 0],
+          [1, 1, 0],
+          [0, 1, 1],
+        ],
+        segments: [],
+        planePoints: [],
+      },
+    };
+    const wrapper = mount(SelectionInspector, { props: { measurement: repeated } });
+    await wrapper.get('[aria-label="Edit measured geometry"]').trigger('submit');
+    expect(wrapper.get('[role="alert"]').text()).toContain('distinct source atoms');
+    expect(wrapper.emitted('editMeasurement')).toBeUndefined();
   });
 
   it('keeps nearest-neighbor distances and units together in structured rows', () => {

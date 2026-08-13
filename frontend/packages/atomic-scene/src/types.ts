@@ -83,6 +83,34 @@ export interface SceneWarning {
   code: string;
   message: string;
   severity: "info" | "warning" | "error";
+  siteIndices?: number[];
+}
+
+export interface AdsorbateFragmentSpec {
+  id: string;
+  label: string;
+  formula: string;
+  species: string[];
+  coordinates: Vector3Tuple[];
+  bonds: Array<[number, number, number]>;
+  anchorAtomIndex: number;
+  orientation?: Vector3Tuple;
+  defaultHostBondLength: number;
+  source?: "user";
+  fragmentName?: string;
+  portId?: string;
+  schemaVersion?: number;
+}
+
+export interface ConstructionBondParameterSpec {
+  firstElement: string;
+  secondElement: string;
+  bondOrder: number;
+  value: number;
+  unit: "angstrom";
+  parameterSet: string;
+  source: string;
+  fallback: boolean;
 }
 
 export interface AtomicSceneBase {
@@ -102,6 +130,10 @@ export interface AtomicSceneBase {
     elapsedMilliseconds: number;
   };
   warnings: SceneWarning[];
+  modeling?: {
+    adsorbateFragments: AdsorbateFragmentSpec[];
+    constructionBonds?: ConstructionBondParameterSpec[];
+  };
 }
 
 export interface CrystalSceneSpec extends AtomicSceneBase {

@@ -15,7 +15,6 @@ import {
 } from '@kssolv/volume-scene';
 
 export type VolumeMode = 'isosurface' | 'slices' | 'volume';
-export type SliceAxis = 'i' | 'j' | 'k';
 export type IsovalueMode = 'absolute' | 'sigma' | 'percentile';
 export type VolumeStatusPhase =
   | 'idle'
@@ -51,10 +50,7 @@ export interface VolumeOptions {
   colormap: 'viridis' | 'coolwarm' | 'density';
   rangeMinimum: number;
   rangeMaximum: number;
-  sliceAxis: SliceAxis;
-  sliceIndex: number;
-  sliceIndices: [number, number, number];
-  sliceVisibility: [boolean, boolean, boolean];
+  millerIndices: [number, number, number];
   interpolation: 'nearest' | 'linear';
   volumeQuality: 'fast' | 'balanced' | 'high';
   gradientOpacity: number;
@@ -66,6 +62,12 @@ export interface VolumeOptions {
   showCell: boolean;
   showPolyhedra: boolean;
   showAxes: boolean;
+  depthCueing: boolean;
+  showBoundaryAtoms: boolean;
+  showBondedOutside: boolean;
+  hideIncompleteBonds: boolean;
+  showMagmoms: boolean;
+  showStatistics: boolean;
 }
 
 const atomicDefaults = defaultViewerOptions();
@@ -113,10 +115,7 @@ const options = reactive<VolumeOptions>({
   colormap: 'coolwarm',
   rangeMinimum: -1,
   rangeMaximum: 1,
-  sliceAxis: 'k',
-  sliceIndex: 0,
-  sliceIndices: [0, 0, 0],
-  sliceVisibility: [true, true, true],
+  millerIndices: [0, 0, 1],
   interpolation: 'linear',
   volumeQuality: 'balanced',
   gradientOpacity: 0.35,
@@ -128,6 +127,12 @@ const options = reactive<VolumeOptions>({
   showCell: true,
   showPolyhedra: true,
   showAxes: true,
+  depthCueing: atomicDefaults.depthCueing,
+  showBoundaryAtoms: atomicDefaults.showBoundaryAtoms,
+  showBondedOutside: atomicDefaults.showBondedOutside,
+  hideIncompleteBonds: atomicDefaults.hideIncompleteBonds,
+  showMagmoms: atomicDefaults.showMagmoms,
+  showStatistics: atomicDefaults.showStatistics,
 });
 const status = reactive({
   phase: 'idle' as VolumeStatusPhase,
@@ -205,12 +210,7 @@ const receiveManifest = (payload: unknown): void => {
     options.rangeMinimum = next.channels[0].minimum;
     options.rangeMaximum = next.channels[0].maximum;
     if (next.grid.dimensionality === 2) options.mode = 'slices';
-    options.sliceIndices = next.grid.dimensions.map((dimension) =>
-      Math.floor(dimension / 2),
-    ) as [number, number, number];
-    options.sliceAxis = 'k';
-    options.sliceIndex = options.sliceIndices[2];
-    options.sliceVisibility = [true, true, true];
+    options.millerIndices = [0, 0, 1];
     assembler.beginRequest(
       next.requestId,
       next.channels.map((channel) => channel.transport),
@@ -367,12 +367,7 @@ export const useVolumeStore = () => {
       options.rangeMinimum = next.channels[0].minimum;
       options.rangeMaximum = next.channels[0].maximum;
       if (next.grid.dimensionality === 2) options.mode = 'slices';
-      options.sliceIndices = next.grid.dimensions.map((dimension) =>
-        Math.floor(dimension / 2),
-      ) as [number, number, number];
-      options.sliceAxis = 'k';
-      options.sliceIndex = options.sliceIndices[2];
-      options.sliceVisibility = [true, true, true];
+      options.millerIndices = [0, 0, 1];
     },
     setChannelBytes(transferId: string, value: ArrayBuffer): void {
       const next = new Map(buffers.value);

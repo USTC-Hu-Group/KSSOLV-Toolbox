@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="24" height="24" viewBox="0 0 16 16" fill="none" shape-rendering="geometricPrecision" xmlns="http://www.w3.org/2000/svg">
+  <title>KSSOLV Modeling icon</title>
+  <path d="M3 12L7.5 8" fill="none" stroke="#616161" stroke-width="0.72" stroke-linecap="round" stroke-linejoin="round"/><path d="M7.5 8L13 11" fill="none" stroke="#616161" stroke-width="0.72" stroke-linecap="round" stroke-linejoin="round"/><circle cx="3" cy="12" r="2" fill="#B4DEFF" stroke="#1656A7" stroke-width="0.6"/><circle cx="7.5" cy="8" r="2" fill="#FFE864" stroke="#674C06" stroke-width="0.6"/><circle cx="13" cy="11" r="2" fill="#B9E6B8" stroke="#357A38" stroke-width="0.6"/><path d="M12 1.5V5M10.2 3.2H13.8M5 2V4.5M3.8 3.2H6.2" fill="none" stroke="#357A38" stroke-width="0.6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

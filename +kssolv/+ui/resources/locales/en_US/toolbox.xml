@@ -27,7 +27,9 @@
         <entry key="ProjectSectionTitle">Project</entry>
         <entry key="ProjectStructureButtonLabel">Structure</entry>
         <entry key="ProjectStructureButtonTooltip">Import/export structure</entry>
-        <entry key="NewStructureListItemLabel">New blank structure</entry>
+        <entry key="NewStructureListItemLabel">New structure</entry>
+        <entry key="NewBlankCrystalStructureListItemLabel">Blank crystal structure</entry>
+        <entry key="NewBlankMoleculeStructureListItemLabel">Blank molecular structure</entry>
         <entry key="ImportStructureFromFileListItemLabel">Import structure from file...</entry>
         <entry key="ImportStructureFromMaterialsProjectListItemLabel">Import structure from Materials Project...</entry>
         <entry key="ImportStructureFromMatlabListItemLabel">Import structure from MATLAB workspace...</entry>

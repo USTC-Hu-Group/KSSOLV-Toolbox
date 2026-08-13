@@ -2,6 +2,7 @@ import {
   Box3,
   BufferGeometry,
   Color,
+  ConeGeometry,
   CylinderGeometry,
   DoubleSide,
   Float32BufferAttribute,
@@ -20,8 +21,12 @@ import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
 import {
   defaultViewerOptions,
   type AtomicSceneSpec,
+  type AtomInstanceSpec,
+  type AtomVisibility,
   type BondInstanceSpec,
   type RgbTuple,
+  type SelectionInfo,
+  type SiteSpec,
 } from '@kssolv/atomic-scene';
 
 import type { VolumeOptions } from '../state/volumeStore';
@@ -119,12 +124,47 @@ const bondMesh = (
   return mesh;
 };
 
+const coneMesh = (
+  startPoint: BondInstanceSpec['start'],
+  endPoint: BondInstanceSpec['end'],
+  radius: number,
+  material: Material,
+): Mesh => {
+  const start = new Vector3(...startPoint);
+  const end = new Vector3(...endPoint);
+  const midpoint = start.clone().add(end).multiplyScalar(0.5);
+  const direction = end.clone().sub(start);
+  const geometry = new ConeGeometry(radius, direction.length(), 12);
+  const mesh = new Mesh(geometry, material);
+  mesh.position.copy(midpoint);
+  mesh.quaternion.setFromUnitVectors(new Vector3(0, 1, 0), direction.normalize());
+  return mesh;
+};
+
 export class AtomicOverlayLayer extends Group {
   private readonly resources: Array<{ dispose(): void }> = [];
   private atomGroup = new Group();
   private bondGroup = new Group();
   private cellGroup = new Group();
   private polyhedronGroup = new Group();
+  private magmomGroup = new Group();
+  private readonly atomRecords: Array<{
+    mesh: Mesh;
+    atom: AtomInstanceSpec;
+    site: SiteSpec;
+    radius: number;
+    visibility: AtomVisibility;
+  }> = [];
+  private readonly bondRecords: Array<{
+    mesh: Mesh;
+    bond: BondInstanceSpec;
+    visibility: BondInstanceSpec['visibility'];
+    half: 'from' | 'to';
+  }> = [];
+  private readonly polyhedronRecords: Array<{
+    mesh: Mesh;
+    visibility: AtomicSceneSpec['polyhedra'][number]['visibility'];
+  }> = [];
 
   constructor(
     scene: AtomicSceneSpec,
@@ -132,7 +172,13 @@ export class AtomicOverlayLayer extends Group {
   ) {
     super();
     const theme = volumeViewerThemes[style.theme];
-    this.add(this.polyhedronGroup, this.bondGroup, this.atomGroup, this.cellGroup);
+    this.add(
+      this.polyhedronGroup,
+      this.bondGroup,
+      this.atomGroup,
+      this.cellGroup,
+      this.magmomGroup,
+    );
     const sites = new Map(scene.sites.map((site) => [site.siteIndex, site]));
     for (const atom of scene.atomInstances) {
       const site = sites.get(atom.siteIndex);
@@ -155,6 +201,7 @@ export class AtomicOverlayLayer extends Group {
       const mesh = new Mesh(geometry, material);
       mesh.position.fromArray(atom.position);
       this.atomGroup.add(mesh);
+      this.atomRecords.push({ mesh, atom, site, radius, visibility: atom.visibility });
     }
     for (const bond of scene.bondInstances) {
       const midpoint = bond.start.map(
@@ -170,22 +217,29 @@ export class AtomicOverlayLayer extends Group {
             )
           : new Color(0x8d95a3);
       const halves = [
-        bondMesh(
+        {
+          half: 'from' as const,
+          mesh: bondMesh(
           bond.start,
           midpoint,
           style.bondRadius,
           bondMaterial(speciesTint(fromSpecies), style, theme),
         ),
-        bondMesh(
+        },
+        {
+          half: 'to' as const,
+          mesh: bondMesh(
           midpoint,
           bond.end,
           style.bondRadius,
           bondMaterial(speciesTint(toSpecies), style, theme),
         ),
+        },
       ];
-      for (const mesh of halves) {
+      for (const { half, mesh } of halves) {
         this.resources.push(mesh.geometry, mesh.material as Material);
         this.bondGroup.add(mesh);
+        this.bondRecords.push({ mesh, bond, visibility: bond.visibility, half });
       }
     }
     for (const polyhedron of scene.polyhedra) {
@@ -203,7 +257,9 @@ export class AtomicOverlayLayer extends Group {
         side: DoubleSide,
       });
       this.resources.push(geometry, material);
-      this.polyhedronGroup.add(new Mesh(geometry, material));
+      const mesh = new Mesh(geometry, material);
+      this.polyhedronGroup.add(mesh);
+      this.polyhedronRecords.push({ mesh, visibility: polyhedron.visibility });
     }
     if (scene.kind === 'crystal') {
       const [a, b, c] = scene.structure.lattice.map((entry) => new Vector3(...entry));
@@ -230,18 +286,87 @@ export class AtomicOverlayLayer extends Group {
       this.resources.push(geometry, material);
       this.cellGroup.add(new LineSegments(geometry, material));
     }
+    const magneticAtoms = scene.atomInstances.filter((atom) => {
+      const magmom = sites.get(atom.siteIndex)?.magmom;
+      return atom.visibility === 'base' && magmom && Math.hypot(...magmom) >= 1e-12;
+    });
+    if (magneticAtoms.length > 0) {
+      const material = bondMaterial(new Color(0x3563be), style, theme);
+      this.resources.push(material);
+      for (const atom of magneticAtoms) {
+        const magmom = sites.get(atom.siteIndex)?.magmom;
+        if (!magmom) continue;
+        const norm = Math.hypot(...magmom);
+        const direction = new Vector3(...magmom).multiplyScalar(1 / norm);
+        const length = Math.min(Math.max(norm * 0.3, 0.7), 2.4);
+        const start = new Vector3(...atom.position);
+        const shaftEnd = start.clone().addScaledVector(direction, length * 0.72);
+        const tip = start.clone().addScaledVector(direction, length);
+        const shaft = bondMesh(
+          start.toArray(),
+          shaftEnd.toArray(),
+          0.055,
+          material,
+        );
+        const head = coneMesh(
+          shaftEnd.toArray(),
+          tip.toArray(),
+          0.14,
+          material,
+        );
+        this.resources.push(shaft.geometry, head.geometry);
+        this.magmomGroup.add(shaft, head);
+      }
+    }
   }
 
-  setVisibility(
-    atoms: boolean,
-    bonds: boolean,
-    cell: boolean,
-    polyhedra: boolean,
-  ): void {
-    this.atomGroup.visible = atoms;
-    this.bondGroup.visible = bonds;
-    this.cellGroup.visible = cell;
-    this.polyhedronGroup.visible = polyhedra;
+  setVisibility(options: VolumeOptions): void {
+    for (const record of this.atomRecords) {
+      record.mesh.visible = options.showAtoms && (
+        record.visibility === 'base' ||
+        record.visibility === 'repeat' ||
+        (record.visibility === 'boundary' && options.showBoundaryAtoms) ||
+        (record.visibility === 'bonded' && options.showBondedOutside)
+      );
+    }
+    for (const record of this.bondRecords) {
+      record.mesh.visible = options.showBonds && (
+        record.visibility === 'base' ||
+        options.showBondedOutside ||
+        (!options.hideIncompleteBonds && record.half === 'from')
+      );
+    }
+    for (const record of this.polyhedronRecords) {
+      record.mesh.visible = options.showPolyhedra && (
+        record.visibility === 'base' || options.showBondedOutside
+      );
+    }
+    this.cellGroup.visible = options.showCell;
+    this.magmomGroup.visible = options.showMagmoms;
+  }
+
+  pickableObjects(): Mesh[] {
+    return [
+      ...this.atomRecords.filter((record) => record.mesh.visible).map((record) => record.mesh),
+      ...this.bondRecords.filter((record) => record.mesh.visible).map((record) => record.mesh),
+    ];
+  }
+
+  selectionForObject(
+    object: unknown,
+  ): Omit<SelectionInfo, 'clientX' | 'clientY'> | undefined {
+    const atom = this.atomRecords.find((record) => record.mesh === object);
+    if (atom) {
+      return {
+        kind: 'atom',
+        id: atom.atom.id,
+        atom: atom.atom,
+        site: atom.site,
+      };
+    }
+    const bond = this.bondRecords.find((record) => record.mesh === object);
+    if (bond) return { kind: 'bond', id: bond.bond.id, bond: bond.bond };
+    return undefined;
   }
 
   getBounds(target = new Box3()): Box3 {

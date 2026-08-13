@@ -6,8 +6,8 @@ classdef KSSOLV_Toolbox
 
     properties (Constant)
         Name string = 'KSSOLV Toolbox'
-        Version string = '0.3.1'
-        ReleaseDate string = '2026.8.6'
+        Version string = '0.4.0'
+        ReleaseDate string = '2026.8.13'
         License char = 'Business Source License 1.1 (BUSL-1.1)'
         CodeRepository char = 'https://github.com/USTC-Hu-Group/KSSOLV-Toolbox'
 
@@ -20,6 +20,8 @@ classdef KSSOLV_Toolbox
 
         MinimumMATLABVersion char = 'R2025a'
         RecommendedMinimumMATLABVersion char = 'R2026b'
+        ModelingSchemaVersion double = 1
+        BuildChannel string = "production"
 
         RootDirectory char = fileparts(mfilename('fullpath'))
     end

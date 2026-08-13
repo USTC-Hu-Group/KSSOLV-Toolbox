@@ -4,10 +4,12 @@ classdef SessionRegistry < handle
     properties (Access = private)
         Sessions containers.Map
         ActiveSessionId string = ""
+        IsShuttingDown (1,1) logical = false
     end
 
     events
         SessionCountChanged
+        ActiveSessionChanged
     end
 
     methods (Access = private)
@@ -36,6 +38,10 @@ classdef SessionRegistry < handle
                 document matlab.ui.internal.FigureDocument
                 display kssolv.ui.components.figuredocument.MoleculeDisplay
             end
+            if this.IsShuttingDown
+                error("KSSOLV:Modeling:RegistryShuttingDown", ...
+                    "The modeling session registry is shutting down.");
+            end
             sessionId = string(document.Tag);
             if sessionId == ""
                 sessionId = "StructureModel(" + ...
@@ -61,11 +67,17 @@ classdef SessionRegistry < handle
                 "document", document, ...
                 "closeListener", closeListener, ...
                 "selectionListener", selectionListener);
-            this.noteSelection(sessionId);
+            % AppContainer can transiently report both the old and newly
+            % opened FigureDocument as Selected. Opening a structure is an
+            % activation action; later selection events remain authoritative.
+            this.setActiveSession(sessionId);
             notify(this, "SessionCountChanged");
         end
 
         function unregister(this, sessionId)
+            if this.IsShuttingDown
+                return
+            end
             key = char(string(sessionId));
             if ~isKey(this.Sessions, key)
                 return
@@ -75,6 +87,7 @@ classdef SessionRegistry < handle
             this.deleteEntryListeners(entry);
             if this.ActiveSessionId == string(sessionId)
                 this.ActiveSessionId = "";
+                notify(this, "ActiveSessionChanged");
             end
             notify(this, "SessionCountChanged");
         end
@@ -83,6 +96,13 @@ classdef SessionRegistry < handle
             display = ...
                 kssolv.ui.components.figuredocument.MoleculeDisplay.empty;
             this.removeInvalidSessions();
+            selectedKey = this.selectedSessionKey();
+            if selectedKey ~= ""
+                this.setActiveSession(selectedKey);
+                entry = this.Sessions(char(selectedKey));
+                display = entry.display;
+                return
+            end
             appContainer = kssolv.ui.util.DataStorage.getData("AppContainer");
             if ~isempty(appContainer) && isvalid(appContainer)
                 document = appContainer.LastSelectedDocument;
@@ -97,19 +117,12 @@ classdef SessionRegistry < handle
                         key = char(tag);
                         if isKey(this.Sessions, key)
                             entry = this.Sessions(key);
-                            this.ActiveSessionId = string(key);
+                            this.setActiveSession(string(key));
                             display = entry.display;
                             return
                         end
                     end
                 end
-            end
-            selectedKey = this.selectedSessionKey();
-            if selectedKey ~= ""
-                this.ActiveSessionId = selectedKey;
-                entry = this.Sessions(char(selectedKey));
-                display = entry.display;
-                return
             end
             if this.ActiveSessionId ~= "" && ...
                     isKey(this.Sessions, char(this.ActiveSessionId))
@@ -120,6 +133,7 @@ classdef SessionRegistry < handle
             keys = this.Sessions.keys;
             if isscalar(keys)
                 entry = this.Sessions(keys{1});
+                this.setActiveSession(string(keys{1}));
                 display = entry.display;
             end
         end
@@ -216,10 +230,30 @@ classdef SessionRegistry < handle
                 "KeyType", "char", "ValueType", "any");
             this.ActiveSessionId = "";
             notify(this, "SessionCountChanged");
+            notify(this, "ActiveSessionChanged");
+        end
+
+        function prepareForShutdown(this)
+            %PREPAREFORSHUTDOWN Detach document callbacks without notifying UI.
+            if this.IsShuttingDown
+                return
+            end
+            this.IsShuttingDown = true;
+            keys = this.Sessions.keys;
+            for index = 1:numel(keys)
+                entry = this.Sessions(keys{index});
+                this.deleteEntryListeners(entry);
+                if ~isempty(entry.display) && isvalid(entry.display)
+                    entry.display.prepareForShutdown();
+                end
+            end
+            this.Sessions = containers.Map( ...
+                "KeyType", "char", "ValueType", "any");
+            this.ActiveSessionId = "";
         end
 
         function delete(this)
-            this.clear();
+            this.prepareForShutdown();
             stored = kssolv.ui.util.DataStorage.getData( ...
                 "ModelingSessionRegistry");
             if ~isempty(stored) && isequal(stored, this)
@@ -231,6 +265,9 @@ classdef SessionRegistry < handle
 
     methods (Access = private)
         function removeInvalidSessions(this)
+            if this.IsShuttingDown
+                return
+            end
             keys = this.Sessions.keys;
             changed = false;
             for index = 1:numel(keys)
@@ -251,6 +288,9 @@ classdef SessionRegistry < handle
         end
 
         function noteSelection(this, sessionId)
+            if this.IsShuttingDown
+                return
+            end
             key = char(string(sessionId));
             if ~isKey(this.Sessions, key)
                 return
@@ -258,8 +298,21 @@ classdef SessionRegistry < handle
             entry = this.Sessions(key);
             if ~isempty(entry.document) && isvalid(entry.document) && ...
                     entry.document.Selected
-                this.ActiveSessionId = string(sessionId);
+                selectedId = string(sessionId);
+                this.setActiveSession(selectedId);
             end
+        end
+
+        function setActiveSession(this, sessionId)
+            if this.IsShuttingDown
+                return
+            end
+            sessionId = string(sessionId);
+            if this.ActiveSessionId == sessionId
+                return
+            end
+            this.ActiveSessionId = sessionId;
+            notify(this, "ActiveSessionChanged");
         end
 
         function key = selectedSessionKey(this)

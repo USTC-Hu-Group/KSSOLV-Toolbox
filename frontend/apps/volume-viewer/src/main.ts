@@ -1,6 +1,10 @@
 import { createApp } from 'vue';
 
-import { matlabBridge, type MatlabHtmlComponent } from '@kssolv/matlab-bridge';
+import {
+  installEmbeddedBrowserZoomGuard,
+  matlabBridge,
+  type MatlabHtmlComponent,
+} from '@kssolv/matlab-bridge';
 
 import App from './App.vue';
 import { createDebugVolume, shouldUseDebugVolume } from './state/debugVolume';
@@ -13,6 +17,8 @@ declare global {
     setup: (htmlComponent: MatlabHtmlComponent) => void;
   }
 }
+
+installEmbeddedBrowserZoomGuard();
 
 window.setup = (htmlComponent: MatlabHtmlComponent): void => {
   window.MATLAB = htmlComponent;

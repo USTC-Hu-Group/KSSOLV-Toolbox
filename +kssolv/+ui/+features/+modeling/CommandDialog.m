@@ -21,6 +21,7 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
         FormHeight (1,1) double = 70
         HelpExpanded (1,1) logical = false
         HelpContentHeight (1,1) double = 0
+        ActivePreview (1,1) logical = false
     end
 
     methods
@@ -67,6 +68,7 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
         end
 
         function close(this)
+            this.clearPreview();
             if ~this.IsClosing
                 this.Parameters = struct();
                 this.Cancelled = true;
@@ -78,6 +80,35 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
                 uiresume(figure);
             end
         end
+
+    end
+
+    methods (Hidden)
+        function gap = actionTopGap(this)
+            action = getpixelposition(this.Widgets.ApplyButton, true);
+            if strcmp(this.Widgets.StatusLabel.Visible, "on")
+                neighbor = this.Widgets.StatusLabel;
+            elseif isfield(this.Widgets, "HelpPanel") && ...
+                    strcmp(this.Widgets.HelpPanel.Visible, "on")
+                neighbor = this.Widgets.HelpPanel;
+            elseif isfield(this.Widgets, "HelpToggleButton")
+                neighbor = this.Widgets.HelpToggleButton;
+            else
+                neighbor = this.Widgets.FormPanel;
+            end
+            neighborPosition = getpixelposition(neighbor, true);
+            gap = neighborPosition(2) - (action(2) + action(4));
+        end
+
+        function metrics = layoutAuditMetrics(this)
+            metrics = struct( ...
+                "formHeight", this.FormHeight, ...
+                "helpExpanded", this.HelpExpanded, ...
+                "statusVisible", ...
+                string(this.Widgets.StatusLabel.Visible) == "on", ...
+                "figureHeight", this.getWidget().Position(4));
+        end
+
     end
 
     methods (Access = protected)
@@ -104,8 +135,8 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
 
     methods (Access = private)
         function buildHeader(this)
-            header = uigridlayout(this.DialogLayout, [2, 1], ...
-                "RowHeight", {"fit", "fit"}, ...
+            header = uigridlayout(this.DialogLayout, [3, 1], ...
+                "RowHeight", {"fit", "fit", "fit"}, ...
                 "ColumnWidth", {"1x"}, ...
                 "RowSpacing", 3, ...
                 "Padding", 0);
@@ -122,8 +153,35 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
                 "FontColor", [0.35, 0.35, 0.35], ...
                 "WordWrap", "on");
             descriptionLabel.Layout.Row = 2;
+            presetLayout=uigridlayout(header,[1,4], ...
+                "ColumnWidth",{"fit","1x","fit","fit"}, ...
+                "ColumnSpacing",6,"Padding",0);
+            presetLayout.Layout.Row=3;
+            presetLabel=uilabel(presetLayout,"Text", ...
+                kssolv.ui.util.Localizer.message( ...
+                "KSSOLV:modeling:ParameterPresets"));
+            entries=kssolv.modeling.provenance.ParameterPresetLibrary. ...
+                list(this.CommandInfo.id);
+            names=string({entries.name});
+            items=[string(kssolv.ui.util.Localizer.message( ...
+                "KSSOLV:modeling:NoPreset"));reshape(names,[],1)];
+            data=["";reshape(names,[],1)];
+            presetDropDown=uidropdown(presetLayout,"Items",cellstr(items), ...
+                "ItemsData",cellstr(data));
+            loadButton=uibutton(presetLayout,"Text", ...
+                kssolv.ui.util.Localizer.message( ...
+                "KSSOLV:modeling:LoadPreset"), ...
+                "ButtonPushedFcn",@(~,~)this.loadSavedPreset());
+            saveButton=uibutton(presetLayout,"Text", ...
+                kssolv.ui.util.Localizer.message( ...
+                "KSSOLV:modeling:SavePreset"), ...
+                "ButtonPushedFcn",@(~,~)this.saveCurrentPreset());
             this.Widgets.TitleLabel = titleLabel;
             this.Widgets.DescriptionLabel = descriptionLabel;
+            this.Widgets.PresetLabel=presetLabel;
+            this.Widgets.PresetDropDown=presetDropDown;
+            this.Widgets.LoadPresetButton=loadButton;
+            this.Widgets.SavePresetButton=saveButton;
         end
 
         function buildForm(this)
@@ -352,7 +410,8 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
                     entry.container = control;
                 case "scalar"
                     control = uieditfield(parent, "numeric", ...
-                        "Tooltip", presentation.tooltip);
+                        "Tooltip", presentation.tooltip, ...
+                        "ValueChangedFcn", @(~,~)this.applyConditions());
                     control.Layout.Row = 2;
                     control.Layout.Column = 1;
                     entry.controls = {control};
@@ -371,7 +430,9 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
                     for component = 1:width
                         controls{component} = uieditfield( ...
                             container, "numeric", ...
-                            "Tooltip", presentation.tooltip);
+                            "Tooltip", presentation.tooltip, ...
+                            "ValueChangedFcn", ...
+                            @(~,~)this.applyConditions());
                         controls{component}.Layout.Column = component;
                     end
                     entry.controls = controls;
@@ -382,7 +443,8 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
                         "ColumnEditable", true(1, 3), ...
                         "ColumnName", {"x", "y", "z"}, ...
                         "RowName", {"a", "b", "c"}, ...
-                        "Tooltip", presentation.tooltip);
+                        "Tooltip", presentation.tooltip, ...
+                        "CellEditCallback", @(~,~)this.applyConditions());
                     control.Layout.Row = 2;
                     control.Layout.Column = 1;
                     entry.controls = {control};
@@ -410,7 +472,8 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
                     entry.container = control;
                 otherwise
                     control = uieditfield(parent, "text", ...
-                        "Tooltip", presentation.tooltip);
+                        "Tooltip", presentation.tooltip, ...
+                        "ValueChangedFcn", @(~,~)this.applyConditions());
                     control.Layout.Row = 2;
                     control.Layout.Column = 1;
                     entry.controls = {control};
@@ -420,9 +483,9 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
         end
 
         function buildButtons(this)
-            layout = uigridlayout(this.DialogLayout, [2, 4], ...
+            layout = uigridlayout(this.DialogLayout, [2, 5], ...
                 "RowHeight", {0, "fit"}, ...
-                "ColumnWidth", {"fit", "1x", "fit", "fit"}, ...
+                "ColumnWidth", {"fit", "1x", "fit", "fit", "fit"}, ...
                 "RowSpacing", 5, ...
                 "Padding", 0);
             layout.Layout.Row = 4;
@@ -433,7 +496,7 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
                 "WordWrap", "on", ...
                 "Visible", "off");
             status.Layout.Row = 1;
-            status.Layout.Column = [1, 4];
+            status.Layout.Column = [1, 5];
 
             resetButton = uibutton(layout, ...
                 "Text", kssolv.ui.util.Localizer.message( ...
@@ -441,22 +504,35 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
                 "ButtonPushedFcn", @(~, ~)this.loadInitialValues());
             resetButton.Layout.Row = 2;
             resetButton.Layout.Column = 1;
+            capability = kssolv.modeling.contracts.CommandCapability. ...
+                forCommand(this.CommandInfo.id);
+            previewButton = uibutton(layout, ...
+                "Text", kssolv.ui.util.Localizer.message( ...
+                "KSSOLV:modeling:Preview"), ...
+                "Enable", matlab.lang.OnOffSwitchState( ...
+                capability.supportsPreview), ...
+                "Tooltip", kssolv.ui.util.Localizer.message( ...
+                "KSSOLV:modeling:PreviewTooltip"), ...
+                "ButtonPushedFcn", @(~, ~)this.preview());
+            previewButton.Layout.Row = 2;
+            previewButton.Layout.Column = 3;
             cancelButton = uibutton(layout, ...
                 "Text", kssolv.ui.util.Localizer.message( ...
                 "KSSOLV:modeling:Cancel"), ...
                 "ButtonPushedFcn", @(~, ~)this.cancel());
             cancelButton.Layout.Row = 2;
-            cancelButton.Layout.Column = 3;
+            cancelButton.Layout.Column = 4;
             applyButton = uibutton(layout, ...
                 "Text", kssolv.ui.util.Localizer.message( ...
                 "KSSOLV:modeling:Apply"), ...
                 "ButtonPushedFcn", @(~, ~)this.apply());
             applyButton.Layout.Row = 2;
-            applyButton.Layout.Column = 4;
+            applyButton.Layout.Column = 5;
 
             this.Widgets.StatusLabel = status;
             this.Widgets.ButtonLayout = layout;
             this.Widgets.ResetButton = resetButton;
+            this.Widgets.PreviewButton = previewButton;
             this.Widgets.CancelButton = cancelButton;
             this.Widgets.ApplyButton = applyButton;
         end
@@ -473,9 +549,41 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
             end
             this.Widgets.HelpLayout.RowHeight = heights;
             this.updateDialogSize();
+            this.updatePolymerEstimate();
+        end
+
+        function updatePolymerEstimate(this)
+            if ~isfield(this.Widgets,"StatusLabel") || this.ActivePreview || ...
+                    ~kssolv.modeling.polymers.PolymerCommands.supports( ...
+                    this.CommandInfo.id) || ...
+                    string(this.CommandInfo.id)=="save_user_repeat_unit"
+                return
+            end
+            try
+                parameters=this.readParameters();
+                estimate=kssolv.modeling.polymers.PolymerCommands.estimate( ...
+                    this.CommandInfo.id,parameters);
+                if isempty(estimate), return, end
+                if estimate.warning
+                    key="KSSOLV:modeling:PolymerAtomEstimateWarning";
+                    color=[.75,.35,.08];
+                else
+                    key="KSSOLV:modeling:PolymerAtomEstimate";
+                    color=[.20,.38,.58];
+                end
+                this.Widgets.StatusLabel.Text=sprintf( ...
+                    kssolv.ui.util.Localizer.message(key), ...
+                    estimate.estimatedAtoms);
+                this.Widgets.StatusLabel.FontColor=color;
+                this.Widgets.StatusLabel.Visible="on";
+                this.updateDialogSize();
+            catch
+                % Incomplete edits should not replace normal field validation.
+            end
         end
 
         function loadInitialValues(this)
+            this.clearPreview();
             if isempty(fieldnames(this.FieldEntries))
                 return
             end
@@ -488,6 +596,57 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
             this.Widgets.StatusLabel.Text = "";
             this.Widgets.StatusLabel.Visible = "off";
             this.applyConditions();
+        end
+
+        function loadSavedPreset(this)
+            name=string(this.Widgets.PresetDropDown.Value);
+            if name=="", return, end
+            try
+                value=kssolv.modeling.provenance.ParameterPresetLibrary. ...
+                    load(this.CommandInfo.id,name);
+                fields=fieldnames(value.parameters);
+                for index=1:numel(fields)
+                    fieldName=fields{index};
+                    if isfield(this.FieldEntries,fieldName)
+                        this.setEntryValue(this.FieldEntries.(fieldName), ...
+                            value.parameters.(fieldName));
+                    end
+                end
+                this.applyConditions();
+            catch exception
+                this.showStatus(exception.message,[.75,.15,.10]);
+            end
+        end
+
+        function saveCurrentPreset(this)
+            try
+                parameters=this.readParameters();
+                answer=inputdlg(kssolv.ui.util.Localizer.message( ...
+                    "KSSOLV:modeling:PresetNamePrompt"), ...
+                    kssolv.ui.util.Localizer.message( ...
+                    "KSSOLV:modeling:SavePreset"),1,{""});
+                if isempty(answer), return, end
+                name=strtrim(string(answer{1}));
+                kssolv.modeling.provenance.ParameterPresetLibrary.save( ...
+                    this.CommandInfo.id,name,parameters);
+                control=this.Widgets.PresetDropDown;
+                if ~any(string(control.ItemsData)==name)
+                    control.Items=[control.Items,{char(name)}];
+                    control.ItemsData=[control.ItemsData,{char(name)}];
+                end
+                control.Value=char(name);
+                this.showStatus(kssolv.ui.util.Localizer.message( ...
+                    "KSSOLV:modeling:PresetSaved"),[.10,.45,.18]);
+            catch exception
+                this.showStatus(exception.message,[.75,.15,.10]);
+            end
+        end
+
+        function showStatus(this,text,color)
+            this.Widgets.StatusLabel.Text=string(text);
+            this.Widgets.StatusLabel.FontColor=color;
+            this.Widgets.StatusLabel.Visible="on";
+            this.updateDialogSize();
         end
 
         function value = defaultValue(this, field)
@@ -586,6 +745,7 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
                 this.FormLayout.RowHeight = heights;
             end
             this.updateDialogSize();
+            this.updatePolymerEstimate();
         end
 
         function updateDialogSize(this)
@@ -632,7 +792,15 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
             statusHeight = 0;
             if isfield(this.Widgets, "StatusLabel") && ...
                     strcmp(this.Widgets.StatusLabel.Visible, "on")
-                statusHeight = 34;
+                % The action layout already contributes the fitted label
+                % row and its 5 px internal spacing. Only the remaining
+                % client-height allowance belongs in the outer budget.
+                statusHeight = 17.25;
+                if this.FormHeight >= maximumFormHeight
+                    statusHeight = statusHeight - 0.5;
+                elseif this.FormHeight > 400
+                    statusHeight = statusHeight - 0.75;
+                end
             end
             if isfield(this.Widgets, "ButtonLayout") && ...
                     isvalid(this.Widgets.ButtonLayout)
@@ -653,8 +821,20 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
                         this.HelpContentHeight + 6;
                 end
             end
+            % Budget the full macOS HiDPI height before presentation so the
+            % first visible frame already has symmetric action-row spacing.
+            chromeHeight = 131.5 + double( ...
+                isfield(this.Widgets, "HelpToggleButton"));
+            description = string(this.Widgets.DescriptionLabel.Text);
+            if strlength(description) > 100
+                % At the current 560 px dialog width these long English
+                % descriptions wrap to a second line. Account for that
+                % line before the window is shown rather than packing it
+                % after presentation.
+                chromeHeight = chromeHeight + 14.5;
+            end
             targetHeight = min(760, max(160, ...
-                104 + this.FormHeight + statusHeight + helpHeight));
+                chromeHeight + this.FormHeight + statusHeight + helpHeight));
             figure = this.getWidget();
             position = figure.Position;
             % Keep the window centered when conditional fields resize it.
@@ -688,7 +868,36 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
             end
             this.Parameters = parameters;
             this.Cancelled = false;
+            this.clearPreview();
             this.finishClose();
+        end
+
+        function preview(this)
+            if this.IsClosing
+                return
+            end
+            try
+                parameters = this.readParameters();
+                parameters = ...
+                    kssolv.ui.features.modeling.ModelInputResolver.enrich( ...
+                    this.CommandInfo.id, parameters);
+                transaction = this.Display.previewModelingCommand( ...
+                    this.CommandInfo.id, parameters);
+                this.Display.showModelingPreview(transaction);
+                this.ActivePreview = true;
+                this.Widgets.StatusLabel.Text = ...
+                    kssolv.ui.util.Localizer.message( ...
+                    "KSSOLV:modeling:PreviewActive");
+                this.Widgets.StatusLabel.FontColor = [0.10, 0.45, 0.18];
+                this.Widgets.StatusLabel.Visible = "on";
+                this.updateDialogSize();
+            catch exception
+                this.ActivePreview = false;
+                this.Widgets.StatusLabel.Text = exception.message;
+                this.Widgets.StatusLabel.FontColor = [0.75, 0.15, 0.10];
+                this.Widgets.StatusLabel.Visible = "on";
+                this.updateDialogSize();
+            end
         end
 
         function cancel(this)
@@ -697,7 +906,18 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
             end
             this.Parameters = struct();
             this.Cancelled = true;
+            this.clearPreview();
             this.finishClose();
+        end
+
+        function clearPreview(this)
+            if ~this.ActivePreview
+                return
+            end
+            this.ActivePreview = false;
+            if ~isempty(this.Display) && isvalid(this.Display)
+                this.Display.clearModelingPreview();
+            end
         end
 
         function finishClose(this)
@@ -748,10 +968,13 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
                 case "matrix"
                     value = double(entry.controls{1}.Data);
                 case "numericText"
-                    value = ...
-                        kssolv.ui.features.modeling.ParameterDialog.parseNumeric( ...
-                        entry.controls{1}.Value, ...
-                        entry.presentation.label);
+                    rawValue=strtrim(string(entry.controls{1}.Value));
+                    if entry.field.kind=="optionalNumeric" && rawValue==""
+                        value=zeros(1,0);
+                    else
+                        value = kssolv.ui.features.modeling.ParameterDialog. ...
+                            parseNumeric(rawValue,entry.presentation.label);
+                    end
                 otherwise
                     value = strtrim(string(entry.controls{1}.Value));
                     if entry.field.kind == "text" && value == ""
@@ -768,6 +991,9 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
         function validateValue(~, entry, value)
             presentation = entry.presentation;
             if isnumeric(value)
+                if isempty(value) && entry.field.kind=="optionalNumeric"
+                    return
+                end
                 if isempty(value) || any(~isfinite(value), "all")
                     error("KSSOLV:Modeling:NumericParameter", ...
                         "'%s' must contain finite numeric values.", ...
@@ -826,6 +1052,10 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
     methods (Static, Access = private)
         function text = formatNumeric(value)
             value = double(value);
+            if isempty(value)
+                text = "";
+                return
+            end
             rows = strings(1, size(value, 1));
             for index = 1:size(value, 1)
                 rows(index) = join( ...

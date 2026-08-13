@@ -40,7 +40,7 @@ const strokeWidthScale = 0.6;
 // Crop almost all of the original design margin while retaining just enough
 // room for round line caps and strokes at the artwork boundary. This makes the
 // glyphs read as full-canvas artwork without clipping semantic details.
-const viewBoxInset = 0.6;
+const viewBoxInset = 0;
 const viewBoxSize = 16 - viewBoxInset * 2;
 
 const attributes = (values) =>
@@ -316,10 +316,10 @@ const commandIcons = {
     color.gray,
   )}${line(9, 3, 12, 13, color.gray)}${arrow(4, 8, 1, 8)}${arrow(12, 8, 15, 8)}`,
   edit_lattice: `${grid(1.5, 1.5, 10, 10)}${polygon(
-    "8.5,13.5 13.2,8.8 15,10.6 10.3,15.3 8.2,15.8",
+    "8.4,12.8 12.9,8.3 14.7,10.1 10.2,14.6 7.9,15.2",
     color.yellow,
     color.yellowDark,
-  )}${line(12.2, 9.8, 14, 11.6, color.red)}`,
+  )}${line(11.9, 9.3, 13.7, 11.1, color.red)}`,
   mirror_lattice: `${line(8, 1, 8, 15, color.gray, {
     "stroke-dasharray": "1.3 1.3",
   })}${polygon("1.5,4 6.5,3 6.5,12 1.5,13", color.blueLight, color.blue)}${polygon(
@@ -428,7 +428,7 @@ const commandIcons = {
     color.red,
     { "stroke-width": 1.3 },
   )}${atom(9.5, 9.5, color.greenLight, color.green, 1.5)}${cross(5.5, 5.5, color.red)}`,
-  generate_sqs_model: `${rect(1.5, 1.5, 13, 13, color.white)}${[
+  generate_sqs_model: `${rect(2, 2, 12, 12, color.white)}${[
     [4, 4, color.redLight, color.red],
     [8, 4, color.blueLight, color.blue],
     [12, 4, color.yellow, color.yellowDark],
@@ -569,6 +569,19 @@ const commandIcons = {
     color.yellow,
     color.yellowDark,
   )}`,
+  locate_adsorbate: `${polygon(
+    "1.5,11.5 7.2,9.5 12.8,11.5 7.2,13.5",
+    color.blueLight,
+    color.blue,
+  )}${circle(6.1, 5.4, 1.5, color.greenLight, color.green)}${pathShape(
+    "M6.1 6.9V9.6",
+    "none",
+    color.green,
+  )}${circle(11.6, 5.2, 2.1, "none", color.red)}${pathShape(
+    "M13.1 6.7L15 8.6",
+    "none",
+    color.red,
+  )}${circle(10.9, 10.8, 0.65, color.yellow, color.yellowDark)}`,
   passivate_surface: `${polygon(
     "1.5,11 8,8.7 14.5,11 8,13.3",
     color.blueLight,
@@ -653,12 +666,54 @@ const commandIcons = {
   )}${circle(8, 8, 1.2, color.yellow, color.yellowDark)}`,
 };
 
+// Commands below used to inherit one generic placeholder. Keep every command
+// visually distinct so the dense Modeling tab remains scannable at 16 px.
+const supplementalCommandIcons = {
+  sketch_atom: `${pathShape("M2 14L3.2 10.5L11 2.7L13.4 5.1L5.6 13Z", color.yellow, color.yellowDark)}${atom(12, 12, color.blueLight, color.blue, 2.3)}`,
+  add_bond: `${bond(3.5, 8, 12.5, 8)}${atom(2.8, 8)}${atom(13.2, 8, color.yellow, color.yellowDark)}${plus(8, 12.5)}`,
+  delete_bond: `${bond(3.5, 8, 12.5, 8)}${atom(2.8, 8)}${atom(13.2, 8, color.yellow, color.yellowDark)}${circle(8, 8, 2.5, color.white, color.red)}${cross(8, 8)}`,
+  set_bond_order: `${line(3, 6.5, 13, 6.5, color.blue, { "stroke-width": 1.3 })}${line(3, 9.5, 13, 9.5, color.blue, { "stroke-width": 1.3 })}${atom(2.5, 8)}${atom(13.5, 8, color.yellow, color.yellowDark)}`,
+  sketch_ring: `${polygon("3,5 8,2 13,5 13,11 8,14 3,11", color.blueLight, color.blue)}${pathShape("M10.5 12.5L13.2 9.8L14.5 11.1L11.8 13.8Z", color.yellow, color.yellowDark)}`,
+  set_atom_chemistry: `${atom(7, 8, color.blueLight, color.blue, 3)}${bond(7, 5, 7, 1.5)}${bond(4.3, 9, 1.5, 11.2)}${bond(9.7, 9, 13.2, 11.2)}${plus(13, 3)}`,
+  add_hydrogens: `${atom(6, 8, color.blueLight, color.blue, 3)}${bond(8.7, 7, 11.3, 4.8)}${bond(8.7, 9, 11.3, 11.2)}${circle(12.5, 4, 1.6)}${circle(12.5, 12, 1.6)}${plus(3, 3)}`,
+  remove_hydrogens: `${atom(5, 8, color.blueLight, color.blue, 2.8)}${bond(7.5, 8, 12, 8)}${circle(13, 8, 1.7)}${circle(11.5, 3.2, 2.3, color.white, color.red)}${cross(11.5, 3.2)}`,
+  diagnose_molecule: `${atomCluster()}${polygon("10 8 15 15 7 15", color.yellow, color.yellowDark)}${line(11, 10.5, 11, 12.5, color.red, { "stroke-width": 1.5 })}${circle(11, 13.7, 0.5, color.red, color.red)}`,
+  measure_geometry: `${atom(3, 10.5)}${atom(13, 5.5, color.yellow, color.yellowDark)}${line(4.8, 9.6, 11.2, 6.4, color.gray, { "stroke-dasharray": "1 1" })}${arrow(5, 13, 11, 13, color.green)}${arrow(11, 13, 5, 13, color.green)}`,
+  set_distance: `${atom(2.7, 8)}${atom(13.3, 8, color.yellow, color.yellowDark)}${arrow(5, 8, 11, 8, color.red)}${arrow(11, 8, 5, 8, color.red)}${line(5, 4, 11, 4, color.green)}`,
+  set_angle: `${atom(3, 12.5)}${atom(8, 8, color.yellow, color.yellowDark)}${atom(13, 12.5, color.greenLight, color.green)}${bond(4.5, 11.2, 6.5, 9.3)}${bond(9.5, 9.3, 11.5, 11.2)}${pathShape("M5.7 10.5A3 3 0 0 1 10.3 10.5", "none", color.red)}`,
+  set_dihedral: `${atom(2, 12)}${atom(6, 7.5, color.yellow, color.yellowDark)}${atom(10, 8.5, color.greenLight, color.green)}${atom(14, 4, color.redLight, color.red)}${bond(3.2, 10.7, 4.8, 8.8)}${bond(7.5, 8, 8.5, 8)}${bond(11.2, 7.2, 12.8, 5.3)}${pathShape("M6.5 3.2A4.5 2.2 0 0 1 12 3.2", "none", color.red)}`,
+  align_geometry: `${line(1.5, 8, 14.5, 8, color.green, { "stroke-dasharray": "1 1" })}${atom(4, 5)}${atom(8, 11, color.yellow, color.yellowDark)}${atom(12, 5.5, color.redLight, color.red)}${arrow(4, 6.8, 4, 8)}${arrow(8, 9.2, 8, 8)}${arrow(12, 7.2, 12, 8)}`,
+  clean_geometry: `${bond(3, 12, 7.5, 8)}${bond(7.5, 8, 13, 11)}${atom(3, 12)}${atom(7.5, 8, color.yellow, color.yellowDark)}${atom(13, 11, color.greenLight, color.green)}${pathShape("M12 1.5V5M10.2 3.2H13.8M5 2V4.5M3.8 3.2H6.2", "none", color.green)}`,
+  optimize_geometry: `${bond(2.8, 11.8, 7.4, 7.5)}${bond(7.4, 7.5, 12.8, 10.5)}${atom(2.6, 12)}${atom(7.4, 7.5, color.yellow, color.yellowDark)}${atom(13, 10.7, color.greenLight, color.green)}${pathShape("M2.5 3.5C5 1.2 10.8 1.2 13.5 3.8", "none", color.blue)}${pathShape("M11.6 2.2L13.7 3.8L12.1 5.8", "none", color.blue)}`,
+  attach_fragment: `${bond(2.5, 5, 5.5, 8)}${atom(2.3, 4.8)}${atom(6, 8, color.yellow, color.yellowDark)}${bond(10, 8, 13.5, 5)}${atom(10, 8, color.greenLight, color.green)}${atom(13.7, 4.8, color.redLight, color.red)}${plus(8, 13)}`,
+  save_user_fragment: `${rect(7.5, 4, 7, 10.5, color.white, color.blue)}${pathShape("M11.5 4V7.5H14.5", color.blueLight, color.blue)}${bond(2, 7, 5.5, 10)}${atom(2, 7, color.yellow, color.yellowDark, 1.6)}${atom(5.5, 10, color.greenLight, color.green, 1.7)}${arrow(5, 5, 8, 7, color.green)}`,
+  build_homopolymer: `${pathShape("M2 9L5 5L8 9L11 5L14 9", "none", color.blue, { "stroke-width": 1.6 })}${circle(5, 5, 1.5, color.blueLight, color.blue)}${circle(11, 5, 1.5, color.blueLight, color.blue)}${pathShape("M1.5 3V13M14.5 3V13", "none", color.gray)}`,
+  build_block_copolymer: `${pathShape("M1.5 9L4.5 5L7.5 9L10.5 5L14.5 9", "none", color.gray, { "stroke-width": 1.5 })}${circle(4.5, 5, 1.7, color.blueLight, color.blue)}${circle(7.5, 9, 1.7, color.blueLight, color.blue)}${circle(10.5, 5, 1.7, color.yellow, color.yellowDark)}${circle(14, 9, 1.7, color.yellow, color.yellowDark)}`,
+  build_random_copolymer: `${pathShape("M1.5 9L4.5 5L7.5 9L10.5 5L14.5 9", "none", color.gray, { "stroke-width": 1.5 })}${circle(4.5, 5, 1.7, color.yellow, color.yellowDark)}${circle(7.5, 9, 1.7, color.blueLight, color.blue)}${circle(10.5, 5, 1.7, color.redLight, color.red)}${circle(14, 9, 1.7, color.blueLight, color.blue)}`,
+  build_branched_polymer: `${pathShape("M2 12L6 8L10 12L14 8M6 8L6 3M10 12L13 14", "none", color.blue, { "stroke-width": 1.5 })}${atom(6, 8, color.yellow, color.yellowDark, 1.5)}${atom(10, 12, color.greenLight, color.green, 1.5)}`,
+  build_dendrimer: `${atom(8, 8, color.yellow, color.yellowDark, 1.8)}${bond(7, 7, 3, 3)}${bond(9, 7, 13, 3)}${bond(7, 9, 3, 13)}${bond(9, 9, 13, 13)}${atom(2.7, 2.7, color.blueLight, color.blue, 1.4)}${atom(13.3, 2.7, color.blueLight, color.blue, 1.4)}${atom(2.7, 13.3, color.blueLight, color.blue, 1.4)}${atom(13.3, 13.3, color.blueLight, color.blue, 1.4)}`,
+  save_user_repeat_unit: `${pathShape("M3 3V13M13 3V13", "none", color.blue, { "stroke-width": 1.4 })}${pathShape("M4.5 9L7 6L9.5 9L12 6", "none", color.gray, { "stroke-width": 1.3 })}${rect(9.5, 10.5, 5, 4, color.greenLight, color.green)}${pathShape("M11 10.5V12.5H13V10.5", "none", color.green)}`,
+  construct_amorphous: `${rect(1.5, 1.5, 13, 13, color.white, color.gray, { "stroke-dasharray": "1 1" })}${atom(4, 4.5)}${atom(10.8, 3.8, color.yellow, color.yellowDark)}${atom(7, 8, color.redLight, color.red)}${atom(3.8, 11.5, color.greenLight, color.green)}${atom(11.5, 11.2)}`,
+  pack_mixture: `${rect(1.5, 2.5, 13, 12, color.white, color.blue)}${atom(4, 6)}${atom(9.5, 5, color.yellow, color.yellowDark)}${atom(6.8, 11, color.redLight, color.red)}${atom(12, 10.5, color.greenLight, color.green)}${bond(4, 6, 6.8, 11)}`,
+  build_confined_layer: `${line(1.5, 3, 14.5, 3, color.blue, { "stroke-width": 1.5 })}${line(1.5, 13, 14.5, 13, color.blue, { "stroke-width": 1.5 })}${atom(4, 8, color.yellow, color.yellowDark)}${atom(8, 6, color.greenLight, color.green)}${atom(12, 9, color.redLight, color.red)}${arrow(8, 1.3, 8, 3, color.red)}${arrow(8, 14.7, 8, 13, color.red)}`,
+  pack_into_existing_box: `${rect(3, 3, 11.5, 11, color.white, color.blue, { "stroke-dasharray": "1 1" })}${atom(7, 7)}${atom(11, 10.5, color.yellow, color.yellowDark)}${atom(1.8, 8, color.greenLight, color.green)}${arrow(3.2, 8, 5, 8, color.green)}`,
+  pack_around_nanoparticle: `${circle(8, 8, 3.3, color.blueLight, color.blue)}${circle(8, 1.8, 1.2, color.yellow, color.yellowDark)}${circle(13.5, 5, 1.2, color.greenLight, color.green)}${circle(13, 12, 1.2, color.redLight, color.red)}${circle(3, 12.5, 1.2, color.yellow, color.yellowDark)}${circle(2.2, 5, 1.2, color.greenLight, color.green)}`,
+  enumerate_point_defects: `${grid(2, 2, 11.5, 11.5)}${circle(5.5, 5.5, 1.3, color.white, color.red)}${circle(9.5, 5.5, 1.3, color.yellow, color.yellowDark)}${circle(5.5, 9.5, 1.3, color.greenLight, color.green)}${pathShape("M11.1 9.7H14.2M12.65 8.15V11.25", "none", color.blue, { "stroke-width": 1.3 })}`,
+  place_adsorbate: `${polygon("1.5,11 8,8.8 14.5,11 8,13.2", color.blueLight, color.blue)}${bond(6, 3.5, 10, 5)}${atom(5.5, 3.3, color.redLight, color.red)}${atom(10.5, 5.2, color.white, color.gray)}${arrow(8, 6.5, 8, 9, color.green)}`,
+  build_from_spacegroup: `${polygon("2,4 10,2 14,11 6,14", color.blueLight, color.blue)}${circle(5, 6, 1.3, color.yellow, color.yellowDark)}${circle(10.5, 9, 1.3, color.greenLight, color.green)}${pathShape("M11 2.2A3 3 0 0 1 14.2 5", "none", color.red)}`,
+  make_p1: `${polygon("2,4 10,2 14,11 6,14", color.white, color.blue)}${circle(5, 6, 1.5, color.yellow, color.yellowDark)}${pathShape("M9.5 5V11M8.2 11H10.8", "none", color.green, { "stroke-width": 1.4 })}${line(3.5, 11.5, 12.2, 4.2, color.red, { "stroke-dasharray": "1 1" })}`,
+};
+
 const categoryIcons = {
   atomic_editor: `${atomCluster()}${circle(8, 8, 7, "none", color.blue, {
     "stroke-dasharray": "1.5 1.5",
   })}`,
+  selection_sets: `${pathShape("M2 3.5C5 1.5 11 1.5 14 4V12C11 14.5 5 14.5 2 12Z", "none", color.blue, { "stroke-width": 1.2, "stroke-dasharray": "1.4 1" })}${bond(4.5, 6, 8, 9)}${bond(8, 9, 11.8, 5.5)}${atom(4.2, 5.8, color.yellow, color.yellowDark, 1.5)}${atom(8, 9, color.blueLight, color.blue, 1.7)}${atom(12, 5.2, color.greenLight, color.green, 1.5)}${pathShape("M9.8 12.2L11.2 13.5L14 10.4", "none", color.green, { "stroke-width": 1.4 })}`,
+  molecule_builder: `${bond(3, 10.5, 7.2, 6.5)}${bond(7.2, 6.5, 12, 9.5)}${atom(2.8, 10.7, color.yellow, color.yellowDark)}${atom(7.2, 6.5)}${atom(12.3, 9.7, color.redLight, color.red)}${plus(12.5, 3.2)}`,
+  polymer_builder: `${pathShape("M1.5 10L4.5 5L7.5 10L10.5 5L14.5 10", "none", color.blue, { "stroke-width": 1.6 })}${circle(4.5, 5, 1.6, color.yellow, color.yellowDark)}${circle(10.5, 5, 1.6, color.greenLight, color.green)}${pathShape("M1.5 3V13M14.5 3V13", "none", color.gray)}`,
+  amorphous_builder: `${rect(1.5, 1.5, 13, 13, color.white, color.blue, { "stroke-dasharray": "1 1" })}${atom(4, 5, color.yellow, color.yellowDark)}${atom(10.8, 4)}${atom(7, 9, color.redLight, color.red)}${atom(11.5, 12, color.greenLight, color.green)}`,
   lattice_editor: `${polygon(
-    "2,4 10,2 14,11 6,14",
+    "2.2,4 9.7,2.2 13.6,10.6 6.1,13.5",
     color.blueLight,
     color.blue,
   )}${line(4.7, 3.3, 8.5, 13)}${line(8, 2.5, 12.2, 12)}${line(
@@ -666,7 +721,7 @@ const categoryIcons = {
     8,
     12.5,
     6.5,
-  )}${polygon("9,14 13.5,9.5 15,11 10.5,15.5", color.yellow, color.yellowDark)}`,
+  )}${polygon("8.7,13.2 12.9,9 14.5,10.6 10.3,14.8", color.yellow, color.yellowDark)}`,
   supercell_lattice: `${rect(1.5, 1.5, 6, 6, color.blueLight, color.blue)}${rect(
     8.5,
     1.5,
@@ -744,26 +799,98 @@ const categoryIcons = {
 };
 
 const utilityIcons = {
-  undo: `${atom(8, 8.5, color.blueLight, color.blue, 2)}${pathShape(
-    "M5 12.8A5.5 5.5 0 1 0 4.2 5",
+  undo: `${pathShape(
+    "M13.8 12.5A5.8 5.8 0 0 0 4.1 6",
+    "none",
+    color.blue,
+    { "stroke-width": 1.6 },
+  )}${pathShape("M1.8 5.7L4.3 5.3L4.7 7.9", "none", color.blue, {
+    "stroke-width": 1.6,
+  })}${circle(10.8, 10.8, 2.2, color.blueLight, color.blue)}`,
+  redo: `${pathShape(
+    "M2.2 12.5A5.8 5.8 0 0 1 11.9 6",
     "none",
     color.green,
-    { "stroke-width": 1.3 },
-  )}${pathShape("M1.5 5.2L4.4 4.7L4.8 7.5", "none", color.green, {
-    "stroke-width": 1.3,
-  })}`,
-  redo: `${atom(8, 8.5, color.blueLight, color.blue, 2)}${pathShape(
-    "M11 12.8A5.5 5.5 0 1 1 11.8 5",
+    { "stroke-width": 1.6 },
+  )}${pathShape("M14.2 5.7L11.7 5.3L11.3 7.9", "none", color.green, {
+    "stroke-width": 1.6,
+  })}${circle(5.2, 10.8, 2.2, color.greenLight, color.green)}`,
+  reset: `${grid(3, 3, 8, 8, color.blueLight)}${pathShape(
+    "M5.2 14A5.7 5.7 0 0 0 14 8.7",
     "none",
-    color.green,
-    { "stroke-width": 1.3 },
-  )}${pathShape("M14.5 5.2L11.6 4.7L11.2 7.5", "none", color.green, {
-    "stroke-width": 1.3,
+    color.red,
+    { "stroke-width": 1.45 },
+  )}${pathShape("M12.1 8.6L14.2 8.4L14.4 10.6", "none", color.red, {
+    "stroke-width": 1.45,
   })}`,
+  record_start: `${circle(5.2, 8, 3.1, color.redLight, color.red)}${circle(
+    5.2,
+    8,
+    1.35,
+    color.red,
+    color.red,
+  )}${pathShape("M10.2 4V12L14.5 8Z", color.greenLight, color.green)}`,
+  record_save: `${rect(2, 2, 12, 12, color.blueLight, color.blue, { rx: 1 })}${rect(
+    4.1,
+    2,
+    5.8,
+    4,
+    color.white,
+    color.blue,
+  )}${rect(4.2, 9, 7.6, 5, color.white, color.blue)}${circle(
+    11.8,
+    4.5,
+    1.5,
+    color.redLight,
+    color.red,
+  )}`,
+  jobs: `${rect(3, 2.5, 10.5, 12, color.white, color.blue, { rx: 1 })}${rect(
+    5.5,
+    1.4,
+    5.5,
+    2.7,
+    color.blueLight,
+    color.blue,
+    { rx: 0.7 },
+  )}${pathShape("M5 7L6.3 8.3L8.5 5.8M5 11L6.3 12.3L8.5 9.8", "none", color.green)}${line(
+    9.5,
+    7,
+    12,
+    7,
+    color.gray,
+  )}${line(9.5, 11, 12, 11, color.gray)}`,
+  library: `${rect(1.8, 3, 3.3, 11, color.blueLight, color.blue, { rx: 0.5 })}${rect(
+    5.3,
+    2,
+    3.4,
+    12,
+    color.yellow,
+    color.yellowDark,
+    { rx: 0.5 },
+  )}${polygon("9.2,3 12.1,2.2 14.5,13 11.5,13.8", color.greenLight, color.green)}${line(
+    2.5,
+    11.5,
+    4.4,
+    11.5,
+    color.blue,
+  )}${line(6, 5, 8, 5, color.yellowDark)}`,
+  guide: `${pathShape("M1.5 3.5C4.5 2.2 6.6 2.8 8 4.2V14C6.5 12.8 4.3 12.5 1.5 13.5Z", color.blueLight, color.blue)}${pathShape(
+    "M14.5 3.5C11.5 2.2 9.4 2.8 8 4.2V14C9.5 12.8 11.7 12.5 14.5 13.5Z",
+    color.white,
+    color.blue,
+  )}${circle(11.2, 6.5, 1, color.yellow, color.yellowDark)}${line(
+    11.2,
+    9,
+    11.2,
+    11,
+    color.yellowDark,
+    { "stroke-width": 1.35 },
+  )}`,
 };
 
 const allIcons = {
   ...commandIcons,
+  ...supplementalCommandIcons,
   ...Object.fromEntries(
     Object.entries(categoryIcons).map(([name, body]) => [
       `category_${name}`,
@@ -780,7 +907,10 @@ const allIcons = {
 
 // Every Modeling command uses a domain-specific project SVG at runtime.
 // This avoids forcing materials-science concepts into generic UI metaphors.
-const semanticCommandIcons = Object.keys(commandIcons);
+const semanticCommandIcons = [
+  ...Object.keys(commandIcons),
+  ...Object.keys(supplementalCommandIcons),
+];
 
 const svg = (size, body) => `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="${size}" height="${size}" viewBox="${viewBoxInset} ${viewBoxInset} ${viewBoxSize} ${viewBoxSize}" fill="none" shape-rendering="geometricPrecision" xmlns="http://www.w3.org/2000/svg">

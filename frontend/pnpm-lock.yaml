@@ -115,9 +115,15 @@ importers:
       '@kssolv/volume-scene':
         specifier: workspace:*
         version: link:../../packages/volume-scene
+      jspdf:
+        specifier: 4.2.1
+        version: 4.2.1
       three:
         specifier: 0.185.1
         version: 0.185.1
+      utif:
+        specifier: 3.1.0
+        version: 3.1.0
       vue:
         specifier: ^3.5.40
         version: 3.5.40(typescript@6.0.3)
@@ -125,9 +131,15 @@ importers:
       '@types/three':
         specifier: 0.185.1
         version: 0.185.1
+      '@types/utif':
+        specifier: 3.0.6
+        version: 3.0.6
       '@vitejs/plugin-vue':
         specifier: ^6.0.8
         version: 6.0.8(vite@8.1.5(@types/node@26.1.1))(vue@3.5.40(typescript@6.0.3))
+      '@vue/test-utils':
+        specifier: ^2.4.6
+        version: 2.4.11(@vue/compiler-dom@3.5.40)(@vue/server-renderer@3.5.40)(vue@3.5.40(typescript@6.0.3))
       happy-dom:
         specifier: ^20.8.4
         version: 20.11.1
@@ -170,6 +182,9 @@ importers:
       '@antv/x6-vue-shape':
         specifier: ^2.1.2
         version: 2.1.2(@antv/x6@2.19.2)(vue@3.5.40(typescript@6.0.3))
+      '@kssolv/matlab-bridge':
+        specifier: workspace:*
+        version: link:../../packages/matlab-bridge
       vue:
         specifier: ^3.5.40
         version: 3.5.40(typescript@6.0.3)

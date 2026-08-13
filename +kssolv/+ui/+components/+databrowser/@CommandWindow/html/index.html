@@ -2,9 +2,24 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
     <title>Command Window UI</title>
     <script>
+        const preventBrowserZoom = (event) => {
+            if (event.type.startsWith("gesture") || event.ctrlKey || event.metaKey) {
+                event.preventDefault();
+            }
+        };
+        window.addEventListener("wheel", preventBrowserZoom, {capture: true, passive: false});
+        window.addEventListener("gesturestart", preventBrowserZoom, {capture: true});
+        window.addEventListener("gesturechange", preventBrowserZoom, {capture: true});
+        window.addEventListener("keydown", function (event) {
+            const modified = event.ctrlKey !== event.metaKey && (event.ctrlKey || event.metaKey);
+            if (modified && ["+", "=", "-", "_", "0"].includes(event.key)) {
+                event.preventDefault();
+            }
+        }, true);
+
         window.__kssolvHtmlErrors = [];
         window.__kssolvReportHtmlError = function (value) {
             const message = value && (value.stack || value.message)

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Collapsible Tree Table</title>
   <style>
     body {
@@ -82,6 +82,22 @@
     }
   </style>
   <script>
+    // Keep Chromium/CEF page scale fixed so this HTML panel remains aligned
+    // with the surrounding native MATLAB layout. Ordinary scrolling remains
+    // available; only browser-level pinch/modified-wheel zoom is cancelled.
+    const preventBrowserZoom = (event) => {
+      if (event.type.startsWith('gesture') || event.ctrlKey || event.metaKey) {
+        event.preventDefault();
+      }
+    };
+    window.addEventListener('wheel', preventBrowserZoom, { capture: true, passive: false });
+    window.addEventListener('gesturestart', preventBrowserZoom, { capture: true });
+    window.addEventListener('gesturechange', preventBrowserZoom, { capture: true });
+    window.addEventListener('keydown', (event) => {
+      const modified = event.ctrlKey !== event.metaKey && (event.ctrlKey || event.metaKey);
+      if (modified && ['+', '=', '-', '_', '0'].includes(event.key)) event.preventDefault();
+    }, true);
+
     // JSON data for test purpose
     let tableData = `
       {

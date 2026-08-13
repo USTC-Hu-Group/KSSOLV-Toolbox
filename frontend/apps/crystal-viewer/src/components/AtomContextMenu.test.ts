@@ -32,7 +32,10 @@ describe('atom context modeling menu', () => {
     expect(wrapper.text()).toContain('Requires KSSOLV Toolbox');
     const actions = wrapper.findAll('[role="menuitem"]');
     expect(actions[0].attributes('disabled')).toBeUndefined();
-    expect(actions.slice(1).every((item) => item.attributes('disabled') !== undefined)).toBe(true);
+    expect(actions.slice(1, 5).every((item) => item.attributes('disabled') !== undefined)).toBe(
+      true,
+    );
+    expect(actions[5].attributes('disabled')).toBeUndefined();
     await actions[0].trigger('click');
     expect(wrapper.emitted('selectSameElement')?.[0]).toEqual(['Na']);
     wrapper.unmount();
@@ -86,6 +89,31 @@ describe('atom context modeling menu', () => {
     deletion.unmount();
   });
 
+  it('uses Cartesian-only controls and payloads for molecule sites', async () => {
+    const moleculeSite = structuredClone(site);
+    delete moleculeSite.fractional;
+
+    const move = mountMenu({ site: moleculeSite });
+    await move.findAll('[role="menuitem"]')[2].trigger('click');
+    expect(move.find('.atom-modeling-check').exists()).toBe(false);
+    await move.get('form').trigger('submit');
+    expect(move.emitted('command')?.[0]).toEqual([
+      'move_atoms',
+      { coordinates: moleculeSite.cartesian, cartesian: true },
+    ]);
+    move.unmount();
+
+    const translate = mountMenu({ site: moleculeSite });
+    await translate.findAll('[role="menuitem"]')[3].trigger('click');
+    expect(translate.find('.atom-modeling-check').exists()).toBe(false);
+    await translate.get('form').trigger('submit');
+    expect(translate.emitted('command')?.[0]).toEqual([
+      'translate_atoms',
+      { vector: [0, 0, 0], fractional: false },
+    ]);
+    translate.unmount();
+  });
+
   it('shows indeterminate progress while MATLAB applies a structure edit', async () => {
     const wrapper = mountMenu();
     await wrapper.findAll('[role="menuitem"]')[1].trigger('click');
@@ -118,6 +146,17 @@ describe('atom context modeling menu', () => {
     expect(wrapper.text()).toContain('4 displayed atoms represent 1 structure site.');
     expect(wrapper.findAll('[role="menuitem"]')[2].attributes('disabled')).toBeUndefined();
     expect(wrapper.findAll('[role="menuitem"]')[4].attributes('disabled')).toBeUndefined();
+    wrapper.unmount();
+  });
+
+  it('offers bonded-component expansion for one selected source site', async () => {
+    const wrapper = mountMenu();
+    const connected = wrapper
+      .findAll('[role="menuitem"]')
+      .find((item) => item.text() === 'Select Connected Component');
+    expect(connected).toBeDefined();
+    await connected!.trigger('click');
+    expect(wrapper.emitted('selectConnected')?.[0]).toEqual([site.siteIndex]);
     wrapper.unmount();
   });
 });

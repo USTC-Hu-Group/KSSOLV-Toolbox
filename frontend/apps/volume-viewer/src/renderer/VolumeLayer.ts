@@ -31,6 +31,7 @@ import {
 } from './directVolumeMaterial';
 import { gridMatrix } from './gridMath';
 import { geometryTriangles } from './geometryTriangles';
+import { extractMillerSlice, type ScalarSlice } from './sliceExport';
 
 const colorTexture = (
   start: [number, number, number],
@@ -112,66 +113,37 @@ const createTexture = (
   return texture;
 };
 
-const sliceGeometry = (
-  grid: VolumeGridSpec,
-  axis: VolumeOptions['sliceAxis'],
-  index: number,
-): BufferGeometry => {
-  const [nx, ny, nz] = grid.dimensions;
-  const maximum = axis === 'i' ? nx - 1 : axis === 'j' ? ny - 1 : nz - 1;
-  const coordinate = Math.min(maximum, Math.max(0, index));
-  let vertices: number[];
-  if (axis === 'i') {
-    vertices = [
-      coordinate, 0, 0, coordinate, ny - 1, 0, coordinate, ny - 1, nz - 1,
-      coordinate, 0, 0, coordinate, ny - 1, nz - 1, coordinate, 0, nz - 1,
-    ];
-  } else if (axis === 'j') {
-    vertices = [
-      0, coordinate, 0, nx - 1, coordinate, 0, nx - 1, coordinate, nz - 1,
-      0, coordinate, 0, nx - 1, coordinate, nz - 1, 0, coordinate, nz - 1,
-    ];
-  } else {
-    vertices = [
-      0, 0, coordinate, nx - 1, 0, coordinate, nx - 1, ny - 1, coordinate,
-      0, 0, coordinate, nx - 1, ny - 1, coordinate, 0, ny - 1, coordinate,
-    ];
+const millerSliceGeometry = (slice: ScalarSlice): BufferGeometry => {
+  const pointCount = slice.polygonGridCoordinates.length / 3;
+  const vertices: number[] = [];
+  const uvs: number[] = [];
+  for (let index = 1; index < pointCount - 1; index += 1) {
+    for (const pointIndex of [0, index, index + 1]) {
+      vertices.push(...slice.polygonGridCoordinates.slice(pointIndex * 3, pointIndex * 3 + 3));
+      uvs.push(...slice.polygonUvs.slice(pointIndex * 2, pointIndex * 2 + 2));
+    }
   }
   const geometry = new BufferGeometry();
   geometry.setAttribute('position', new Float32BufferAttribute(vertices, 3));
-  geometry.setAttribute(
-    'uv',
-    new Float32BufferAttribute([0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1], 2),
-  );
+  geometry.setAttribute('uv', new Float32BufferAttribute(uvs, 2));
   geometry.computeVertexNormals();
   return geometry;
 };
 
-const createSliceTexture = (
-  values: Float32Array,
-  grid: VolumeGridSpec,
-  axis: VolumeOptions['sliceAxis'],
-  requestedIndex: number,
+const createMillerSliceTexture = (
+  slice: ScalarSlice,
   interpolation: VolumeOptions['interpolation'],
 ): DataTexture => {
-  const [nx, ny, nz] = grid.dimensions;
-  const maximum = axis === 'i' ? nx - 1 : axis === 'j' ? ny - 1 : nz - 1;
-  const selected = Math.min(maximum, Math.max(0, Math.round(requestedIndex)));
-  const width = axis === 'i' ? ny : nx;
-  const height = axis === 'k' ? ny : nz;
-  const output = new Float32Array(width * height);
-  const sourceIndex = (x: number, y: number, z: number) => x + nx * (y + ny * z);
-  let offset = 0;
-  for (let row = 0; row < height; row += 1) {
-    for (let column = 0; column < width; column += 1) {
-      const x = axis === 'i' ? selected : column;
-      const y = axis === 'i' ? column : axis === 'j' ? selected : row;
-      const z = axis === 'k' ? selected : row;
-      output[offset] = values[sourceIndex(x, y, z)];
-      offset += 1;
-    }
-  }
-  const texture = new DataTexture(output, width, height, RedFormat, FloatType);
+  const textureValues = Float32Array.from(slice.values, (value) =>
+    Number.isFinite(value) ? value : 0,
+  );
+  const texture = new DataTexture(
+    textureValues,
+    slice.width,
+    slice.height,
+    RedFormat,
+    FloatType,
+  );
   texture.minFilter = interpolation === 'nearest' ? NearestFilter : LinearFilter;
   texture.magFilter = texture.minFilter;
   texture.wrapS = ClampToEdgeWrapping;
@@ -286,35 +258,23 @@ export class VolumeLayer extends Group {
     const fullMap = paletteTexture(options.colormap);
     this.colorMaps.push(positiveMap, negativeMap, fullMap);
     if (options.mode === 'slices') {
-      const axes = ['i', 'j', 'k'] as const;
-      let visibleCount = 0;
-      axes.forEach((axis, axisIndex) => {
-        if (!options.sliceVisibility[axisIndex]) return;
-        const index = options.sliceIndices[axisIndex];
-        const texture = createSliceTexture(
-          this.values,
-          this.grid,
-          axis,
-          index,
-          options.interpolation,
-        );
-        const geometry = sliceGeometry(this.grid, axis, index);
-        const material = sliceMaterial(texture, fullMap, [
-          options.rangeMinimum,
-          options.rangeMaximum,
-        ]);
-        this.textures.push(texture);
-        this.geometries.push(geometry);
-        this.materials.push(material);
-        this.add(new Mesh(geometry, material));
-        visibleCount += 1;
-      });
-      this.onStatus(
-        'ready',
-        visibleCount === 0
-          ? 'Orthogonal slices hidden'
-          : `${visibleCount} orthogonal ${visibleCount === 1 ? 'slice' : 'slices'} ready`,
+      const slice = extractMillerSlice(
+        this.values,
+        this.grid,
+        options.millerIndices,
+        options.interpolation,
       );
+      const texture = createMillerSliceTexture(slice, options.interpolation);
+      const geometry = millerSliceGeometry(slice);
+      const material = sliceMaterial(texture, fullMap, [
+        options.rangeMinimum,
+        options.rangeMaximum,
+      ]);
+      this.textures.push(texture);
+      this.geometries.push(geometry);
+      this.materials.push(material);
+      this.add(new Mesh(geometry, material));
+      this.onStatus('ready', `Miller plane (${options.millerIndices.join(' ')}) ready`);
       return;
     }
 

@@ -25,6 +25,7 @@ classdef Molecule < kssolv.analysis.matgenlab.core.IMolecule
                 end
             end
             obj.sites_{end + 1} = site;
+            obj = obj.normalizeSpinMultiplicity();
         end
 
         function obj = insert(obj, index, species, coords, options)
@@ -53,6 +54,34 @@ classdef Molecule < kssolv.analysis.matgenlab.core.IMolecule
                 end
             end
             obj.sites_ = [obj.sites_(1:index-1), {site}, obj.sites_(index:end)];
+            obj = obj.remapTopologyAfterInsertion(index);
+            obj = obj.normalizeSpinMultiplicity();
+        end
+
+        function obj = replace(obj, index, species, coords, options)
+            arguments
+                obj
+                index (1,1) double {mustBeInteger, mustBePositive}
+                species = []
+                coords = []
+                options.properties = []
+                options.label = missing
+            end
+            obj.validateSiteIndex(index);
+            current = obj.sites_{index};
+            speciesChanged = ~isempty(species);
+            if isempty(species), species = current.species; end
+            if isempty(coords), coords = current.coords; end
+            if isempty(options.properties)
+                options.properties = current.site_properties;
+            end
+            if ismissing(string(options.label)) && ~speciesChanged
+                options.label = current.label;
+            end
+            obj.sites_{index} = kssolv.analysis.matgenlab.core.Site( ...
+                species, coords, properties = options.properties, ...
+                label = options.label);
+            if speciesChanged, obj = obj.normalizeSpinMultiplicity(); end
         end
 
         function obj = substitute(obj, index, functionalGroup, bondOrder)
@@ -76,6 +105,8 @@ classdef Molecule < kssolv.analysis.matgenlab.core.IMolecule
             arrayfun(@(index) obj.validateSiteIndex(index), indices);
             keep = true(1, obj.num_sites); keep(indices) = false;
             obj.sites_ = obj.sites_(keep);
+            obj = obj.remapTopologyAfterRemoval(keep);
+            obj = obj.normalizeSpinMultiplicity();
         end
 
         function obj = remove_species(obj, species)
@@ -97,6 +128,8 @@ classdef Molecule < kssolv.analysis.matgenlab.core.IMolecule
                 end
             end
             obj.sites_ = obj.sites_(keep);
+            obj = obj.remapTopologyAfterRemoval(keep);
+            obj = obj.normalizeSpinMultiplicity();
         end
 
         function obj = translate_sites(obj, indices, vector)
@@ -256,6 +289,63 @@ classdef Molecule < kssolv.analysis.matgenlab.core.IMolecule
         end
     end
 
+    methods (Access = private)
+        function obj = normalizeSpinMultiplicity(obj)
+            if obj.charge_spin_check_ && ...
+                    mod(round(obj.nelectrons), 2) == ...
+                    mod(round(obj.spin_multiplicity), 2)
+                % Keep a mutated molecule internally valid. When atom count
+                % or species changes electron parity, choose the lowest
+                % compatible multiplicity. Explicit spin editing is a
+                % separate chemistry operation.
+                obj.spin_multiplicity = mod(round(obj.nelectrons), 2) + 1;
+            end
+        end
+
+        function obj = remapTopologyAfterInsertion(obj, index)
+            topology = obj.sourceTopology();
+            if isempty(topology), return; end
+            bonds = double(topology.bonds);
+            bonds(:, 1:2) = bonds(:, 1:2) + ...
+                double(bonds(:, 1:2) >= index);
+            topology.bonds = bonds;
+            obj.molecule_properties.topology = topology;
+        end
+
+        function obj = remapTopologyAfterRemoval(obj, keep)
+            topology = obj.sourceTopology();
+            if isempty(topology), return; end
+            bonds = double(topology.bonds);
+            oldCount = numel(keep);
+            if isempty(bonds)
+                topology.bonds = zeros(0, 3);
+            else
+                valid = all(bonds(:, 1:2) >= 1, 2) & ...
+                    all(bonds(:, 1:2) <= oldCount, 2);
+                firstKept = reshape(keep(bonds(:, 1)), [], 1);
+                secondKept = reshape(keep(bonds(:, 2)), [], 1);
+                valid = valid & firstKept & secondKept;
+                bonds = bonds(valid, :);
+                map = zeros(1, oldCount);
+                map(keep) = 1:sum(keep);
+                bonds(:, 1) = map(bonds(:, 1));
+                bonds(:, 2) = map(bonds(:, 2));
+                topology.bonds = bonds;
+            end
+            obj.molecule_properties.topology = topology;
+        end
+
+        function topology = sourceTopology(obj)
+            topology = [];
+            if isfield(obj.molecule_properties, "topology") && ...
+                    isstruct(obj.molecule_properties.topology) && ...
+                    isscalar(obj.molecule_properties.topology) && ...
+                    isfield(obj.molecule_properties.topology, "bonds")
+                topology = obj.molecule_properties.topology;
+            end
+        end
+    end
+
     methods (Static)
         function obj = from_sites(sites, options)
             arguments
@@ -276,6 +366,7 @@ classdef Molecule < kssolv.analysis.matgenlab.core.IMolecule
                 base.species_and_occu, base.cart_coords, ...
                 charge = base.charge, ...
                 spin_multiplicity = base.spin_multiplicity, ...
+                charge_spin_check = options.charge_spin_check, ...
                 site_properties = base.site_properties, ...
                 labels = base.labels, properties = base.molecule_properties);
         end

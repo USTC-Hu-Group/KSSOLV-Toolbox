@@ -19,10 +19,7 @@ const options: VolumeOptions = {
   colormap: 'coolwarm',
   rangeMinimum: -1,
   rangeMaximum: 1,
-  sliceAxis: 'k',
-  sliceIndex: 2,
-  sliceIndices: [2, 2, 2],
-  sliceVisibility: [true, true, true],
+  millerIndices: [0, 0, 1],
   interpolation: 'nearest',
   volumeQuality: 'balanced',
   gradientOpacity: 0.3,
@@ -34,6 +31,12 @@ const options: VolumeOptions = {
   showCell: true,
   showPolyhedra: true,
   showAxes: true,
+  depthCueing: true,
+  showBoundaryAtoms: true,
+  showBondedOutside: true,
+  hideIncompleteBonds: true,
+  showMagmoms: true,
+  showStatistics: false,
 };
 
 afterEach(() => {
@@ -77,7 +80,7 @@ describe('volume renderer capability fallback', () => {
     expect(renderer.exportSlicePng()).toBe(
       'data:image/png;base64,fallback',
     );
-    expect(statuses[statuses.length - 1]).toContain('CPU lattice slice ready');
+    expect(statuses[statuses.length - 1]).toContain('CPU Miller-plane slice ready');
     await expect(renderer.exportIsosurface('ply')).rejects.toThrow(
       /requires WebGL2/,
     );

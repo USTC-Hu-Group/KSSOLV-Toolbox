@@ -17,7 +17,6 @@ export const volumeExportStem = (
 export const sliceExportStem = (
   sourceName: string,
   channelId: string,
-  axis: 'i' | 'j' | 'k',
-  index: number,
+  millerIndices: readonly number[],
 ): string =>
-  `${volumeExportStem(sourceName, channelId)}.slice-${axis}${Math.max(0, Math.round(index))}`;
+  `${volumeExportStem(sourceName, channelId)}.slice-${millerIndices.map((value) => Math.round(value)).join('_')}`;

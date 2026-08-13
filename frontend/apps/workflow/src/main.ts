@@ -1,7 +1,11 @@
 import { createApp } from 'vue';
 
+import { installEmbeddedBrowserZoomGuard } from '@kssolv/matlab-bridge';
+
 import './style.css';
 import App from './App.vue';
+
+installEmbeddedBrowserZoomGuard();
 
 // 将 MATLAB 和 setup 添加到 window 对象以使它们全局可访问
 declare global {

@@ -40,6 +40,14 @@ classdef MoleculeDisplay < handle
         ImageExportDestinationTimer = []
         BridgeEventSerial (1,1) double = 0
         PendingFullscreenExit (1,1) logical = false
+        LastInteractionBenchmark = struct.empty
+        OperationRecorder = []
+        RecoveryJournal = []
+        ModelingPreviewActive (1,1) logical = false
+        IsClosing (1,1) logical = false
+        DocumentCloseListener = []
+        PendingSelectionSiteIndices double = []
+        HasPendingSelection (1,1) logical = false
     end
 
     events
@@ -77,6 +85,10 @@ classdef MoleculeDisplay < handle
                 this.SceneOptions.algorithm = "Auto";
             end
             this.tag = tag;
+            if this.tag ~= ""
+                this.RecoveryJournal = ...
+                    kssolv.modeling.provenance.RecoveryJournal(this.tag);
+            end
             this.DocumentGroupTag = 'Structure';
 
             appContainer = kssolv.ui.util.DataStorage.getData('AppContainer');
@@ -116,12 +128,16 @@ classdef MoleculeDisplay < handle
 
             % 添加 html 组件
             fig = document.Figure;
+            this.DocumentCloseListener=addlistener(fig, ...
+                "ObjectBeingDestroyed",@(~,~)this.beginClose());
             g = uigridlayout(fig);
             g.Padding = 0;
             g.RowHeight = {'1x'};
             g.ColumnWidth = {'1x'};
             htmlFile = fullfile(fileparts(mfilename('fullpath')), ...
                 'CrystalViewer', 'index.html');
+            runtimeManifest = ...
+                kssolv.ui.util.CrystalViewerRuntime.verify(string(htmlFile));
             % uihtml/CEF can retain a local HTML document under the same path
             % after Toolbox updates.  A unique source path guarantees that the
             % current embedded viewer (including render progress UI) is loaded.
@@ -131,6 +147,8 @@ classdef MoleculeDisplay < handle
                 error("KSSOLV:CrystalViewer:HTMLSource", ...
                     "Unable to stage the crystal viewer: %s", copyMessage);
             end
+            kssolv.ui.util.CrystalViewerRuntime.assertEntry( ...
+                this.HTMLSourcePath, string(runtimeManifest.entrySha256));
             this.HTMLComponent = uihtml(g, "HTMLSource", this.HTMLSourcePath);
             this.HTMLComponent.HTMLEventReceivedFcn = @this.eventReceiver;
             if isempty(this.ParsedModel)
@@ -153,6 +171,7 @@ classdef MoleculeDisplay < handle
                 % document 会异常地取消停靠（undocked），在渲染完成后需要重新停靠它
                 document.Docked = true;
             end
+            this.promptForRecoveryDraft();
         end
 
         function model = getModel(this)
@@ -169,6 +188,171 @@ classdef MoleculeDisplay < handle
                 "kssolv.analysis.matgenlab.core.IStructure");
         end
 
+        function value = getRevision(this)
+            %GETREVISION Return the document-local modeling revision.
+            value = this.CurrentRevision;
+        end
+
+        function transaction = previewModelingCommand( ...
+                this, commandId, parameters)
+            %PREVIEWMODELINGCOMMAND Build a side-effect-free command preview.
+            arguments
+                this
+                commandId {mustBeTextScalar}
+                parameters (1,1) struct = struct()
+            end
+            transaction = ...
+                kssolv.modeling.contracts.EditTransaction( ...
+                this.getModel(), this.CurrentRevision, ...
+                commandId, parameters);
+        end
+
+        function result = showModelingPreview(this, transaction)
+            %SHOWMODELINGPREVIEW Render a transaction result without mutation.
+            arguments
+                this
+                transaction kssolv.modeling.contracts.EditTransaction
+            end
+            if transaction.BaseRevision ~= this.CurrentRevision
+                error("KSSOLV:Modeling:StaleTransaction", ...
+                    "The preview was created from revision %d, but the " + ...
+                    "document is at revision %d.", ...
+                    transaction.BaseRevision, this.CurrentRevision);
+            end
+            result = transaction.preview();
+            if ~isfield(result, "changed") || ~result.changed || ...
+                    ~isfield(result, "model")
+                error("KSSOLV:Modeling:PreviewUnavailable", ...
+                    "This command does not produce a model preview.");
+            end
+            try
+                this.renderModel(result.model, true);
+                this.ModelingPreviewActive = true;
+            catch exception
+                this.ModelingPreviewActive = false;
+                this.renderModel(this.ParsedModel, false);
+                rethrow(exception)
+            end
+        end
+
+        function clearModelingPreview(this)
+            %CLEARMODELINGPREVIEW Restore the committed document scene.
+            if ~this.ModelingPreviewActive
+                return
+            end
+            this.ModelingPreviewActive = false;
+            this.renderModel(this.ParsedModel, false);
+        end
+
+        function value = isModelingPreviewActive(this)
+            value = this.ModelingPreviewActive;
+        end
+
+        function showModelingCandidatePreview(this, model, baseRevision)
+            %SHOWMODELINGCANDIDATEPREVIEW Render an analysis candidate safely.
+            arguments
+                this
+                model
+                baseRevision (1,1) double {mustBeInteger,mustBeNonnegative}
+            end
+            this.assertCandidateRevision(baseRevision);
+            this.validateModel(model);
+            try
+                this.renderModel(model, true);
+                this.ModelingPreviewActive = true;
+            catch exception
+                this.ModelingPreviewActive = false;
+                this.renderModel(this.ParsedModel, false);
+                rethrow(exception)
+            end
+        end
+
+        function commitModelingCandidate( ...
+                this, model, baseRevision, description)
+            %COMMITMODELINGCANDIDATE Commit one preview as one history entry.
+            arguments
+                this
+                model
+                baseRevision (1,1) double {mustBeInteger,mustBeNonnegative}
+                description {mustBeTextScalar} = "Modeling candidate"
+            end
+            this.assertCandidateRevision(baseRevision);
+            this.applyModel(model, description);
+        end
+
+        function value = hasRecoveryDraft(this)
+            value = ~isempty(this.RecoveryJournal) && ...
+                isvalid(this.RecoveryJournal) && this.RecoveryJournal.exists();
+        end
+
+        function snapshot = restoreRecoveryDraft(this)
+            %RESTORERECOVERYDRAFT Restore a verified autosave as an unsaved draft.
+            if ~this.hasRecoveryDraft()
+                error("KSSOLV:Modeling:RecoveryMissing", ...
+                    "No recovery snapshot exists for this document.");
+            end
+            snapshot = this.RecoveryJournal.recover();
+            this.commitModel(snapshot.model);
+            this.UndoStack = {};
+            this.RedoStack = {};
+            this.CurrentRevision = max(1, double(snapshot.revision));
+            this.NextRevision = this.CurrentRevision;
+            notify(this, "HistoryChanged");
+            notify(this, "SelectionChanged");
+        end
+
+        function discardRecoveryDraft(this)
+            %DISCARDRECOVERYDRAFT Remove the verified or corrupt snapshot file.
+            if isempty(this.RecoveryJournal) || ...
+                    ~isvalid(this.RecoveryJournal)
+                return
+            end
+            this.RecoveryJournal.clear();
+        end
+
+        function result = commitModelingTransaction( ...
+                this, transaction, description)
+            %COMMITMODELINGTRANSACTION Atomically commit a current preview.
+            arguments
+                this
+                transaction kssolv.modeling.contracts.EditTransaction
+                description {mustBeTextScalar} = "Modeling operation"
+            end
+            parentModel = this.getModel();
+            result = transaction.commit(this.CurrentRevision);
+            this.ModelingPreviewActive = false;
+            if isfield(result, "changed") && result.changed && ...
+                    isfield(result, "model")
+                this.applyModel(result.model, description);
+                if ~isempty(this.OperationRecorder) && ...
+                        isvalid(this.OperationRecorder)
+                    this.OperationRecorder.record(parentModel, ...
+                        transaction.CommandId,transaction.Parameters,result.model);
+                end
+            end
+        end
+
+        function startOperationRecording(this)
+            %STARTOPERATIONRECORDING Begin a versioned GUI modeling recipe.
+            this.OperationRecorder = ...
+                kssolv.modeling.provenance.OperationRecorder();
+        end
+
+        function recipe = stopOperationRecording(this)
+            %STOPOPERATIONRECORDING Stop recording and return the recipe.
+            if isempty(this.OperationRecorder)
+                error("KSSOLV:Modeling:RecorderInactive", ...
+                    "No modeling operation recording is active.");
+            end
+            recipe = this.OperationRecorder.recipe();
+            this.OperationRecorder = [];
+        end
+
+        function value = isOperationRecording(this)
+            value = ~isempty(this.OperationRecorder) && ...
+                isvalid(this.OperationRecorder);
+        end
+
         function applyModel(this, model, description)
             %APPLYMODEL Atomically update the document-local modeling draft.
             arguments
@@ -177,6 +361,7 @@ classdef MoleculeDisplay < handle
                 description {mustBeTextScalar} = "Modeling operation"
             end
             this.validateModel(model);
+            this.ModelingPreviewActive = false;
             previous = this.ParsedModel.copy();
             previousRevision = this.CurrentRevision;
             this.commitModel(model);
@@ -190,8 +375,26 @@ classdef MoleculeDisplay < handle
             this.RedoStack = {};
             this.NextRevision = this.NextRevision + 1;
             this.CurrentRevision = this.NextRevision;
+            this.checkpointRecovery();
             notify(this, "HistoryChanged");
             notify(this, "SelectionChanged");
+        end
+
+        function applyRecordedModel(this,model,description,commandId,parameters)
+            %APPLYRECORDEDMODEL Commit a precomputed GUI command with provenance.
+            arguments
+                this
+                model
+                description {mustBeTextScalar}
+                commandId {mustBeTextScalar}
+                parameters (1,1) struct=struct()
+            end
+            parent=this.getModel();
+            this.applyModel(model,description);
+            if ~isempty(this.OperationRecorder) && ...
+                    isvalid(this.OperationRecorder)
+                this.OperationRecorder.record(parent,commandId,parameters,model);
+            end
         end
 
         function value = canUndo(this)
@@ -235,6 +438,7 @@ classdef MoleculeDisplay < handle
                 "description", entry.description, ...
                 "revision", this.CurrentRevision);
             this.CurrentRevision = entry.revision;
+            this.checkpointRecovery();
             notify(this, "HistoryChanged");
             notify(this, "SelectionChanged");
         end
@@ -252,6 +456,7 @@ classdef MoleculeDisplay < handle
                 "description", entry.description, ...
                 "revision", this.CurrentRevision);
             this.CurrentRevision = entry.revision;
+            this.checkpointRecovery();
             notify(this, "HistoryChanged");
             notify(this, "SelectionChanged");
         end
@@ -270,6 +475,47 @@ classdef MoleculeDisplay < handle
             this.discardChanges(true);
         end
 
+        function resetViewerCamera(this)
+            %RESETVIEWERCAMERA Fit the current production scene in view.
+            if isempty(this.HTMLComponent) || ~isvalid(this.HTMLComponent)
+                return
+            end
+            this.sendBridgeDataEvent("viewer:command", ...
+                struct("command", "reset"));
+        end
+
+        function showShortcutHelp(this, tier)
+            %SHOWSHORTCUTHELP Open the production shortcut guide at a tier.
+            arguments
+                this
+                tier (1,1) string {mustBeMember(tier, ...
+                    ["common", "advanced"])} = "common"
+            end
+            if isempty(this.HTMLComponent) || ~isvalid(this.HTMLComponent)
+                error("KSSOLV:Modeling:ViewerUnavailable", ...
+                    "Display the structure before opening shortcut help.");
+            end
+            locale = this.viewerLocale();
+            this.sendBridgeDataEvent("viewer:command", struct( ...
+                "command", "open-shortcut-help", "tier", tier, ...
+                "locale", locale));
+        end
+
+        function setContentZoom(this, percent)
+            %SETCONTENTZOOM Set a supported production viewer zoom level.
+            arguments
+                this
+                percent (1,1) double {mustBeMember(percent, ...
+                    [75, 100, 125, 150, 175, 200])}
+            end
+            if isempty(this.HTMLComponent) || ~isvalid(this.HTMLComponent)
+                error("KSSOLV:Modeling:ViewerUnavailable", ...
+                    "Display the structure before setting viewer zoom.");
+            end
+            this.sendBridgeDataEvent("viewer:command", struct( ...
+                "command", "set-content-zoom", "percent", percent));
+        end
+
         function saveChangesToProject(this)
             %SAVECHANGESTOPROJECT Commit this document's draft to Project.
             if ~this.hasUnsavedChanges()
@@ -278,6 +524,7 @@ classdef MoleculeDisplay < handle
             this.persistModel();
             this.InitialModel = this.ParsedModel.copy();
             this.clearHistory();
+            this.clearRecovery();
         end
 
         function discardChanges(this, render)
@@ -297,6 +544,7 @@ classdef MoleculeDisplay < handle
                 this.LastSelection = struct.empty;
             end
             this.clearHistory();
+            this.clearRecovery();
             notify(this, "SelectionChanged");
         end
 
@@ -319,8 +567,146 @@ classdef MoleculeDisplay < handle
             end
         end
 
+        function setSelectedSiteIndices(this, indices)
+            %SETSELECTEDSITEINDICES Select source sites by MATLAB indices.
+            indices = unique(reshape(double(indices), 1, []), "stable");
+            if any(~isfinite(indices)) || any(indices ~= fix(indices)) || ...
+                    any(indices < 1) || ...
+                    (~isempty(this.ParsedModel) && ...
+                    any(indices > this.ParsedModel.num_sites))
+                error("KSSOLV:Modeling:InvalidSiteIndices", ...
+                    "Site indices must be valid positive integers.");
+            end
+            zeroBased = indices - 1;
+            kind = "none";
+            if ~isempty(indices), kind = "atom"; end
+            % Programmatic selection is authoritative on the MATLAB side.
+            % Updating it before the asynchronous web command prevents a
+            % viewer-ready race from losing selection-set operations.
+            this.LastSelection = struct( ...
+                "siteIndices", zeroBased, "kind", kind);
+            this.PendingSelectionSiteIndices = zeroBased;
+            this.HasPendingSelection = true;
+            notify(this, "SelectionChanged");
+            if ~isempty(this.HTMLComponent) && isvalid(this.HTMLComponent)
+                this.HTMLComponent.sendEventToHTMLSource( ...
+                    "viewer:command", struct( ...
+                    "command", "select-sites", ...
+                    "siteIndices", zeroBased));
+            end
+
+        end
+
+        function result = benchmarkViewerInteraction( ...
+                this, sampleCount, timeout)
+            %BENCHMARKVIEWERINTERACTION Measure production WebGL drag frames.
+            arguments
+                this
+                sampleCount (1,1) double {mustBeInteger, mustBePositive} = 30
+                timeout (1,1) double {mustBePositive} = 30
+            end
+            if isempty(this.HTMLComponent) || ~isvalid(this.HTMLComponent)
+                error("KSSOLV:Modeling:ViewerUnavailable", ...
+                    "Display the structure before running the viewer benchmark.");
+            end
+            started = tic;
+            while toc(started) < timeout
+                requestToken = string(matlab.lang.internal.uuid);
+                this.LastInteractionBenchmark = struct.empty;
+                this.sendBridgeDataEvent( ...
+                    "viewer:command", struct( ...
+                    "command", "benchmark-direct-manipulation", ...
+                    "requestToken", requestToken, ...
+                    "samples", sampleCount));
+                retry = false;
+                while toc(started) < timeout
+                    drawnow
+                    data = this.LastInteractionBenchmark;
+                    if ~isempty(data) && isstruct(data) && ...
+                            isfield(data, "requestToken") && ...
+                            string(data.requestToken) == requestToken
+                        if isfield(data, "status") && ...
+                                string(data.status) == "success"
+                            result = data;
+                            return
+                        end
+                        messageText = "Viewer benchmark failed.";
+                        if isfield(data, "message")
+                            messageText = string(data.message);
+                        end
+                        retry = contains(messageText, ...
+                            "rendered atomic scene is required", ...
+                            IgnoreCase = true);
+                        if ~retry
+                            error("KSSOLV:Modeling:ViewerBenchmark", ...
+                                "%s", messageText);
+                        end
+                        break
+                    end
+                    pause(0.01)
+                end
+                if retry
+                    pause(0.1)
+                    continue
+                end
+                if toc(started) >= timeout
+                    break
+                else
+                    error("KSSOLV:Modeling:ViewerBenchmark", ...
+                        "The viewer benchmark returned no result.");
+                end
+            end
+            error("KSSOLV:Modeling:ViewerBenchmarkTimeout", ...
+                "The viewer interaction benchmark timed out.");
+        end
+
+        function saveSelectionSet(this, name)
+            %SAVESELECTIONSET Persist the current source-site selection.
+            indices = this.getSelectedSiteIndices();
+            if isempty(indices)
+                error("KSSOLV:Modeling:SelectionSetEmpty", ...
+                    "Select at least one atom before saving a selection set.");
+            end
+            [model, set] = ...
+                kssolv.modeling.selection.SelectionSetStore.save( ...
+                this.getModel(), name, indices);
+            this.applyModel(model, "Save selection set: " + set.name);
+        end
+
+        function values = getSelectionSets(this)
+            %GETSELECTIONSETS Return persistent selection-set summaries.
+            values = kssolv.modeling.selection.SelectionSetStore.list( ...
+                this.getModel());
+        end
+
+        function [indices, missingIds] = recallSelectionSet(this, name)
+            %RECALLSELECTIONSET Select all still-present sites in a named set.
+            [indices, missingIds] = ...
+                kssolv.modeling.selection.SelectionSetStore.resolve( ...
+                this.getModel(), name);
+            zeroBased = indices - 1;
+            if isempty(this.HTMLComponent) || ~isvalid(this.HTMLComponent)
+                this.LastSelection = struct( ...
+                    "siteIndices", zeroBased, "kind", "atom");
+                notify(this, "SelectionChanged");
+            else
+                this.HTMLComponent.sendEventToHTMLSource( ...
+                    "viewer:command", struct( ...
+                    "command", "select-sites", ...
+                    "siteIndices", zeroBased));
+            end
+        end
+
+        function removeSelectionSet(this, name)
+            %REMOVESELECTIONSET Delete persistent selection metadata.
+            model = kssolv.modeling.selection.SelectionSetStore.remove( ...
+                this.getModel(), name);
+            this.applyModel(model, "Remove selection set: " + string(name));
+        end
+
         function delete(this)
             %DELETE Remove the cache-busting viewer copy when the display closes.
+            this.prepareForShutdown();
             this.cancelImageExportDestinationTimer();
             if this.HTMLSourcePath ~= "" && isfile(this.HTMLSourcePath)
                 try
@@ -329,6 +715,31 @@ classdef MoleculeDisplay < handle
                     % Temporary files are also reclaimed by the operating system.
                 end
             end
+        end
+
+        function prepareForShutdown(this)
+            %PREPAREFORSHUTDOWN Stop browser and document callbacks early.
+            this.beginClose();
+            if ~isempty(this.HTMLComponent) && isvalid(this.HTMLComponent)
+                try
+                    this.HTMLComponent.HTMLEventReceivedFcn = [];
+                catch
+                end
+            end
+            if ~isempty(this.Document) && isvalid(this.Document)
+                try
+                    this.Document.CanCloseFcn = [];
+                catch
+                end
+            end
+            if ~isempty(this.DocumentCloseListener)
+                try
+                    delete(this.DocumentCloseListener);
+                catch
+                end
+                this.DocumentCloseListener=[];
+            end
+            this.cancelImageExportDestinationTimer();
         end
     end
 
@@ -363,10 +774,18 @@ classdef MoleculeDisplay < handle
                 error("KSSOLV:Modeling:InvalidModel", ...
                     "A modeled result must be a matgenlab structure or molecule.");
             end
-            if model.num_sites < 1 && ~isa(model, ...
-                    "kssolv.analysis.matgenlab.core.IStructure")
-                error("KSSOLV:Modeling:EmptyModel", ...
-                    "An empty modeled result must be a crystal structure.");
+            if model.num_sites < 0
+                error("KSSOLV:Modeling:InvalidSiteCount", ...
+                    "A modeled result cannot have a negative site count.");
+            end
+        end
+
+        function assertCandidateRevision(this, baseRevision)
+            if baseRevision ~= this.CurrentRevision
+                error("KSSOLV:Modeling:StaleCandidate", ...
+                    "The candidate was generated at revision %d, but the " + ...
+                    "document is now at revision %d. Run the search again.", ...
+                    baseRevision, this.CurrentRevision);
             end
         end
 
@@ -400,6 +819,76 @@ classdef MoleculeDisplay < handle
             this.CurrentRevision = 0;
             this.NextRevision = 0;
             notify(this, "HistoryChanged");
+        end
+
+        function checkpointRecovery(this)
+            if isempty(this.RecoveryJournal) || ...
+                    ~isvalid(this.RecoveryJournal) || ...
+                    ~this.hasUnsavedChanges()
+                return
+            end
+            try
+                this.RecoveryJournal.checkpoint(this.ParsedModel, ...
+                    this.CurrentRevision,struct("tag",this.tag));
+            catch exception
+                warning("KSSOLV:Modeling:RecoveryCheckpoint", ...
+                    "Unable to autosave the modeling draft: %s",exception.message);
+            end
+        end
+
+        function clearRecovery(this)
+            if isempty(this.RecoveryJournal) || ...
+                    ~isvalid(this.RecoveryJournal)
+                return
+            end
+            try
+                this.RecoveryJournal.clear();
+            catch exception
+                warning("KSSOLV:Modeling:RecoveryClear", ...
+                    "Unable to remove the recovery snapshot: %s",exception.message);
+            end
+        end
+
+        function promptForRecoveryDraft(this)
+            if ~this.hasRecoveryDraft()
+                return
+            end
+            import kssolv.ui.util.Localizer.message
+            appContainer = kssolv.ui.util.DataStorage.getData("AppContainer");
+            try
+                snapshot = this.RecoveryJournal.recover();
+            catch exception
+                if ~isempty(appContainer) && isvalid(appContainer)
+                    uialert(appContainer, sprintf( ...
+                        message("KSSOLV:dialogs:RecoveryCorruptMessage"), ...
+                        exception.message, this.RecoveryJournal.Path), ...
+                        message("KSSOLV:dialogs:RecoveryCorruptTitle"), ...
+                        "Icon", "warning");
+                end
+                return
+            end
+            restoreLabel = message("KSSOLV:dialogs:RecoveryRestore");
+            discardLabel = message("KSSOLV:dialogs:RecoveryDiscard");
+            laterLabel = message("KSSOLV:dialogs:RecoveryLater");
+            prompt = sprintf(message("KSSOLV:dialogs:RecoveryMessage"), ...
+                string(snapshot.savedAt), double(snapshot.revision));
+            if isdeployed
+                dialog = kssolv.ui.components.dialog.ConfirmDialog( ...
+                    prompt, message("KSSOLV:dialogs:RecoveryTitle"), ...
+                    "Options", {restoreLabel, discardLabel, laterLabel}, ...
+                    "DefaultOption", 1, "CancelOption", 3);
+                selection = dialog.show();
+            else
+                selection = uiconfirm(appContainer, prompt, ...
+                    message("KSSOLV:dialogs:RecoveryTitle"), ...
+                    "Options", {restoreLabel, discardLabel, laterLabel}, ...
+                    "DefaultOption", 1, "CancelOption", 3);
+            end
+            if selection == restoreLabel
+                this.restoreRecoveryDraft();
+            elseif selection == discardLabel
+                this.discardRecoveryDraft();
+            end
         end
 
         function status = canCloseDocument(this)
@@ -452,16 +941,43 @@ classdef MoleculeDisplay < handle
         end
 
         function eventReceiver(this, ~, event)
+            if this.IsClosing
+                return
+            end
             switch string(event.HTMLEventName)
                 case "viewer:ready"
+                    this.sendViewerLocale();
                     this.rebuildScene();
+                    this.sendPendingSelection();
                 case "viewer:analysisRequested"
                     this.applyAnalysisRequest(event.HTMLEventData);
                 case "viewer:selection"
-                    this.LastSelection = event.HTMLEventData;
-                    notify(this, "SelectionChanged");
+                    data = event.HTMLEventData;
+                    if ischar(data) || (isstring(data) && isscalar(data))
+                        data = jsondecode(data);
+                    end
+                    if isstruct(data) && isfield(data, "kind") && ...
+                            string(data.kind) == "benchmark"
+                        this.LastInteractionBenchmark = data;
+                    elseif this.HasPendingSelection && ...
+                            (~isstruct(data) || ...
+                            ~isfield(data, "siteIndices") || ...
+                            ~isequal(unique(reshape( ...
+                            double(data.siteIndices), 1, []), "stable"), ...
+                            this.PendingSelectionSiteIndices))
+                        % Scene initialization emits a transient empty
+                        % selection. Preserve the authoritative MATLAB
+                        % selection and retry once the viewer is live.
+                        this.sendPendingSelection();
+                    else
+                        this.LastSelection = data;
+                        this.HasPendingSelection = false;
+                        notify(this, "SelectionChanged");
+                    end
                 case "viewer:modelingCommandRequested"
                     this.applyModelingRequest(event.HTMLEventData);
+                case "viewer:historyCommand"
+                    this.applyHistoryRequest(event.HTMLEventData);
                 case "viewer:exportStructure"
                     this.exportStructure(event.HTMLEventData);
                 case "viewer:chooseImageExport"
@@ -548,14 +1064,12 @@ classdef MoleculeDisplay < handle
                     error("KSSOLV:Modeling:StaleContextRequest", ...
                         "The structure changed before the modeling command was applied.");
                 end
-                if ~this.isCrystal()
-                    error("KSSOLV:Modeling:CrystalRequired", ...
-                        "Atom modeling commands require a crystal structure.");
-                end
-
                 commandId = string(data.commandId);
                 allowed = ["delete_atoms", "substitute_atoms", ...
-                    "move_atoms", "translate_atoms"];
+                    "move_atoms", "rotate_atoms", "translate_atoms", ...
+                    "sketch_atom", "sketch_ring", "add_bond", ...
+                    "delete_bond", "set_bond_order", "set_distance", ...
+                    "set_angle", "set_dihedral", "place_adsorbate"];
                 if ~isscalar(commandId) || ~any(commandId == allowed)
                     error("KSSOLV:Modeling:ContextCommand", ...
                         "The requested atom modeling command is not available.");
@@ -563,7 +1077,10 @@ classdef MoleculeDisplay < handle
 
                 zeroBased = unique(reshape(double(data.siteIndices), 1, []), ...
                     "stable");
-                if isempty(zeroBased) || any(~isfinite(zeroBased)) || ...
+                selectionOptional = any(commandId == ...
+                    ["sketch_atom", "sketch_ring"]);
+                if (~selectionOptional && isempty(zeroBased)) || ...
+                        any(~isfinite(zeroBased)) || ...
                         any(zeroBased ~= fix(zeroBased)) || ...
                         any(zeroBased < 0) || ...
                         any(zeroBased >= this.ParsedModel.num_sites)
@@ -595,22 +1112,108 @@ classdef MoleculeDisplay < handle
                             source, "coordinates");
                         parameters.cartesian = contextLogical( ...
                             source, "cartesian");
+                    case "rotate_atoms"
+                        parameters.angleDegrees = contextScalar( ...
+                            source, "angleDegrees");
+                        parameters.axis = contextVector(source, "axis");
+                        parameters.anchor = contextVector(source, "anchor");
                     case "translate_atoms"
                         parameters.vector = contextVector(source, "vector");
                         parameters.fractional = contextLogical( ...
                             source, "fractional");
+                    case "sketch_atom"
+                        parameters.species = contextText(source, "species");
+                        parameters.coordinates = contextVector( ...
+                            source, "coordinates");
+                        parameters.connectTo = contextInteger( ...
+                            source, "connectTo", 0, this.ParsedModel.num_sites);
+                        parameters.bondOrder = contextBondOrder(source);
+                        parameters.formalCharge = contextScalar( ...
+                            source, "formalCharge");
+                        parameters.hybridization = ...
+                            contextText(source, "hybridization");
+                        parameters.aromatic = contextLogical( ...
+                            source, "aromatic");
+                    case "sketch_ring"
+                        parameters.ringSize = contextInteger( ...
+                            source, "ringSize", 3, 8);
+                        parameters.species = contextText(source, "species");
+                        parameters.center = contextVector(source, "center");
+                        parameters.normal = contextVector(source, "normal");
+                        parameters.bondOrder = contextBondOrder(source);
+                        parameters.aromatic = contextLogical( ...
+                            source, "aromatic");
+                        parameters.attachTo = contextInteger( ...
+                            source, "attachTo", 0, this.ParsedModel.num_sites);
+                    case {"add_bond", "set_bond_order"}
+                        if this.isCrystal() || numel(zeroBased) ~= 2
+                            error("KSSOLV:Modeling:InteractiveBondSelection", ...
+                                "Select exactly two molecular atoms for bond editing.");
+                        end
+                        parameters.bondOrder = contextBondOrder(source);
+                    case "delete_bond"
+                        if this.isCrystal() || numel(zeroBased) ~= 2
+                            error("KSSOLV:Modeling:InteractiveBondSelection", ...
+                                "Select exactly two molecular atoms for bond editing.");
+                        end
+                    case "place_adsorbate"
+                        if numel(zeroBased) ~= 1 || ~this.isCrystal()
+                            error("KSSOLV:Modeling:InteractiveAdsorbateAnchor", ...
+                                "Select one crystal atom as the adsorption anchor.");
+                        end
+                        if ~isfield(source, "adsorbateCoordinates")
+                            error("KSSOLV:Modeling:ContextAdsorbate", ...
+                                "Interactive adsorbates require the generic species, coordinates, and bonds protocol.");
+                        end
+                        parameters.anchorSites = zeroBased + 1;
+                        parameters.adsorbateName = ...
+                            contextText(source, "adsorbateName");
+                        parameters.adsorbateSpecies = ...
+                            contextTextArray(source, "adsorbateSpecies");
+                        parameters.adsorbateCoordinates = ...
+                            contextMatrix(source, ...
+                            "adsorbateCoordinates", 3, false);
+                        parameters.adsorbateBonds = ...
+                            contextMatrix(source, "adsorbateBonds", 3, true);
+                        parameters.anchorAtomIndices = ...
+                            contextIntegerArray(source, ...
+                            "anchorAtomIndices", 1, ...
+                            numel(parameters.adsorbateSpecies));
+                        if size(parameters.adsorbateCoordinates, 1) ~= ...
+                                numel(parameters.adsorbateSpecies)
+                            error("KSSOLV:Modeling:ContextAdsorbate", ...
+                                "Adsorbate species and coordinate counts must match.");
+                        end
+                        parameters.minimumDistance = contextScalar( ...
+                            source, "minimumDistance");
+                    case {"set_distance", "set_angle", "set_dihedral"}
+                        parameters.value = contextScalar(source, "value");
+                        parameters.scope = contextText(source, "scope");
+                        if ~any(parameters.scope == ...
+                                ["atom", "subtree", "fragment"])
+                            error("KSSOLV:Modeling:ContextScope", ...
+                                "Move scope must be atom, subtree, or fragment.");
+                        end
+                        parameters.referenceCoordinates = contextMatrix( ...
+                            source, "referenceCoordinates", 3, false);
+                        if size(parameters.referenceCoordinates, 1) ~= ...
+                                numel(zeroBased)
+                            error("KSSOLV:Modeling:ContextGeometryReference", ...
+                                "Reference-coordinate count must match the selected atom count.");
+                        end
                 end
 
                 commandInfo = kssolv.modeling.CommandCatalog.find(commandId);
                 commandLabel = kssolv.ui.util.Localizer.message( ...
                     commandInfo.labelKey);
-                result = kssolv.modeling.CommandExecutor.execute( ...
-                    this.getModel(), commandId, parameters);
+                transaction = this.previewModelingCommand( ...
+                    commandId, parameters);
+                result = this.commitModelingTransaction( ...
+                    transaction, commandLabel);
                 if ~result.changed
                     error("KSSOLV:Modeling:ContextUnchanged", ...
                         "The modeling command did not update the structure.");
                 end
-                this.applyModel(result.model, commandLabel);
                 this.sendModelingResult(commandId, "success", "");
             catch exception
                 this.sendModelingResult(commandId, "error", ...
@@ -642,6 +1245,110 @@ classdef MoleculeDisplay < handle
                 end
                 value = logical(value);
             end
+
+            function value = contextScalar(sourceValue, name)
+                if ~isfield(sourceValue, name)
+                    error("KSSOLV:Modeling:ContextScalar", ...
+                        "Parameter '%s' is required.", name);
+                end
+                value = double(sourceValue.(name));
+                if ~isscalar(value) || ~isfinite(value)
+                    error("KSSOLV:Modeling:ContextScalar", ...
+                        "Parameter '%s' must be a finite scalar.", name);
+                end
+            end
+
+            function value = contextInteger(sourceValue, name, minimum, maximum)
+                value = contextScalar(sourceValue, name);
+                if value ~= fix(value) || value < minimum || value > maximum
+                    error("KSSOLV:Modeling:ContextInteger", ...
+                        "Parameter '%s' must be an integer from %d to %d.", ...
+                        name, minimum, maximum);
+                end
+            end
+
+            function value = contextText(sourceValue, name)
+                if ~isfield(sourceValue, name)
+                    error("KSSOLV:Modeling:ContextText", ...
+                        "Parameter '%s' is required.", name);
+                end
+                value = strtrim(string(sourceValue.(name)));
+                if ~isscalar(value) || value == ""
+                    error("KSSOLV:Modeling:ContextText", ...
+                        "Parameter '%s' must be nonempty text.", name);
+                end
+            end
+
+            function value = contextTextArray(sourceValue, name)
+                if ~isfield(sourceValue, name)
+                    error("KSSOLV:Modeling:ContextTextArray", ...
+                        "Parameter '%s' is required.", name);
+                end
+                value = reshape(strtrim(string(sourceValue.(name))), 1, []);
+                if isempty(value) || any(value == "")
+                    error("KSSOLV:Modeling:ContextTextArray", ...
+                        "Parameter '%s' must contain nonempty text.", name);
+                end
+            end
+
+            function value = contextMatrix( ...
+                    sourceValue, name, width, allowEmpty)
+                if ~isfield(sourceValue, name)
+                    error("KSSOLV:Modeling:ContextMatrix", ...
+                        "Parameter '%s' is required.", name);
+                end
+                value = double(sourceValue.(name));
+                if isempty(value) && allowEmpty
+                    value = zeros(0, width);
+                    return
+                end
+                if size(value, 2) ~= width || any(~isfinite(value), "all")
+                    error("KSSOLV:Modeling:ContextMatrix", ...
+                        "Parameter '%s' must be a finite N-by-%d array.", ...
+                        name, width);
+                end
+            end
+
+            function value = contextIntegerArray( ...
+                    sourceValue, name, minimum, maximum)
+                if ~isfield(sourceValue, name)
+                    error("KSSOLV:Modeling:ContextIntegerArray", ...
+                        "Parameter '%s' is required.", name);
+                end
+                value = reshape(double(sourceValue.(name)), 1, []);
+                if isempty(value) || any(~isfinite(value)) || ...
+                        any(value ~= fix(value)) || any(value < minimum) || ...
+                        any(value > maximum)
+                    error("KSSOLV:Modeling:ContextIntegerArray", ...
+                        "Parameter '%s' must contain integers from %d to %d.", ...
+                        name, minimum, maximum);
+                end
+            end
+
+            function value = contextBondOrder(sourceValue)
+                value = contextScalar(sourceValue, "bondOrder");
+                if ~any(abs(value - [1, 1.5, 2, 3]) < 1e-12)
+                    error("KSSOLV:Modeling:ContextBondOrder", ...
+                        "Bond order must be 1, 1.5, 2, or 3.");
+                end
+            end
+        end
+
+        function applyHistoryRequest(this, data)
+            if ~isstruct(data) || ~isscalar(data) || ...
+                    ~isfield(data, "requestId") || ...
+                    ~isfield(data, "command")
+                return
+            end
+            if string(data.requestId) ~= this.CurrentRequestId
+                return
+            end
+            switch string(data.command)
+                case "undo"
+                    this.undo();
+                case "redo"
+                    this.redo();
+            end
         end
 
         function rebuildScene(this)
@@ -653,6 +1360,13 @@ classdef MoleculeDisplay < handle
                 this
                 model
                 throwOnFailure (1,1) logical = false
+            end
+            if this.IsClosing
+                if throwOnFailure
+                    error("KSSOLV:CrystalViewer:SceneClosed", ...
+                        "The document closed while scene generation was pending.");
+                end
+                return
             end
             if this.IsBuilding
                 if throwOnFailure
@@ -688,34 +1402,55 @@ classdef MoleculeDisplay < handle
             try
                 isMolecule = isa(model, ...
                     "kssolv.analysis.matgenlab.core.IMolecule");
-                if model.num_sites >= 256
+                sceneOptions = this.SceneOptions;
+                % Modeling commands can intentionally cross the molecule /
+                % periodic-structure boundary (for example amorphous packing).
+                % Keep the user's remaining view settings, but translate the
+                % connectivity choice to one accepted by the new model type.
+                if isMolecule
+                    if ~any(string(sceneOptions.algorithm) == ...
+                            ["Auto", "Source", "OpenBabelNN"])
+                        sceneOptions.algorithm = "Auto";
+                    end
+                elseif any(string(sceneOptions.algorithm) == ...
+                        ["Auto", "Source", "OpenBabelNN"])
+                    sceneOptions.algorithm = "CrystalNN";
+                end
+                % Deliver an atoms-first frame before expensive connectivity
+                % for medium and large models. This keeps structure switching
+                % responsive while the exact cached scene is compiled.
+                if model.num_sites >= 1
                     if isMolecule
                         preview = ...
                             kssolv.ui.scene.atomic.MoleculeSceneBuilder.build( ...
                             model, ...
-                            algorithm = this.SceneOptions.algorithm, ...
+                            algorithm = sceneOptions.algorithm, ...
                             includeConnectivity = false, ...
                             requestId = requestId);
                     else
                         preview = ...
                             kssolv.ui.scene.atomic.CrystalSceneBuilder.build( ...
                             model, ...
-                            algorithm = this.SceneOptions.algorithm, ...
-                            cell = this.SceneOptions.cell, ...
-                            repeat = this.SceneOptions.repeat, ...
+                            algorithm = sceneOptions.algorithm, ...
+                            cell = sceneOptions.cell, ...
+                            repeat = sceneOptions.repeat, ...
                             includeConnectivity = false, ...
                             includePolyhedra = false, ...
                             requestId = requestId);
                     end
                     this.sendScene(preview);
                     drawnow limitrate
+                    if this.IsClosing
+                        error("KSSOLV:CrystalViewer:SceneClosed", ...
+                            "The document closed while scene generation was pending.");
+                    end
                 end
                 if isMolecule
                     scene = kssolv.ui.scene.atomic.MoleculeSceneCache.build( ...
-                        model, this.SceneOptions, requestId);
+                        model, sceneOptions, requestId);
                 else
                     scene = kssolv.ui.scene.atomic.CrystalSceneCache.build( ...
-                        model, this.SceneOptions, requestId);
+                        model, sceneOptions, requestId);
                 end
                 this.sendScene(scene);
                 this.sendExportFormats(model);
@@ -733,19 +1468,87 @@ classdef MoleculeDisplay < handle
         end
 
         function sendScene(this, scene)
+            if this.IsClosing || isempty(this.HTMLComponent) || ...
+                    ~isvalid(this.HTMLComponent)
+                return
+            end
             transport = ...
                 kssolv.ui.scene.atomic.CrystalSceneSerializer. ...
                 transportScene(scene);
+            try
+                fragmentStorePath = kssolv.ui.util.DataStorage.getData( ...
+                    "ModelingFragmentStorePath");
+                if isempty(fragmentStorePath)
+                    userFragments = kssolv.modeling.adsorption. ...
+                        AdsorbateFragmentCatalog.userFragments();
+                else
+                    userFragments = kssolv.modeling.adsorption. ...
+                        AdsorbateFragmentCatalog.userFragments( ...
+                        StorePath = string(fragmentStorePath));
+                end
+            catch exception
+                warning("KSSOLV:Modeling:AdsorbateFragmentCatalog", ...
+                    "User adsorbate fragments were skipped: %s", ...
+                    exception.message);
+                userFragments = struct([]);
+            end
+            transport.modeling = kssolv.ui.scene.atomic. ...
+                CrystalSceneSerializer.modeling(scene, userFragments);
             this.HTMLComponent.sendEventToHTMLSource( ...
                 "scene:set", jsonencode(transport));
         end
 
+        function sendPendingSelection(this)
+            if ~this.HasPendingSelection || isempty(this.HTMLComponent) || ...
+                    ~isvalid(this.HTMLComponent)
+                return
+            end
+            this.HTMLComponent.sendEventToHTMLSource( ...
+                "viewer:command", struct( ...
+                "command", "select-sites", ...
+                "siteIndices", this.PendingSelectionSiteIndices));
+        end
+
+        function sendViewerLocale(this)
+            if this.IsClosing || isempty(this.HTMLComponent) || ...
+                    ~isvalid(this.HTMLComponent)
+                return
+            end
+            locale = this.viewerLocale();
+            this.HTMLComponent.sendEventToHTMLSource( ...
+                "viewer:locale", struct("locale", locale));
+        end
+
+        function locale = viewerLocale(~)
+            locale = string(kssolv.ui.util.Localizer. ...
+                getInstance().currentLocale);
+            if startsWith(locale, "zh")
+                locale = "zh-CN";
+            else
+                locale = "en-US";
+            end
+        end
+
         function sendExportFormats(this, model)
+            if this.IsClosing || isempty(this.HTMLComponent) || ...
+                    ~isvalid(this.HTMLComponent)
+                return
+            end
             formats = kssolv.ui.scene.atomic.StructureExportCatalog. ...
                 list(model, this.structureFileType);
             payload = struct("formats", formats);
             this.HTMLComponent.sendEventToHTMLSource( ...
                 "structure:exportFormats", jsonencode(payload));
+        end
+
+        function beginClose(this)
+            if this.IsClosing, return, end
+            this.IsClosing=true;
+            this.RequestSerial=this.RequestSerial+1;
+            this.CurrentRequestId="closed-"+ ...
+                string(matlab.lang.internal.uuid);
+            this.cancelImageExportDestinationTimer();
+            this.clearPendingImageExport(true);
         end
 
         function exportStructure(this, data)

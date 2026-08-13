@@ -120,3 +120,11 @@ After notarization completes successfully, a signed and notarized `.dmg` archive
 
 - Ensure that the MATLAB Runtime version bundled with the standalone installer matches the MATLAB version used for compilation.
 - Missing submodules, incorrect MATLAB versions, or unsigned binaries are common causes of build or installation failures.
+
+## Active Development Plans
+
+- [Modeling system P1-P10 development and acceptance plan](../modeling-development-plan.zh-CN.md)
+- [Materials Studio modeling gap analysis](../materials-studio-modeling-gap-analysis.zh-CN.md)
+- [Modeling user guide](../modeling-user-guide.zh-CN.md)
+- [Modeling API v1](../modeling-api.md)
+- [Volume viewer development plan](../volume-viewer-development-plan.zh-CN.md)

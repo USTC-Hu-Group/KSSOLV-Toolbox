@@ -38,8 +38,8 @@ classdef CrystalSceneCache
                 includeBondedOutside = true, ...
                 requestId = requestId);
             scene.analysis.parameters.cacheHit = false;
-            serialized = jsonencode(scene);
-            incomingBytes = strlength(string(serialized)) * 2;
+            allocation = whos("scene");
+            incomingBytes = allocation.bytes;
             while ~isempty(order) && ...
                     (numel(order) >= 6 || ...
                     totalBytes + incomingBytes > 80 * 1024 * 1024)

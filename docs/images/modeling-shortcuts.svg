@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">KSSOLV Modeling keyboard shortcuts on macOS</title>
+  <desc id="desc">A compact bilingual reference for selection, transform, axes, history, and view shortcuts.</desc>
+  <rect width="1200" height="720" rx="30" fill="#f4f8fb"/>
+  <text x="60" y="72" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="38" font-weight="700" fill="#0b2a4a">KSSOLV Modeling · macOS 快捷键</text>
+  <text x="60" y="108" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="18" fill="#47657e">视窗激活时生效；输入框、菜单和文本编辑期间自动暂停</text>
+  <g font-family="-apple-system,Helvetica,Arial,sans-serif">
+    <rect x="60" y="145" width="520" height="235" rx="18" fill="#fff" stroke="#c9d9e5"/>
+    <text x="88" y="185" font-size="24" font-weight="700" fill="#0b2a4a">选择 Selection</text>
+    <text x="88" y="230" font-size="20" fill="#173e5f">Click / ⇧ Click</text><text x="305" y="230" font-size="20" fill="#47657e">选择 / 切换原子</text>
+    <text x="88" y="270" font-size="20" fill="#173e5f">⌘ A</text><text x="305" y="270" font-size="20" fill="#47657e">全选原子</text>
+    <text x="88" y="310" font-size="20" fill="#173e5f">B / L</text><text x="305" y="310" font-size="20" fill="#47657e">框选 / 套索</text>
+    <text x="88" y="350" font-size="20" fill="#173e5f">Esc / Delete</text><text x="305" y="350" font-size="20" fill="#47657e">清除 / 删除选择</text>
+    <rect x="620" y="145" width="520" height="235" rx="18" fill="#fff" stroke="#c9d9e5"/>
+    <text x="648" y="185" font-size="24" font-weight="700" fill="#0b2a4a">变换 Transform</text>
+    <text x="648" y="230" font-size="20" fill="#173e5f">G / R</text><text x="865" y="230" font-size="20" fill="#47657e">移动 / 旋转选择</text>
+    <text x="648" y="270" font-size="20" fill="#173e5f">X / Y / Z</text><text x="865" y="270" font-size="20" fill="#47657e">约束到坐标轴</text>
+    <text x="648" y="310" font-size="20" fill="#173e5f">Enter</text><text x="865" y="310" font-size="20" fill="#47657e">提交预览</text>
+    <text x="648" y="350" font-size="20" fill="#173e5f">Esc</text><text x="865" y="350" font-size="20" fill="#47657e">取消工具</text>
+    <rect x="60" y="415" width="520" height="235" rx="18" fill="#fff" stroke="#c9d9e5"/>
+    <text x="88" y="455" font-size="24" font-weight="700" fill="#0b2a4a">历史 History</text>
+    <text x="88" y="505" font-size="20" fill="#173e5f">⌘ Z</text><text x="305" y="505" font-size="20" fill="#47657e">撤销</text>
+    <text x="88" y="550" font-size="20" fill="#173e5f">⇧ ⌘ Z</text><text x="305" y="550" font-size="20" fill="#47657e">重做</text>
+    <text x="88" y="595" font-size="20" fill="#173e5f">预览 → 应用</text><text x="305" y="595" font-size="20" fill="#47657e">保持单步事务</text>
+    <rect x="620" y="415" width="520" height="235" rx="18" fill="#fff" stroke="#c9d9e5"/>
+    <text x="648" y="455" font-size="24" font-weight="700" fill="#0b2a4a">视图 View</text>
+    <text x="648" y="505" font-size="20" fill="#173e5f">Space</text><text x="865" y="505" font-size="20" fill="#47657e">居中视图</text>
+    <text x="648" y="550" font-size="20" fill="#173e5f">I</text><text x="865" y="550" font-size="20" fill="#47657e">极简界面</text>
+    <text x="648" y="595" font-size="20" fill="#173e5f">?</text><text x="865" y="595" font-size="20" fill="#47657e">帮助与键位自定义</text>
+  </g>
+  <text x="60" y="690" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="16" fill="#6b8295">KSSOLV Toolbox · Modeling schema v1</text>
+</svg>

@@ -3,14 +3,18 @@
 
 # Editor
 **/*.asv
+**/*.m~
+**/*.swp
+**/.idea/
+**/.vscode/
+.claude/settings.local.json
 
 # KSSOLV Toolbox Project files
 **/*.ks
+!/ks.ks
 
 # Test Data Directory
-data/
-!/+kssolv/+settings/data/
-!/+kssolv/+settings/data/materials-project-default.json
+/data/
 
 # P-Code files
 **/*.p
@@ -23,6 +27,13 @@ data/
 
 # Debug scipts
 dev/*
+!dev/modeling/
+dev/modeling/*
+!dev/modeling/acceptance/
+dev/modeling/acceptance/*
+!dev/modeling/acceptance/README.md
+!dev/modeling/acceptance/scenarios/
+!dev/modeling/acceptance/scenarios/*.m
 !dev/matgenlab/
 Untitled*
 
@@ -30,12 +41,23 @@ Untitled*
 StandaloneDesktopApp/
 Toolbox/
 Release/
-frontend/node_modules/
-frontend/apps/*/node_modules/
+**/node_modules/
 frontend/apps/*/dist/
+**/.vite/
+**/coverage/
+/output/
+/tmp/
+/fmt
 
 # Environment variable configurations
 .env
+.env.*
+!.env.example
++kssolv/+settings/data/materials-project-default.json
 
 # Code Analyzer
 derived/
+
+# Python caches
+**/__pycache__/
+*.py[cod]

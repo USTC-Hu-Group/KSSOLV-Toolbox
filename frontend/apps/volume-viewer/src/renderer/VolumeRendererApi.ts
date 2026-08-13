@@ -2,6 +2,7 @@ import type { VolumeChannelSpec, VolumeSceneSpec } from '@kssolv/volume-scene';
 import type { CrystalCameraAxis } from '@kssolv/three-scene';
 
 import type { VolumeOptions } from '../state/volumeStore';
+import type { ImageExportFormat } from './imageExport';
 
 export interface VolumeProbe {
   world: [number, number, number];
@@ -16,6 +17,8 @@ export interface VolumeRendererDiagnostics {
   geometries: number;
   textures: number;
   programs: number;
+  drawCalls: number;
+  triangles: number;
 }
 
 export interface VolumeRendererApi {
@@ -31,7 +34,9 @@ export interface VolumeRendererApi {
   centerView(): void;
   resetView(): void;
   setCameraAxis(axis: CrystalCameraAxis): void;
+  setAutoRotation(enabled: boolean): void;
   screenshot(scale?: number): string;
+  exportImage(format: ImageExportFormat, scale?: number): Promise<Blob>;
   exportIsosurface(
     format: IsosurfaceExportFormat,
   ): Promise<{ data: ArrayBuffer | string; mime: string }>;

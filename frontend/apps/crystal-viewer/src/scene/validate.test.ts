@@ -20,6 +20,62 @@ describe('CrystalSceneSpec validation', () => {
     expect(() => validateScene(unsupported)).toThrow(/unsupported view hint/);
   });
 
+  it('validates optional user adsorbate fragments at the scene boundary', () => {
+    const scene = createDebugScene();
+    scene.modeling = {
+      adsorbateFragments: [
+        {
+          id: 'user-formyl-o',
+          label: 'User formyl · O anchor',
+          formula: 'CO',
+          species: ['O', 'C'],
+          coordinates: [
+            [0, 0, 0],
+            [1.2, 0, 0],
+          ],
+          bonds: [[0, 1, 2]],
+          anchorAtomIndex: 0,
+          orientation: [1, 0, 0],
+          defaultHostBondLength: 2,
+          source: 'user',
+        },
+      ],
+      constructionBonds: [
+        {
+          firstElement: 'C',
+          secondElement: 'O',
+          bondOrder: 1,
+          value: 1.43,
+          unit: 'angstrom',
+          parameterSet: 'kssolv-generic-mm-parameters-v2',
+          source: 'frozen-pymatgen-bond-lengths',
+          fallback: false,
+        },
+      ],
+    };
+    expect(validateScene(scene)).toBe(scene);
+    scene.modeling.adsorbateFragments[0]!.anchorAtomIndex = 2;
+    expect(() => validateScene(scene)).toThrow(/unknown atom/);
+  });
+
+  it('rejects malformed or duplicate construction bond parameters', () => {
+    const scene = createDebugScene();
+    const parameter = {
+      firstElement: 'C',
+      secondElement: 'O',
+      bondOrder: 1,
+      value: 1.43,
+      unit: 'angstrom' as const,
+      parameterSet: 'kssolv-generic-mm-parameters-v2',
+      source: 'frozen-pymatgen-bond-lengths',
+      fallback: false,
+    };
+    scene.modeling = { adsorbateFragments: [], constructionBonds: [parameter, parameter] };
+    expect(() => validateScene(scene)).toThrow(/keys must be unique/);
+    scene.modeling.constructionBonds = [{ ...parameter, value: 0 }];
+    expect(() => validateScene(scene)).toThrow(/must be positive/);
+  });
+
   it('accepts every Crystal Toolkit bonding strategy exposed by the viewer', () => {
     const algorithms: BondAlgorithm[] = [
       'CrystalNN',

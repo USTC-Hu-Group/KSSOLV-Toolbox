@@ -1,5 +1,7 @@
 import { createApp } from 'vue';
 
+import { installEmbeddedBrowserZoomGuard } from '@kssolv/matlab-bridge';
+
 import App from './App.vue';
 import { matlabBridge, type MatlabHtmlComponent } from './bridge/matlabBridge';
 import {
@@ -16,6 +18,7 @@ import './style.css';
 declare global {
   interface Window {
     MATLAB?: MatlabHtmlComponent;
+    __KSSOLV_PENDING_MATLAB_COMPONENT__?: MatlabHtmlComponent;
     setup: (htmlComponent: MatlabHtmlComponent) => void;
     debug: () => void;
     __KSSOLV_OFFLINE_VIEWER__?: {
@@ -27,6 +30,8 @@ declare global {
 }
 
 let mounted = false;
+
+installEmbeddedBrowserZoomGuard();
 
 const debugCrystalExportFormats: StructureExportFormat[] = [
   { format: 'cif', label: 'CIF', extension: 'cif', detail: '.cif' },
@@ -70,6 +75,12 @@ window.setup = (htmlComponent: MatlabHtmlComponent): void => {
   matlabBridge.attach(htmlComponent);
   mount();
 };
+
+const pendingMatlabComponent = window.__KSSOLV_PENDING_MATLAB_COMPONENT__;
+if (pendingMatlabComponent) {
+  delete window.__KSSOLV_PENDING_MATLAB_COMPONENT__;
+  window.setup(pendingMatlabComponent);
+}
 
 window.debug = (): void => {
   const debugStore = useViewerStore();

@@ -1,14 +1,16 @@
 import type {
   AtomInstanceSpec,
+  AdsorbateFragmentSpec,
   AtomicSceneSpec,
   BondInstanceSpec,
   BondRelationSpec,
+  ConstructionBondParameterSpec,
   Matrix3Tuple,
   PolyhedronSpec,
   SceneWarning,
   SiteSpec,
   Vector3Tuple,
-} from './types';
+} from "./types";
 
 export class SceneValidationError extends Error {
   constructor(
@@ -16,34 +18,34 @@ export class SceneValidationError extends Error {
     readonly path: string,
   ) {
     super(`${path}: ${message}`);
-    this.name = 'SceneValidationError';
+    this.name = "SceneValidationError";
   }
 }
 
 const objectAt = (value: unknown, path: string): Record<string, unknown> => {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    throw new SceneValidationError('expected an object', path);
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new SceneValidationError("expected an object", path);
   }
   return value as Record<string, unknown>;
 };
 
 const arrayAt = (value: unknown, path: string): unknown[] => {
   if (!Array.isArray(value)) {
-    throw new SceneValidationError('expected an array', path);
+    throw new SceneValidationError("expected an array", path);
   }
   return value;
 };
 
 const stringAt = (value: unknown, path: string): string => {
-  if (typeof value !== 'string') {
-    throw new SceneValidationError('expected a string', path);
+  if (typeof value !== "string") {
+    throw new SceneValidationError("expected a string", path);
   }
   return value;
 };
 
 const finiteAt = (value: unknown, path: string): number => {
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    throw new SceneValidationError('expected a finite number', path);
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new SceneValidationError("expected a finite number", path);
   }
   return value;
 };
@@ -51,14 +53,22 @@ const finiteAt = (value: unknown, path: string): number => {
 const integerAt = (value: unknown, path: string): number => {
   const number = finiteAt(value, path);
   if (!Number.isInteger(number)) {
-    throw new SceneValidationError('expected an integer', path);
+    throw new SceneValidationError("expected an integer", path);
+  }
+  return number;
+};
+
+const nonNegativeIntegerAt = (value: unknown, path: string): number => {
+  const number = integerAt(value, path);
+  if (number < 0) {
+    throw new SceneValidationError("expected a non-negative integer", path);
   }
   return number;
 };
 
 const booleanAt = (value: unknown, path: string): boolean => {
-  if (typeof value !== 'boolean') {
-    throw new SceneValidationError('expected a boolean', path);
+  if (typeof value !== "boolean") {
+    throw new SceneValidationError("expected a boolean", path);
   }
   return value;
 };
@@ -66,50 +76,74 @@ const booleanAt = (value: unknown, path: string): boolean => {
 const vectorAt = (value: unknown, path: string): Vector3Tuple => {
   const input = arrayAt(value, path);
   if (input.length !== 3) {
-    throw new SceneValidationError('expected exactly three entries', path);
+    throw new SceneValidationError("expected exactly three entries", path);
   }
-  return input.map((entry, index) => finiteAt(entry, `${path}[${index}]`)) as Vector3Tuple;
+  return input.map((entry, index) =>
+    finiteAt(entry, `${path}[${index}]`),
+  ) as Vector3Tuple;
 };
 
 const matrixAt = (value: unknown, path: string): Matrix3Tuple => {
   const input = arrayAt(value, path);
   if (input.length !== 3) {
-    throw new SceneValidationError('expected exactly three rows', path);
+    throw new SceneValidationError("expected exactly three rows", path);
   }
-  return input.map((entry, index) => vectorAt(entry, `${path}[${index}]`)) as Matrix3Tuple;
+  return input.map((entry, index) =>
+    vectorAt(entry, `${path}[${index}]`),
+  ) as Matrix3Tuple;
 };
 
 const parseSite = (value: unknown, index: number): SiteSpec => {
   const path = `sites[${index}]`;
   const site = objectAt(value, path);
-  const species = arrayAt(site.species, `${path}.species`).map((entry, componentIndex) => {
-    const componentPath = `${path}.species[${componentIndex}]`;
-    const component = objectAt(entry, componentPath);
-    const occupancy = finiteAt(component.occupancy, `${componentPath}.occupancy`);
-    if (occupancy <= 0 || occupancy > 1) {
-      throw new SceneValidationError(
-        'must be in the interval (0, 1]',
+  const species = arrayAt(site.species, `${path}.species`).map(
+    (entry, componentIndex) => {
+      const componentPath = `${path}.species[${componentIndex}]`;
+      const component = objectAt(entry, componentPath);
+      const occupancy = finiteAt(
+        component.occupancy,
         `${componentPath}.occupancy`,
       );
-    }
-    return {
-      symbol: stringAt(component.symbol, `${componentPath}.symbol`),
-      occupancy,
-      atomicNumber: integerAt(component.atomicNumber, `${componentPath}.atomicNumber`),
-      colorVesta: vectorAt(component.colorVesta, `${componentPath}.colorVesta`),
-      colorJmol: vectorAt(component.colorJmol, `${componentPath}.colorJmol`),
-      atomicRadius: finiteAt(component.atomicRadius, `${componentPath}.atomicRadius`),
-    };
-  });
+      if (occupancy <= 0 || occupancy > 1) {
+        throw new SceneValidationError(
+          "must be in the interval (0, 1]",
+          `${componentPath}.occupancy`,
+        );
+      }
+      return {
+        symbol: stringAt(component.symbol, `${componentPath}.symbol`),
+        occupancy,
+        atomicNumber: integerAt(
+          component.atomicNumber,
+          `${componentPath}.atomicNumber`,
+        ),
+        colorVesta: vectorAt(
+          component.colorVesta,
+          `${componentPath}.colorVesta`,
+        ),
+        colorJmol: vectorAt(component.colorJmol, `${componentPath}.colorJmol`),
+        atomicRadius: finiteAt(
+          component.atomicRadius,
+          `${componentPath}.atomicRadius`,
+        ),
+      };
+    },
+  );
   if (species.length === 0) {
     throw new SceneValidationError(
-      'must contain at least one species component',
+      "must contain at least one species component",
       `${path}.species`,
     );
   }
-  const occupancy = species.reduce((sum, component) => sum + component.occupancy, 0);
+  const occupancy = species.reduce(
+    (sum, component) => sum + component.occupancy,
+    0,
+  );
   if (occupancy > 1.000001) {
-    throw new SceneValidationError('occupancies sum to more than one', `${path}.species`);
+    throw new SceneValidationError(
+      "occupancies sum to more than one",
+      `${path}.species`,
+    );
   }
   return {
     id: stringAt(site.id, `${path}.id`),
@@ -120,7 +154,9 @@ const parseSite = (value: unknown, index: number): SiteSpec => {
       ? {}
       : { fractional: vectorAt(site.fractional, `${path}.fractional`) }),
     cartesian: vectorAt(site.cartesian, `${path}.cartesian`),
-    ...(site.magmom === undefined ? {} : { magmom: vectorAt(site.magmom, `${path}.magmom`) }),
+    ...(site.magmom === undefined
+      ? {}
+      : { magmom: vectorAt(site.magmom, `${path}.magmom`) }),
   };
 };
 
@@ -128,12 +164,18 @@ const parseAtom = (value: unknown, index: number): AtomInstanceSpec => {
   const path = `atomInstances[${index}]`;
   const atom = objectAt(value, path);
   const visibility = stringAt(atom.visibility, `${path}.visibility`);
-  if (!['base', 'boundary', 'bonded', 'repeat'].includes(visibility)) {
-    throw new SceneValidationError('has an unsupported visibility group', `${path}.visibility`);
+  if (!["base", "boundary", "bonded", "repeat"].includes(visibility)) {
+    throw new SceneValidationError(
+      "has an unsupported visibility group",
+      `${path}.visibility`,
+    );
   }
   const imageOffset = vectorAt(atom.imageOffset, `${path}.imageOffset`);
   if (!imageOffset.every(Number.isInteger)) {
-    throw new SceneValidationError('entries must be integers', `${path}.imageOffset`);
+    throw new SceneValidationError(
+      "entries must be integers",
+      `${path}.imageOffset`,
+    );
   }
   return {
     id: stringAt(atom.id, `${path}.id`),
@@ -141,7 +183,7 @@ const parseAtom = (value: unknown, index: number): AtomInstanceSpec => {
     siteIndex: integerAt(atom.siteIndex, `${path}.siteIndex`),
     imageOffset,
     position: vectorAt(atom.position, `${path}.position`),
-    visibility: visibility as AtomInstanceSpec['visibility'],
+    visibility: visibility as AtomInstanceSpec["visibility"],
   };
 };
 
@@ -149,17 +191,20 @@ const parseBondInstance = (value: unknown, index: number): BondInstanceSpec => {
   const path = `bondInstances[${index}]`;
   const bond = objectAt(value, path);
   const visibility = stringAt(bond.visibility, `${path}.visibility`);
-  if (visibility !== 'base' && visibility !== 'bonded') {
-    throw new SceneValidationError('has an unsupported visibility group', `${path}.visibility`);
+  if (visibility !== "base" && visibility !== "bonded") {
+    throw new SceneValidationError(
+      "has an unsupported visibility group",
+      `${path}.visibility`,
+    );
   }
   const fromImage = vectorAt(bond.fromImage, `${path}.fromImage`);
   const toImage = vectorAt(bond.toImage, `${path}.toImage`);
   if (![...fromImage, ...toImage].every(Number.isInteger)) {
-    throw new SceneValidationError('image entries must be integers', path);
+    throw new SceneValidationError("image entries must be integers", path);
   }
   const distance = finiteAt(bond.distance, `${path}.distance`);
   if (distance <= 0) {
-    throw new SceneValidationError('must be positive', `${path}.distance`);
+    throw new SceneValidationError("must be positive", `${path}.distance`);
   }
   return {
     id: stringAt(bond.id, `${path}.id`),
@@ -172,7 +217,9 @@ const parseBondInstance = (value: unknown, index: number): BondInstanceSpec => {
     end: vectorAt(bond.end, `${path}.end`),
     distance,
     visibility,
-    ...(bond.order === undefined ? {} : { order: finiteAt(bond.order, `${path}.order`) }),
+    ...(bond.order === undefined
+      ? {}
+      : { order: finiteAt(bond.order, `${path}.order`) }),
     ...(bond.origin === undefined
       ? {}
       : {
@@ -186,12 +233,21 @@ const parseBondRelation = (value: unknown, index: number): BondRelationSpec => {
   const relation = objectAt(value, path);
   const distance = finiteAt(relation.distance, `${path}.distance`);
   if (distance <= 0) {
-    throw new SceneValidationError('must be positive', `${path}.distance`);
+    throw new SceneValidationError("must be positive", `${path}.distance`);
   }
-  const weight = relation.weight === null ? null : finiteAt(relation.weight, `${path}.weight`);
-  const relativeImage = vectorAt(relation.relativeImage, `${path}.relativeImage`);
+  const weight =
+    relation.weight === null
+      ? null
+      : finiteAt(relation.weight, `${path}.weight`);
+  const relativeImage = vectorAt(
+    relation.relativeImage,
+    `${path}.relativeImage`,
+  );
   if (!relativeImage.every(Number.isInteger)) {
-    throw new SceneValidationError('entries must be integers', `${path}.relativeImage`);
+    throw new SceneValidationError(
+      "entries must be integers",
+      `${path}.relativeImage`,
+    );
   }
   return {
     id: stringAt(relation.id, `${path}.id`),
@@ -200,17 +256,22 @@ const parseBondRelation = (value: unknown, index: number): BondRelationSpec => {
     relativeImage,
     distance,
     weight,
-    ...(relation.order === undefined ? {} : { order: finiteAt(relation.order, `${path}.order`) }),
+    ...(relation.order === undefined
+      ? {}
+      : { order: finiteAt(relation.order, `${path}.order`) }),
     ...(relation.origin === undefined
       ? {}
       : { origin: molecularOriginAt(relation.origin, `${path}.origin`) }),
   };
 };
 
-const molecularOriginAt = (value: unknown, path: string): 'source' | 'OpenBabelNN' => {
+const molecularOriginAt = (
+  value: unknown,
+  path: string,
+): "source" | "OpenBabelNN" => {
   const origin = stringAt(value, path);
-  if (origin !== 'source' && origin !== 'OpenBabelNN') {
-    throw new SceneValidationError('has an unsupported topology origin', path);
+  if (origin !== "source" && origin !== "OpenBabelNN") {
+    throw new SceneValidationError("has an unsupported topology origin", path);
   }
   return origin;
 };
@@ -218,23 +279,35 @@ const molecularOriginAt = (value: unknown, path: string): 'source' | 'OpenBabelN
 const parsePolyhedron = (value: unknown, index: number): PolyhedronSpec => {
   const path = `polyhedra[${index}]`;
   const polyhedron = objectAt(value, path);
-  const vertices = arrayAt(polyhedron.vertices, `${path}.vertices`).map((entry, vertexIndex) =>
-    vectorAt(entry, `${path}.vertices[${vertexIndex}]`),
+  const vertices = arrayAt(polyhedron.vertices, `${path}.vertices`).map(
+    (entry, vertexIndex) => vectorAt(entry, `${path}.vertices[${vertexIndex}]`),
   );
   if (vertices.length < 4) {
-    throw new SceneValidationError('requires at least four vertices', `${path}.vertices`);
+    throw new SceneValidationError(
+      "requires at least four vertices",
+      `${path}.vertices`,
+    );
   }
   const visibility = stringAt(polyhedron.visibility, `${path}.visibility`);
-  if (visibility !== 'base' && visibility !== 'bonded') {
-    throw new SceneValidationError('has an unsupported visibility group', `${path}.visibility`);
+  if (visibility !== "base" && visibility !== "bonded") {
+    throw new SceneValidationError(
+      "has an unsupported visibility group",
+      `${path}.visibility`,
+    );
   }
   const tint = vectorAt(polyhedron.color, `${path}.color`);
   if (tint.some((entry) => entry < 0 || entry > 255)) {
-    throw new SceneValidationError('entries must be between 0 and 255', `${path}.color`);
+    throw new SceneValidationError(
+      "entries must be between 0 and 255",
+      `${path}.color`,
+    );
   }
   return {
     id: stringAt(polyhedron.id, `${path}.id`),
-    centerSiteIndex: integerAt(polyhedron.centerSiteIndex, `${path}.centerSiteIndex`),
+    centerSiteIndex: integerAt(
+      polyhedron.centerSiteIndex,
+      `${path}.centerSiteIndex`,
+    ),
     center: vectorAt(polyhedron.center, `${path}.center`),
     vertices,
     color: tint,
@@ -246,62 +319,265 @@ const parseWarning = (value: unknown, index: number): SceneWarning => {
   const path = `warnings[${index}]`;
   const warning = objectAt(value, path);
   const severity = stringAt(warning.severity, `${path}.severity`);
-  if (!['info', 'warning', 'error'].includes(severity)) {
-    throw new SceneValidationError('has an unsupported severity', `${path}.severity`);
+  if (!["info", "warning", "error"].includes(severity)) {
+    throw new SceneValidationError(
+      "has an unsupported severity",
+      `${path}.severity`,
+    );
   }
   return {
     code: stringAt(warning.code, `${path}.code`),
     message: stringAt(warning.message, `${path}.message`),
-    severity: severity as SceneWarning['severity'],
+    severity: severity as SceneWarning["severity"],
+    siteIndices:
+      warning.siteIndices === undefined
+        ? undefined
+        : arrayAt(warning.siteIndices, `${path}.siteIndices`).map(
+            (item, siteIndex) =>
+              nonNegativeIntegerAt(item, `${path}.siteIndices[${siteIndex}]`),
+          ),
+  };
+};
+
+const parseAdsorbateFragment = (
+  value: unknown,
+  index: number,
+): AdsorbateFragmentSpec => {
+  const path = `modeling.adsorbateFragments[${index}]`;
+  const fragment = objectAt(value, path);
+  const species = arrayAt(fragment.species, `${path}.species`).map(
+    (entry, atomIndex) => stringAt(entry, `${path}.species[${atomIndex}]`),
+  );
+  if (species.length === 0) {
+    throw new SceneValidationError(
+      "must contain at least one atom",
+      `${path}.species`,
+    );
+  }
+  const coordinates = arrayAt(fragment.coordinates, `${path}.coordinates`).map(
+    (entry, atomIndex) => vectorAt(entry, `${path}.coordinates[${atomIndex}]`),
+  );
+  if (coordinates.length !== species.length) {
+    throw new SceneValidationError(
+      "must match the species count",
+      `${path}.coordinates`,
+    );
+  }
+  const bonds = arrayAt(fragment.bonds, `${path}.bonds`).map(
+    (entry, bondIndex) => {
+      const rowPath = `${path}.bonds[${bondIndex}]`;
+      const row = arrayAt(entry, rowPath);
+      if (row.length !== 3)
+        throw new SceneValidationError("expected three entries", rowPath);
+      const first = nonNegativeIntegerAt(row[0], `${rowPath}[0]`);
+      const second = nonNegativeIntegerAt(row[1], `${rowPath}[1]`);
+      const order = finiteAt(row[2], `${rowPath}[2]`);
+      if (
+        first >= species.length ||
+        second >= species.length ||
+        first === second
+      ) {
+        throw new SceneValidationError(
+          "references an invalid atom pair",
+          rowPath,
+        );
+      }
+      if (order <= 0)
+        throw new SceneValidationError(
+          "bond order must be positive",
+          `${rowPath}[2]`,
+        );
+      return [first, second, order] as [number, number, number];
+    },
+  );
+  const anchorAtomIndex = nonNegativeIntegerAt(
+    fragment.anchorAtomIndex,
+    `${path}.anchorAtomIndex`,
+  );
+  if (anchorAtomIndex >= species.length) {
+    throw new SceneValidationError(
+      "references an unknown atom",
+      `${path}.anchorAtomIndex`,
+    );
+  }
+  const defaultHostBondLength = finiteAt(
+    fragment.defaultHostBondLength,
+    `${path}.defaultHostBondLength`,
+  );
+  if (defaultHostBondLength <= 0) {
+    throw new SceneValidationError(
+      "must be positive",
+      `${path}.defaultHostBondLength`,
+    );
+  }
+  if (fragment.source !== undefined && fragment.source !== "user") {
+    throw new SceneValidationError(
+      "has an unsupported source",
+      `${path}.source`,
+    );
+  }
+  return {
+    id: stringAt(fragment.id, `${path}.id`),
+    label: stringAt(fragment.label, `${path}.label`),
+    formula: stringAt(fragment.formula, `${path}.formula`),
+    species,
+    coordinates,
+    bonds,
+    anchorAtomIndex,
+    ...(fragment.orientation === undefined
+      ? {}
+      : { orientation: vectorAt(fragment.orientation, `${path}.orientation`) }),
+    defaultHostBondLength,
+    ...(fragment.source === undefined ? {} : { source: "user" as const }),
+    ...(fragment.fragmentName === undefined
+      ? {}
+      : {
+          fragmentName: stringAt(fragment.fragmentName, `${path}.fragmentName`),
+        }),
+    ...(fragment.portId === undefined
+      ? {}
+      : { portId: stringAt(fragment.portId, `${path}.portId`) }),
+    ...(fragment.schemaVersion === undefined
+      ? {}
+      : {
+          schemaVersion: nonNegativeIntegerAt(
+            fragment.schemaVersion,
+            `${path}.schemaVersion`,
+          ),
+        }),
+  };
+};
+
+const parseConstructionBond = (
+  value: unknown,
+  index: number,
+): ConstructionBondParameterSpec => {
+  const path = `modeling.constructionBonds[${index}]`;
+  const parameter = objectAt(value, path);
+  const bondOrder = finiteAt(parameter.bondOrder, `${path}.bondOrder`);
+  const length = finiteAt(parameter.value, `${path}.value`);
+  if (bondOrder <= 0) {
+    throw new SceneValidationError("must be positive", `${path}.bondOrder`);
+  }
+  if (length <= 0) {
+    throw new SceneValidationError("must be positive", `${path}.value`);
+  }
+  if (parameter.unit !== "angstrom") {
+    throw new SceneValidationError("must use angstrom", `${path}.unit`);
+  }
+  return {
+    firstElement: stringAt(parameter.firstElement, `${path}.firstElement`),
+    secondElement: stringAt(parameter.secondElement, `${path}.secondElement`),
+    bondOrder,
+    value: length,
+    unit: "angstrom",
+    parameterSet: stringAt(parameter.parameterSet, `${path}.parameterSet`),
+    source: stringAt(parameter.source, `${path}.source`),
+    fallback: booleanAt(parameter.fallback, `${path}.fallback`),
   };
 };
 
 export const validateScene = (value: unknown): AtomicSceneSpec => {
-  const scene = objectAt(value, 'scene');
-  if (scene.schemaVersion !== '2.0') {
-    throw new SceneValidationError('unsupported schema version', 'schemaVersion');
+  const scene = objectAt(value, "scene");
+  if (scene.schemaVersion !== "2.0") {
+    throw new SceneValidationError(
+      "unsupported schema version",
+      "schemaVersion",
+    );
   }
-  const kind = stringAt(scene.kind, 'kind');
-  if (kind !== 'crystal' && kind !== 'molecule') {
-    throw new SceneValidationError('unsupported atomic scene kind', 'kind');
+  const kind = stringAt(scene.kind, "kind");
+  if (kind !== "crystal" && kind !== "molecule") {
+    throw new SceneValidationError("unsupported atomic scene kind", "kind");
   }
-  if (scene.viewHint !== undefined && scene.viewHint !== 'slab') {
-    throw new SceneValidationError('uses an unsupported view hint', 'viewHint');
+  if (scene.viewHint !== undefined && scene.viewHint !== "slab") {
+    throw new SceneValidationError("uses an unsupported view hint", "viewHint");
   }
-  if (kind === 'molecule' && scene.viewHint !== undefined) {
-    throw new SceneValidationError('molecule scenes cannot use crystal view hints', 'viewHint');
+  if (kind === "molecule" && scene.viewHint !== undefined) {
+    throw new SceneValidationError(
+      "molecule scenes cannot use crystal view hints",
+      "viewHint",
+    );
   }
-  const analysis = objectAt(scene.analysis, 'analysis');
-  stringAt(scene.requestId, 'requestId');
-  const sites = arrayAt(scene.sites, 'sites').map(parseSite);
-  const atoms = arrayAt(scene.atomInstances, 'atomInstances').map(parseAtom);
-  const relations = arrayAt(scene.bondRelations, 'bondRelations').map(parseBondRelation);
-  const bonds = arrayAt(scene.bondInstances, 'bondInstances').map(parseBondInstance);
-  const polyhedra = arrayAt(scene.polyhedra, 'polyhedra').map(parsePolyhedron);
-  arrayAt(scene.warnings, 'warnings').map(parseWarning);
+  const analysis = objectAt(scene.analysis, "analysis");
+  stringAt(scene.requestId, "requestId");
+  const sites = arrayAt(scene.sites, "sites").map(parseSite);
+  const atoms = arrayAt(scene.atomInstances, "atomInstances").map(parseAtom);
+  const relations = arrayAt(scene.bondRelations, "bondRelations").map(
+    parseBondRelation,
+  );
+  const bonds = arrayAt(scene.bondInstances, "bondInstances").map(
+    parseBondInstance,
+  );
+  const polyhedra = arrayAt(scene.polyhedra, "polyhedra").map(parsePolyhedron);
+  arrayAt(scene.warnings, "warnings").map(parseWarning);
+  if (scene.modeling !== undefined) {
+    const modeling = objectAt(scene.modeling, "modeling");
+    const fragments = arrayAt(
+      modeling.adsorbateFragments,
+      "modeling.adsorbateFragments",
+    ).map(parseAdsorbateFragment);
+    if (
+      new Set(fragments.map((fragment) => fragment.id)).size !==
+      fragments.length
+    ) {
+      throw new SceneValidationError(
+        "fragment identifiers must be unique",
+        "modeling.adsorbateFragments",
+      );
+    }
+    if (modeling.constructionBonds !== undefined) {
+      const constructionBonds = arrayAt(
+        modeling.constructionBonds,
+        "modeling.constructionBonds",
+      ).map(parseConstructionBond);
+      const keys = constructionBonds.map(
+        (parameter) =>
+          `${[parameter.firstElement, parameter.secondElement].sort().join("|")}|${parameter.bondOrder}`,
+      );
+      if (new Set(keys).size !== keys.length) {
+        throw new SceneValidationError(
+          "bond parameter keys must be unique",
+          "modeling.constructionBonds",
+        );
+      }
+    }
+  }
   let declaredSiteCount: number;
-  if (kind === 'crystal') {
+  if (kind === "crystal") {
     if (scene.molecule !== undefined) {
-      throw new SceneValidationError('crystal scenes cannot contain molecule metadata', 'molecule');
+      throw new SceneValidationError(
+        "crystal scenes cannot contain molecule metadata",
+        "molecule",
+      );
     }
-    const structure = objectAt(scene.structure, 'structure');
-    stringAt(structure.formula, 'structure.formula');
-    matrixAt(structure.lattice, 'structure.lattice');
-    const periodic = arrayAt(structure.periodic, 'structure.periodic');
+    const structure = objectAt(scene.structure, "structure");
+    stringAt(structure.formula, "structure.formula");
+    matrixAt(structure.lattice, "structure.lattice");
+    const periodic = arrayAt(structure.periodic, "structure.periodic");
     if (periodic.length !== 3) {
-      throw new SceneValidationError('expected exactly three entries', 'structure.periodic');
+      throw new SceneValidationError(
+        "expected exactly three entries",
+        "structure.periodic",
+      );
     }
-    periodic.forEach((entry, index) => booleanAt(entry, `structure.periodic[${index}]`));
-    const repeat = vectorAt(structure.repeat, 'structure.repeat');
-    if (repeat.some((entry) => !Number.isInteger(entry) || entry < 1 || entry > 8)) {
-      throw new SceneValidationError('entries must be integers from 1 to 8', 'structure.repeat');
+    periodic.forEach((entry, index) =>
+      booleanAt(entry, `structure.periodic[${index}]`),
+    );
+    const repeat = vectorAt(structure.repeat, "structure.repeat");
+    if (
+      repeat.some((entry) => !Number.isInteger(entry) || entry < 1 || entry > 8)
+    ) {
+      throw new SceneValidationError(
+        "entries must be integers from 1 to 8",
+        "structure.repeat",
+      );
     }
-    declaredSiteCount = integerAt(structure.siteCount, 'structure.siteCount');
-    booleanAt(structure.isOrdered, 'structure.isOrdered');
+    declaredSiteCount = integerAt(structure.siteCount, "structure.siteCount");
+    booleanAt(structure.isOrdered, "structure.isOrdered");
     sites.forEach((site, index) => {
       if (!site.fractional) {
         throw new SceneValidationError(
-          'crystal sites require fractional coordinates',
+          "crystal sites require fractional coordinates",
           `sites[${index}]`,
         );
       }
@@ -309,94 +585,141 @@ export const validateScene = (value: unknown): AtomicSceneSpec => {
   } else {
     if (scene.structure !== undefined) {
       throw new SceneValidationError(
-        'molecule scenes cannot contain crystal metadata',
-        'structure',
+        "molecule scenes cannot contain crystal metadata",
+        "structure",
       );
     }
-    const molecule = objectAt(scene.molecule, 'molecule');
-    stringAt(molecule.formula, 'molecule.formula');
-    declaredSiteCount = integerAt(molecule.atomCount, 'molecule.atomCount');
-    booleanAt(molecule.isOrdered, 'molecule.isOrdered');
-    finiteAt(molecule.charge, 'molecule.charge');
-    if (integerAt(molecule.spinMultiplicity, 'molecule.spinMultiplicity') < 1) {
-      throw new SceneValidationError('must be positive', 'molecule.spinMultiplicity');
+    const molecule = objectAt(scene.molecule, "molecule");
+    stringAt(molecule.formula, "molecule.formula");
+    declaredSiteCount = integerAt(molecule.atomCount, "molecule.atomCount");
+    booleanAt(molecule.isOrdered, "molecule.isOrdered");
+    finiteAt(molecule.charge, "molecule.charge");
+    if (integerAt(molecule.spinMultiplicity, "molecule.spinMultiplicity") < 1) {
+      throw new SceneValidationError(
+        "must be positive",
+        "molecule.spinMultiplicity",
+      );
     }
-    stringAt(molecule.inputFormat, 'molecule.inputFormat');
-    const frameIndex = integerAt(molecule.frameIndex, 'molecule.frameIndex');
-    const frameCount = integerAt(molecule.frameCount, 'molecule.frameCount');
+    stringAt(molecule.inputFormat, "molecule.inputFormat");
+    const frameIndex = integerAt(molecule.frameIndex, "molecule.frameIndex");
+    const frameCount = integerAt(molecule.frameCount, "molecule.frameCount");
     if (frameIndex < 1 || frameCount < frameIndex) {
-      throw new SceneValidationError('frame index is outside the input', 'molecule.frameIndex');
+      throw new SceneValidationError(
+        "frame index is outside the input",
+        "molecule.frameIndex",
+      );
     }
     if (polyhedra.length) {
-      throw new SceneValidationError('molecule scenes cannot contain polyhedra', 'polyhedra');
+      throw new SceneValidationError(
+        "molecule scenes cannot contain polyhedra",
+        "polyhedra",
+      );
     }
   }
   if (declaredSiteCount !== sites.length) {
-    throw new SceneValidationError('does not match the sites array', 'siteCount');
+    throw new SceneValidationError(
+      "does not match the sites array",
+      "siteCount",
+    );
   }
-  const algorithm = stringAt(analysis.algorithm, 'analysis.algorithm');
+  const algorithm = stringAt(analysis.algorithm, "analysis.algorithm");
   const algorithms =
-    kind === 'crystal'
+    kind === "crystal"
       ? [
-          'CrystalNN',
-          'CutOffDictNN',
-          'JmolNN',
-          'MinimumDistanceNN',
-          'MinimumOKeeffeNN',
-          'EconNN',
-          'BrunnerNNReciprocal',
-          ...(declaredSiteCount === 0 ? ['None'] : []),
+          "CrystalNN",
+          "CutOffDictNN",
+          "JmolNN",
+          "MinimumDistanceNN",
+          "MinimumOKeeffeNN",
+          "EconNN",
+          "BrunnerNNReciprocal",
+          ...(declaredSiteCount === 0 ? ["None"] : []),
         ]
-      : ['Source', 'OpenBabelNN', 'None'];
+      : ["Source", "OpenBabelNN", "None"];
   if (!algorithms.includes(algorithm)) {
-    throw new SceneValidationError('uses an unsupported algorithm', 'analysis.algorithm');
+    throw new SceneValidationError(
+      "uses an unsupported algorithm",
+      "analysis.algorithm",
+    );
   }
   if (
-    kind === 'crystal' &&
+    kind === "crystal" &&
     declaredSiteCount === 0 &&
-    (atoms.length > 0 || relations.length > 0 || bonds.length > 0 || polyhedra.length > 0)
+    (atoms.length > 0 ||
+      relations.length > 0 ||
+      bonds.length > 0 ||
+      polyhedra.length > 0)
   ) {
-    throw new SceneValidationError('cannot contain atomic geometry', 'structure.siteCount');
+    throw new SceneValidationError(
+      "cannot contain atomic geometry",
+      "structure.siteCount",
+    );
   }
-  objectAt(analysis.parameters, 'analysis.parameters');
-  if (analysis.source !== 'matgenlab') {
-    throw new SceneValidationError('must be matgenlab', 'analysis.source');
+  objectAt(analysis.parameters, "analysis.parameters");
+  if (analysis.source !== "matgenlab") {
+    throw new SceneValidationError("must be matgenlab", "analysis.source");
   }
-  stringAt(analysis.sourceVersion, 'analysis.sourceVersion');
-  if (finiteAt(analysis.elapsedMilliseconds, 'analysis.elapsedMilliseconds') < 0) {
-    throw new SceneValidationError('must be nonnegative', 'analysis.elapsedMilliseconds');
+  stringAt(analysis.sourceVersion, "analysis.sourceVersion");
+  if (
+    finiteAt(analysis.elapsedMilliseconds, "analysis.elapsedMilliseconds") < 0
+  ) {
+    throw new SceneValidationError(
+      "must be nonnegative",
+      "analysis.elapsedMilliseconds",
+    );
   }
   const siteIds = new Set(sites.map((site) => site.id));
   const siteIndices = new Set(sites.map((site) => site.siteIndex));
   if (siteIds.size !== sites.length || siteIndices.size !== sites.length) {
-    throw new SceneValidationError('site identifiers and indices must be unique', 'sites');
+    throw new SceneValidationError(
+      "site identifiers and indices must be unique",
+      "sites",
+    );
   }
   atoms.forEach((atom, index) => {
     if (!siteIds.has(atom.siteId) || !siteIndices.has(atom.siteIndex)) {
-      throw new SceneValidationError('references an unknown site', `atomInstances[${index}]`);
+      throw new SceneValidationError(
+        "references an unknown site",
+        `atomInstances[${index}]`,
+      );
     }
   });
   const atomIds = new Set(atoms.map((atom) => atom.id));
   if (atomIds.size !== atoms.length) {
-    throw new SceneValidationError('atom identifiers must be unique', 'atomInstances');
+    throw new SceneValidationError(
+      "atom identifiers must be unique",
+      "atomInstances",
+    );
   }
   const relationIds = new Set(relations.map((relation) => relation.id));
   const relationKeys = new Set(
     relations.map(
       (relation) =>
-        `${relation.fromSiteIndex}:${relation.toSiteIndex}:${relation.relativeImage.join(',')}`,
+        `${relation.fromSiteIndex}:${relation.toSiteIndex}:${relation.relativeImage.join(",")}`,
     ),
   );
-  if (relationIds.size !== relations.length || relationKeys.size !== relations.length) {
-    throw new SceneValidationError('scientific bond relations must be unique', 'bondRelations');
+  if (
+    relationIds.size !== relations.length ||
+    relationKeys.size !== relations.length
+  ) {
+    throw new SceneValidationError(
+      "scientific bond relations must be unique",
+      "bondRelations",
+    );
   }
   bonds.forEach((bond, index) => {
-    if (!siteIndices.has(bond.fromSiteIndex) || !siteIndices.has(bond.toSiteIndex)) {
-      throw new SceneValidationError('references an unknown site', `bondInstances[${index}]`);
+    if (
+      !siteIndices.has(bond.fromSiteIndex) ||
+      !siteIndices.has(bond.toSiteIndex)
+    ) {
+      throw new SceneValidationError(
+        "references an unknown site",
+        `bondInstances[${index}]`,
+      );
     }
     if (!relationIds.has(bond.relationId)) {
       throw new SceneValidationError(
-        'references an unknown scientific relation',
+        "references an unknown scientific relation",
         `bondInstances[${index}].relationId`,
       );
     }
@@ -407,18 +730,24 @@ export const validateScene = (value: unknown): AtomicSceneSpec => {
     );
     if (Math.abs(measured - bond.distance) > 1e-8) {
       throw new SceneValidationError(
-        'distance does not match endpoints',
+        "distance does not match endpoints",
         `bondInstances[${index}]`,
       );
     }
   });
   const bondIds = new Set(bonds.map((bond) => bond.id));
   if (bondIds.size !== bonds.length) {
-    throw new SceneValidationError('bond instance identifiers must be unique', 'bondInstances');
+    throw new SceneValidationError(
+      "bond instance identifiers must be unique",
+      "bondInstances",
+    );
   }
   polyhedra.forEach((polyhedron, index) => {
     if (!siteIndices.has(polyhedron.centerSiteIndex)) {
-      throw new SceneValidationError('references an unknown site', `polyhedra[${index}]`);
+      throw new SceneValidationError(
+        "references an unknown site",
+        `polyhedra[${index}]`,
+      );
     }
   });
   return value as AtomicSceneSpec;
@@ -427,7 +756,7 @@ export const validateScene = (value: unknown): AtomicSceneSpec => {
 export const scientificSceneFingerprint = (scene: AtomicSceneSpec): string =>
   JSON.stringify({
     kind: scene.kind,
-    model: scene.kind === 'crystal' ? scene.structure : scene.molecule,
+    model: scene.kind === "crystal" ? scene.structure : scene.molecule,
     sites: scene.sites.map(({ siteIndex, fractional, cartesian, species }) => ({
       siteIndex,
       fractional,

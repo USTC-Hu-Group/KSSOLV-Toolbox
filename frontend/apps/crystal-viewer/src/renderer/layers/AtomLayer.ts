@@ -7,6 +7,7 @@ import {
   Matrix4,
   MeshPhongMaterial,
   MeshPhysicalMaterial,
+  Quaternion,
   SphereGeometry,
   type Texture,
   Vector3,
@@ -62,6 +63,53 @@ const sphereSegmentGeometry = (
   return merged ?? new SphereGeometry(1, widthSegments, heightSegments);
 };
 
+const sphereGeometryCache = new Map<string, BufferGeometry>();
+let sphereGeometryCacheHits = 0;
+let sphereGeometryCacheMisses = 0;
+const maximumCachedSphereGeometries = 32;
+
+const cachedSphereSegmentGeometry = (
+  widthSegments: number,
+  heightSegments: number,
+  phiStart: number,
+  phiLength: number,
+): BufferGeometry => {
+  const key = `${widthSegments}:${heightSegments}:${phiStart.toFixed(6)}:${phiLength.toFixed(6)}`;
+  const cached = sphereGeometryCache.get(key);
+  if (cached) {
+    sphereGeometryCacheHits += 1;
+    return cached;
+  }
+  sphereGeometryCacheMisses += 1;
+  const geometry = sphereSegmentGeometry(widthSegments, heightSegments, phiStart, phiLength);
+  if (sphereGeometryCache.size >= maximumCachedSphereGeometries) {
+    const oldestKey = sphereGeometryCache.keys().next().value as string | undefined;
+    if (oldestKey) {
+      sphereGeometryCache.get(oldestKey)?.dispose();
+      sphereGeometryCache.delete(oldestKey);
+    }
+  }
+  sphereGeometryCache.set(key, geometry);
+  return geometry;
+};
+
+export const atomGeometryCacheMetrics = (): {
+  entries: number;
+  hits: number;
+  misses: number;
+} => ({
+  entries: sphereGeometryCache.size,
+  hits: sphereGeometryCacheHits,
+  misses: sphereGeometryCacheMisses,
+});
+
+export const clearAtomGeometryCache = (): void => {
+  for (const geometry of sphereGeometryCache.values()) geometry.dispose();
+  sphereGeometryCache.clear();
+  sphereGeometryCacheHits = 0;
+  sphereGeometryCacheMisses = 0;
+};
+
 export class AtomLayer {
   readonly mesh: BatchedMesh;
   private readonly saturateColors: boolean;
@@ -115,7 +163,12 @@ export class AtomLayer {
       if (!geometryByKey.has(record.geometryKey)) {
         geometryByKey.set(
           record.geometryKey,
-          sphereSegmentGeometry(widthSegments, heightSegments, record.phiStart, record.phiLength),
+          cachedSphereSegmentGeometry(
+            widthSegments,
+            heightSegments,
+            record.phiStart,
+            record.phiLength,
+          ),
         );
       }
     }
@@ -168,7 +221,6 @@ export class AtomLayer {
     const geometryIds = new Map<string, number>();
     for (const [key, geometry] of geometryByKey) {
       geometryIds.set(key, this.mesh.addGeometry(geometry));
-      geometry.dispose();
     }
     for (const record of records) {
       const geometryId = geometryIds.get(record.geometryKey);
@@ -219,6 +271,36 @@ export class AtomLayer {
     this.options = options;
     for (const [batchId, record] of this.records) {
       this.mesh.setVisibleAt(batchId, isAtomVisible(record.atom, record.site, options));
+    }
+  }
+
+  previewTransform(
+    atomIds: ReadonlySet<string>,
+    translation: Vector3,
+    rotation?: { axis: Vector3; angleRadians: number; anchor: Vector3 },
+  ): void {
+    const quaternion = rotation
+      ? new Quaternion().setFromAxisAngle(rotation.axis.clone().normalize(), rotation.angleRadians)
+      : undefined;
+    for (const [batchId, record] of this.records) {
+      const original = this.transforms.get(batchId);
+      if (!original) continue;
+      if (!atomIds.has(record.atom.id)) {
+        this.mesh.setMatrixAt(batchId, original);
+        continue;
+      }
+      const position = vector(record.atom.position);
+      if (quaternion && rotation) {
+        position.sub(rotation.anchor).applyQuaternion(quaternion).add(rotation.anchor);
+      }
+      position.add(translation);
+      this.mesh.setMatrixAt(batchId, original.clone().setPosition(position));
+    }
+  }
+
+  clearPreview(): void {
+    for (const [batchId, transform] of this.transforms) {
+      this.mesh.setMatrixAt(batchId, transform);
     }
   }
 

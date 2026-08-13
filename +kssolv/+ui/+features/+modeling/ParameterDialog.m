@@ -45,6 +45,13 @@ classdef ParameterDialog
                     value = ...
                         kssolv.ui.features.modeling.ParameterDialog.parseNumeric( ...
                         text, label);
+                case "optionalNumeric"
+                    if text == ""
+                        value = zeros(1,0);
+                    else
+                        value = kssolv.ui.features.modeling.ParameterDialog. ...
+                            parseNumeric(text,label);
+                    end
                 otherwise
                     error("KSSOLV:Modeling:ParameterKind", ...
                         "Unsupported parameter type '%s'.", kind);

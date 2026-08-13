@@ -14,6 +14,9 @@ classdef KSSOLVToolbox < handle
         projectBrowser % 用于判断 AppContainer 是否渲染结束
         runBrowser % 运行浏览器
         modelingTab % 结构文档打开时显示的上下文建模标签页
+        appStateListener % AppContainer 状态监听器
+        IsShuttingDown (1,1) logical = false
+        IsDeleting (1,1) logical = false
     end
 
     methods
@@ -41,7 +44,8 @@ classdef KSSOLVToolbox < handle
             msg = message('KSSOLV:toolbox:WelcomeMessage');
             this.AppContainer.DocumentPlaceHolderText = msg;
             % 监听 App Container 的状态改变，例如关闭 App 时会触发 StateChanged 事件
-            addlistener(this.AppContainer, 'StateChanged', @(src,data) callbackAppStateChanged(this));
+            this.appStateListener = addlistener(this.AppContainer, ...
+                'StateChanged', @(src,data) callbackAppStateChanged(this));
             % 添加多个 Data Browser 组件
             this.projectBrowser = kssolv.ui.components.databrowser.ProjectBrowser();
             this.projectBrowser.addToAppContainer(this.AppContainer);
@@ -80,6 +84,15 @@ classdef KSSOLVToolbox < handle
 
         function delete(this)
             %DELETE 析构函数
+            if this.IsDeleting
+                return
+            end
+            this.IsDeleting = true;
+            if ~isempty(this.appStateListener) && ...
+                    isvalid(this.appStateListener)
+                delete(this.appStateListener);
+            end
+            this.appStateListener = [];
             storedApp = ...
                 kssolv.ui.util.DataStorage.getData("KSSOLVToolbox");
             if ~isempty(storedApp) && isequal(storedApp, this)
@@ -93,12 +106,31 @@ classdef KSSOLVToolbox < handle
                 kssolv.ui.util.DataStorage.removeData( ...
                     "AppContainer");
             end
-            % 删除 App Container
-            if ~isempty(this.AppContainer) && isvalid(this.AppContainer)
-                if ~isempty(this.modelingTab) && isvalid(this.modelingTab)
-                    delete(this.modelingTab);
-                end
+            % The modeling tab owns listeners on the session registry, while
+            % the registry owns listeners on every open structure document.
+            % Tear them down before the AppContainer even when the container
+            % has already reached TERMINATED.  Otherwise a later Toolbox
+            % instance can reuse a stale registry from DataStorage and fail
+            % while attaching listeners to its reloaded class definition.
+            if ~isempty(this.modelingTab) && isvalid(this.modelingTab)
+                delete(this.modelingTab);
+            end
+            registry = kssolv.ui.util.DataStorage.getData( ...
+                "ModelingSessionRegistry");
+            if ~isempty(registry) && isvalid(registry)
+                delete(registry);
+            else
+                kssolv.ui.util.DataStorage.removeData( ...
+                    "ModelingSessionRegistry");
+            end
+            if ~isempty(this.runBrowser) && isvalid(this.runBrowser)
                 delete(this.runBrowser);
+            end
+            % During a user-initiated close the AppContainer owns its native
+            % teardown. Deleting it again from its TERMINATED callback is a
+            % re-entrant ViewModel destruction and can segfault MATLAB.
+            if ~this.IsShuttingDown && ~isempty(this.AppContainer) && ...
+                    isvalid(this.AppContainer)
                 delete(this.AppContainer);
             end
         end
@@ -129,6 +161,22 @@ classdef KSSOLVToolbox < handle
         function close(this)
             % 关闭 App
             delete(this);
+        end
+
+        function prepareForShutdown(this)
+            %PREPAREFORSHUTDOWN Silence callbacks before native UI teardown.
+            if this.IsShuttingDown
+                return
+            end
+            this.IsShuttingDown = true;
+            if ~isempty(this.modelingTab) && isvalid(this.modelingTab)
+                this.modelingTab.prepareForShutdown();
+            end
+            registry = kssolv.ui.util.DataStorage.getData( ...
+                "ModelingSessionRegistry");
+            if ~isempty(registry) && isvalid(registry)
+                registry.prepareForShutdown();
+            end
         end
     end
 
@@ -236,6 +284,7 @@ classdef KSSOLVToolbox < handle
                 warning('KSSOLV:Toolbox:ProjectUnavailableOnClose', ...
                     'Unable to recover the current project while closing: %s', ...
                     exception.message);
+                this.prepareForShutdown();
                 status = true;
                 return
             end
@@ -302,6 +351,7 @@ classdef KSSOLVToolbox < handle
                         return
                 end
             end
+            this.prepareForShutdown();
             status = true;
         end
 
@@ -316,6 +366,10 @@ classdef KSSOLVToolbox < handle
                 case AppState.TERMINATED
                     % 清除本地化管理器的类的实例
                     kssolv.ui.util.Localizer.clearInstance();
+                    % The native container is already terminating. Mark the
+                    % wrapper accordingly so its destructor cannot delete the
+                    % event source again from inside this callback.
+                    this.IsShuttingDown = true;
                     % 清除 App Container 相关的实例
                     delete(this);
             end

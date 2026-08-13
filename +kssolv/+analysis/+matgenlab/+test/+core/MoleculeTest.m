@@ -6,8 +6,8 @@ classdef MoleculeTest < matlab.unittest.TestCase
                 [0, 0, 0; 0.9572, 0, 0; -0.239, 0.927, 0]);
             bonds = water.get_covalent_bonds();
             testCase.verifyEqual(numel(bonds), 2);
-            [hydroxyl, hydrogen] = water.break_bond(1, 2);
-            testCase.verifyEqual(hydroxyl.num_sites, 2);
+            [oxygenHydrogen, hydrogen] = water.break_bond(1, 2);
+            testCase.verifyEqual(oxygenHydrogen.num_sites, 2);
             testCase.verifyEqual(hydrogen.num_sites, 1);
             testCase.verifyTrue(contains(water.get_zmatrix(), "B1="));
             testCase.verifyTrue(contains(water.get_zmatrix(), "A2="));
@@ -61,6 +61,75 @@ classdef MoleculeTest < matlab.unittest.TestCase
             restored = kssolv.analysis.matgenlab.core.Molecule.from_dict( ...
                 molecule.as_dict());
             testCase.verifyTrue(restored == molecule);
+        end
+
+        function explicitTopologyTracksInsertionReplacementAndRemoval(testCase)
+            molecule = kssolv.analysis.matgenlab.core.Molecule( ...
+                ["O", "H", "H"], ...
+                [0, 0, 0; 0.9572, 0, 0; -0.239, 0.927, 0]);
+            molecule.properties.topology = struct( ...
+                "bonds", [1, 2, 1; 1, 3, 1], "origin", "source");
+
+            molecule = molecule.insert(2, "He", [3, 0, 0]);
+            testCase.verifyEqual(molecule.properties.topology.bonds, ...
+                [1, 3, 1; 1, 4, 1]);
+            molecule = molecule.replace(3, "F", [1, 0, 0]);
+            testCase.verifyEqual(molecule(3).species_string, "F");
+            testCase.verifyEqual(molecule.properties.topology.bonds, ...
+                [1, 3, 1; 1, 4, 1]);
+            molecule = molecule.remove_sites([2, 3]);
+            testCase.verifyEqual(molecule.properties.topology.bonds, ...
+                [1, 2, 1]);
+        end
+
+        function editableFormatsRoundTripTenTopologyFixtures(testCase)
+            formats = ["xyz", "mol", "sdf", "mol2", "pdb"];
+            topologyFormats = ["mol", "sdf", "mol2", "pdb"];
+            for fixtureIndex = 1:10
+                count = fixtureIndex + 2;
+                species = repmat("C", 1, count);
+                species(2:3:end) = "N";
+                species(3:3:end) = "O";
+                coordinates = [(0:count - 1)' * 1.25, ...
+                    sin((0:count - 1)') * 0.2, ...
+                    cos((0:count - 1)') * 0.15];
+                molecule = kssolv.analysis.matgenlab.core.Molecule( ...
+                    species, coordinates);
+                orders = mod((1:count - 1)' + fixtureIndex - 1, 3) + 1;
+                bonds = [(1:count - 1)', (2:count)', orders];
+                molecule.properties.topology = struct( ...
+                    "bonds", bonds, "origin", "source");
+
+                for format = formats
+                    restored = ...
+                        kssolv.analysis.matgenlab.core.Molecule.from_str( ...
+                        molecule.to("", format), format);
+                    testCase.verifyEqual(restored.num_sites, count, ...
+                        sprintf("fixture %d, format %s", ...
+                        fixtureIndex, format));
+                    testCase.verifyEqual(restored.composition.formula, ...
+                        molecule.composition.formula);
+                    tolerance = 5e-7;
+                    if format == "pdb", tolerance = 5e-4; end
+                    if any(format == ["mol", "sdf"]), tolerance = 5e-5; end
+                    if format == "mol2", tolerance = 5e-7; end
+                    testCase.verifyEqual(restored.cart_coords, coordinates, ...
+                        AbsTol = tolerance);
+
+                    edited = restored.replace(1, "F", []);
+                    edited = edited.translate_sites( ...
+                        count, [0, 0, 0.25]);
+                    editedAgain = ...
+                        kssolv.analysis.matgenlab.core.Molecule.from_str( ...
+                        edited.to("", format), format);
+                    testCase.verifyEqual( ...
+                        editedAgain(1).species_string, "F");
+                    if any(format == topologyFormats)
+                        testCase.verifyEqual( ...
+                            editedAgain.properties.topology.bonds, bonds);
+                    end
+                end
+            end
         end
 
         function fromSitesPreservesSiteProperties(testCase)

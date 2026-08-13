@@ -27,7 +27,9 @@
         <entry key="ProjectSectionTitle">项目</entry>
         <entry key="ProjectStructureButtonLabel">结构</entry>
         <entry key="ProjectStructureButtonTooltip">导入/导出结构</entry>
-        <entry key="NewStructureListItemLabel">新建空白结构</entry>
+        <entry key="NewStructureListItemLabel">新建结构</entry>
+        <entry key="NewBlankCrystalStructureListItemLabel">空白晶体结构</entry>
+        <entry key="NewBlankMoleculeStructureListItemLabel">空白分子结构</entry>
         <entry key="ImportStructureFromFileListItemLabel">从文件导入结构...</entry>
         <entry key="ImportStructureFromMaterialsProjectListItemLabel">从 Materials Project 导入结构...</entry>
         <entry key="ImportStructureFromMatlabListItemLabel">从 MATLAB 工作区导入结构...</entry>

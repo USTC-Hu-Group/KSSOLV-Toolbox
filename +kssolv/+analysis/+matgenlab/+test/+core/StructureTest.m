@@ -91,6 +91,39 @@ classdef StructureTest < matlab.unittest.TestCase
             testCase.verifyGreaterThanOrEqual(numel(neighbors), 1);
         end
 
+        function sphereNeighborsRetainPeriodicImagesAndDistanceOrder(testCase)
+            lattice = kssolv.analysis.matgenlab.core.Lattice.cubic(2);
+            structure = kssolv.analysis.matgenlab.core.Structure( ...
+                lattice, "Li", [0, 0, 0]);
+            neighbors = structure.get_sites_in_sphere([0, 0, 0], 2.01);
+
+            testCase.verifyNumElements(neighbors, 7);
+            distances = cellfun(@(neighbor)neighbor.nn_distance, neighbors);
+            testCase.verifyEqual(distances, [0, repmat(2, 1, 6)], ...
+                AbsTol = 1e-12);
+            images = sortrows(cell2mat(cellfun( ...
+                @(neighbor)neighbor.image, neighbors, ...
+                UniformOutput = false).'));
+            expected = sortrows([ ...
+                0, 0, 0
+                -1, 0, 0
+                1, 0, 0
+                0, -1, 0
+                0, 1, 0
+                0, 0, -1
+                0, 0, 1]);
+            testCase.verifyEqual(images, expected);
+            testCase.verifyEqual(cellfun(@(neighbor)neighbor.index, ...
+                neighbors), ones(1, 7));
+
+            oneDimensional = ...
+                kssolv.analysis.matgenlab.core.Structure( ...
+                kssolv.analysis.matgenlab.core.Lattice( ...
+                2 * eye(3), [true, false, false]), "Li", [0, 0, 0]);
+            testCase.verifyNumElements(oneDimensional.get_sites_in_sphere( ...
+                [0, 0, 0], 2.01), 3);
+        end
+
         function mutationOperationsReturnUpdatedValue(testCase)
             structure = kssolv.analysis.matgenlab.core.Structure( ...
                 kssolv.analysis.matgenlab.core.Lattice.cubic(4), ...

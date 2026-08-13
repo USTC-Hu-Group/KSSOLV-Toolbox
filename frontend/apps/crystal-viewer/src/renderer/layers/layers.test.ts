@@ -8,7 +8,7 @@ import {
 } from '../../scene/debugScene';
 import { defaultViewerOptions } from '../../scene/types';
 import { themes } from '../../themes/themes';
-import { AtomLayer } from './AtomLayer';
+import { AtomLayer, atomGeometryCacheMetrics, clearAtomGeometryCache } from './AtomLayer';
 import { BondLayer } from './BondLayer';
 import { CellLayer } from './CellLayer';
 import { MagmomLayer } from './MagmomLayer';
@@ -52,6 +52,23 @@ describe('batched crystal layers', () => {
     expect(layer.mesh.getVisibleAt(boundaryBatch!)).toBe(false);
     expect(layer.isAtomVisible(layer.get(boundaryBatch!)!.atom.id)).toBe(false);
     layer.dispose();
+  });
+
+  it('reuses bounded sphere geometry across scene loads', () => {
+    clearAtomGeometryCache();
+    const scene = createDebugScene();
+    const first = new AtomLayer(scene, defaultViewerOptions(), themes.materials);
+    const firstMetrics = atomGeometryCacheMetrics();
+    const second = new AtomLayer(scene, defaultViewerOptions(), themes.materials);
+    const secondMetrics = atomGeometryCacheMetrics();
+
+    expect(firstMetrics.misses).toBeGreaterThan(0);
+    expect(secondMetrics.misses).toBe(firstMetrics.misses);
+    expect(secondMetrics.hits).toBeGreaterThan(firstMetrics.hits);
+    expect(secondMetrics.entries).toBeLessThanOrEqual(32);
+    first.dispose();
+    second.dispose();
+    clearAtomGeometryCache();
   });
 
   it('uses two colored halves per bond and toggles bonded-outside geometry', () => {

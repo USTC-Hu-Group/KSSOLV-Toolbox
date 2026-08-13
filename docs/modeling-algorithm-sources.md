@@ -7,7 +7,39 @@ MATLAB/matgenlab data structures, preserve site properties, use one-based
 MATLAB indices internally, and add parity tests derived from published
 invariants rather than copying test fixtures blindly.
 
-Research snapshot: 2026-07-31.
+Research snapshot: 2026-08-12.
+
+## Rigid UFF surface interaction scorer
+
+- Primary method: Rappé et al., [UFF, a full periodic table force field for
+  molecular mechanics and molecular dynamics
+  simulations](https://pubs.acs.org/doi/10.1021/ja00051a040), JACS 1992,
+  DOI `10.1021/ja00051a040`.
+- Parameter cross-check: Open Babel's maintained
+  [`UFF.prm`](https://github.com/openbabel/openbabel/blob/master/data/UFF.prm).
+- External predictive reference: Rybolt and Pierotti,
+  [Rare gas–graphite interaction potentials](https://doi.org/10.1063/1.438015),
+  J. Chem. Phys. 70 (1979) 4413–4419. The primary low-coverage experiment
+  reports Ne/Ar/Kr/Xe potential-minimum distances of 3.07/3.33/3.36/3.66 Å
+  and interaction energies of 384/1113/1467/1928 K.
+- Adopted scope: sum only rigid host–guest 12-6 van der Waals cross terms,
+  combine unlike-atom distance and well-depth parameters geometrically, include
+  explicit periodic host images, use a C2 switching interval from 10 to 12 Å,
+  and report eV. H through Lr parameters are embedded and auditable; unsupported
+  atomic numbers fail instead of silently falling back.
+- Scientific limit: this is a deterministic interaction-potential ranking, not
+  a relaxed adsorption enthalpy. It omits electrostatics, bond formation, charge
+  transfer, solvent, temperature and host/guest relaxation.
+- Predictive evidence: without fitting to the reference dataset, the production
+  scorer reproduces the experimental Ne < Ar < Kr < Xe binding order on a
+  periodic graphene proxy, with energy MAE 0.00842 eV and potential-minimum
+  distance MAE 0.080 Å. This validates only rigid, low-coverage graphitic
+  rare-gas physisorption; it does not validate chemisorption or polar surfaces.
+- Required KSSOLV tests: published parameter spot checks and complete H–Lr
+  coverage, analytic pair minimum and symmetry, zero beyond cutoff, skew-lattice
+  periodic brute-force oracle, lattice-translation invariance, nonoverrideable
+  built-in contract, deterministic candidate ranking, metadata persistence,
+  and the frozen external rare-gas/graphite predictive gate.
 
 ## Special quasirandom structures
 
@@ -118,7 +150,9 @@ Research snapshot: 2026-07-31.
 
 ## Implementation policy
 
-No advanced builder is enabled in the Modeling tab until its native
-implementation and the acceptance tests above are present. Packmol packing is
-provided by the native MATLAB implementation under
-`+kssolv/+analysis/+packmol`.
+An advanced builder is enabled in the Modeling tab only after its native
+implementation and acceptance tests are present. The current candidate enables
+the builders that meet that gate. Packmol packing is provided by the native
+MATLAB implementation under `+kssolv/+analysis/+packmol`; the P8 construction
+builder is a separate deterministic, density-controlled geometry packer and
+labels its output `packed_not_equilibrated`.

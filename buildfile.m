@@ -17,7 +17,9 @@ plan("check") = CodeIssuesTask(sourceFiles, WarningThreshold = 0, ...
     Results = ".buildtool/code-issues/results.sarif");
 plan("check").Dependencies = "init";
 
-plan("pcode").Inputs = "+kssolv/**/*.m";
+packagedSources = plan.files("+kssolv/**/*.m");
+packagedSources = packagedSources.select(@shouldPcodeSource);
+plan("pcode").Inputs = packagedSources;
 plan("pcode").Outputs = plan("pcode").Inputs.replace(".m",".p");
 plan("pcode").Dependencies = "check";
 
@@ -79,25 +81,45 @@ options.RequiredAddons = struct( ...
     "DownloadURL", "https://www.mathworks.com/matlabcentral/mlc-downloads/downloads/ea932835-80d6-44d7-90e4-48fdefd221fa/ade2cad8-f069-4490-96a0-08a2605dacf6/packages/zip?src=addons_ml_desktop");
 %}
 
-filteredConditions = ~contains(options.ToolboxFiles, 'buildfile.m') & ...
-    ~contains(options.ToolboxFiles, 'buildInstaller.m') & ...
-    ~contains(options.ToolboxFiles, '+test/') & ...
-    ~contains(options.ToolboxFiles, 'derived') & ...
-    ~contains(options.ToolboxFiles, 'dev') & ...
-    ~contains(options.ToolboxFiles, 'docs') & ...
-    ~contains(options.ToolboxFiles, 'frontend') & ...
-    ~contains(options.ToolboxFiles, 'Release') & ...
-    ~endsWith(options.ToolboxFiles, '.mltbx') & ...
-    ~endsWith(options.ToolboxFiles, '.DS_Store') & ...
-    ~endsWith(options.ToolboxFiles, '.keep') & ...
-    ~endsWith(options.ToolboxFiles, '.env') & ...
-    ~endsWith(options.ToolboxFiles, '.gitignore') & ...
-    ~endsWith(options.ToolboxFiles, '.gitattributes') & ...
-    ~(contains(options.ToolboxFiles, '+kssolv/') & endsWith(options.ToolboxFiles, '.m'));
-options.ToolboxFiles = options.ToolboxFiles(filteredConditions);
-options.ToolboxFiles(end+1) = fullfile(toolboxFolder, "ks.ks");
+toolboxFiles = string(options.ToolboxFiles(:));
+relativeFiles = packagingRelativePaths(toolboxFiles, toolboxFolder);
+isTest = hasPackagingPathSegment(relativeFiles, ...
+    ["+test", "+tests", "test", "tests"]) | ...
+    hasPackagingTestFileName(relativeFiles);
+excludedRoot = startsWith(relativeFiles, [ ...
+    ".buildtool/", ".claude/", "Release/", "derived/", ...
+    "dev/", "frontend/", "output/", "scripts/", "tmp/"]);
+excludedFile = ismember(relativeFiles, [ ...
+    ".env", "fmt", "buildfile.m", "buildInstaller.m"]) | ...
+    endsWith(relativeFiles, [ ...
+    ".mltbx", ".DS_Store", ".keep", ".gitignore", ...
+    ".gitattributes"]);
+isProtectedSource = startsWith(relativeFiles, "+kssolv/") & ...
+    endsWith(relativeFiles, ".m");
+filteredConditions = ~excludedRoot & ~excludedFile & ...
+    ~isTest & ~isProtectedSource;
+options.ToolboxFiles = toolboxFiles(filteredConditions);
+
+requiredToolboxFiles = [ ...
+    fullfile(toolboxFolder, ".env.example")
+    fullfile(toolboxFolder, "ks.ks")
+    fullfile(toolboxFolder, "docs", "modeling-user-guide.zh-CN.md")
+    fullfile(toolboxFolder, "docs", "modeling-api.md")
+    fullfile(toolboxFolder, "docs", "images", "modeling-shortcuts.svg")
+    ];
+missingFiles = requiredToolboxFiles(~isfile(requiredToolboxFiles));
+if ~isempty(missingFiles)
+    error('KSSOLV:Build:RequiredToolboxFileMissing', ...
+        'Required Toolbox files were not found:\n%s', ...
+        char(join(missingFiles, newline)));
+end
+options.ToolboxFiles = unique([ ...
+    string(options.ToolboxFiles(:)); ...
+    requiredToolboxFiles; ...
+    getToolboxKssolv3oFiles(toolboxFolder)], 'stable');
 
 matlab.addons.toolbox.packageToolbox(options);
+validateToolboxArchive(options.OutputFile, toolboxFolder);
 end
 
 function cleanPcodeTask(context)
@@ -142,4 +164,116 @@ end
 fprintf('Total number of .m files: %d\n', numFiles);
 fprintf('Total lines of code: %d\n', totalLines);
 fprintf('Total non-empty, non-comment lines of code: %d\n', codeLines);
+end
+
+function selected = shouldPcodeSource(path)
+% 不为任何测试目录生成 P-Code。
+normalizedPath = replace(string(path), "\", "/");
+isTest = hasPackagingPathSegment(normalizedPath, ...
+    ["+test", "+tests", "test", "tests"]) | ...
+    hasPackagingTestFileName(normalizedPath);
+selected = ~isTest;
+end
+
+function relativePaths = packagingRelativePaths(paths, toolboxFolder)
+normalizedPaths = replace(string(paths), "\", "/");
+normalizedRoot = strip(replace(string(toolboxFolder), "\", "/"), ...
+    'right', '/');
+prefix = normalizedRoot + "/";
+relativePaths = normalizedPaths;
+insideRoot = startsWith(normalizedPaths, prefix);
+relativePaths(insideRoot) = extractAfter( ...
+    normalizedPaths(insideRoot), strlength(prefix));
+end
+
+function matches = hasPackagingPathSegment(paths, segments)
+normalizedPaths = "/" + strip(replace(string(paths), "\", "/"), ...
+    'both', '/') + "/";
+matches = false(size(normalizedPaths));
+for segment = string(segments)
+    matches = matches | contains(normalizedPaths, "/" + segment + "/");
+end
+end
+
+function matches = hasPackagingTestFileName(paths)
+[~, baseNames] = fileparts(string(paths));
+baseNames = lower(baseNames);
+matches = startsWith(baseNames, "test_") | ...
+    endsWith(baseNames, ["_test", "test", "tests"]);
+end
+
+function runtimeFiles = getToolboxKssolv3oFiles(toolboxFolder)
+% 发布 KSSOLV-3o 的非测试运行时文件。
+runtimeRoot = string(fullfile(toolboxFolder, ...
+    "+kssolv", "+core", "kssolv-3o"));
+entries = dir(fullfile(runtimeRoot, "**", "*"));
+entries = entries(~[entries.isdir]);
+runtimeFiles = string(fullfile({entries.folder}, {entries.name}));
+relativeFiles = extractAfter(runtimeFiles, runtimeRoot + filesep);
+isTest = hasPackagingPathSegment(relativeFiles, ...
+    ["+test", "+tests", "test", "tests"]) | ...
+    hasPackagingTestFileName(relativeFiles);
+isSource = endsWith(runtimeFiles, ".m");
+isDevelopmentFile = endsWith(runtimeFiles, [ ...
+    filesep + ".DS_Store", ".asv", ".m~", ".swp"]);
+isVersionControlMetadata = ismember(string({entries.name}), ...
+    [".git", ".gitignore", ".gitattributes"]);
+runtimeFiles = runtimeFiles(~isTest & ~isSource & ~isDevelopmentFile & ...
+    ~isVersionControlMetadata);
+runtimeFiles = runtimeFiles(:);
+end
+
+function validateToolboxArchive(archivePath, toolboxFolder)
+% 验证最终 Toolbox，而不是只验证构建前候选列表。
+extractRoot = tempname;
+[created, detail] = mkdir(extractRoot);
+if ~created
+    error('KSSOLV:Build:ToolboxValidationDirectoryFailed', ...
+        'Unable to create Toolbox validation directory: %s', detail);
+end
+cleanup = onCleanup(@() rmdir(extractRoot, 's'));
+unzip(archivePath, extractRoot);
+
+entries = dir(fullfile(extractRoot, "**", "*"));
+entries = entries(~[entries.isdir]);
+files = string(fullfile({entries.folder}, {entries.name}));
+normalizedFiles = replace(files, "\", "/");
+% Toolbox archives percent-encode path characters such as "!".
+normalizedFiles = replace(normalizedFiles, "%21", "!");
+isTest = hasPackagingPathSegment(normalizedFiles, ...
+    ["+test", "+tests", "test", "tests"]) | ...
+    hasPackagingTestFileName(normalizedFiles);
+unexpectedTests = normalizedFiles(isTest);
+if ~isempty(unexpectedTests)
+    error('KSSOLV:Build:UnexpectedToolboxTests', ...
+        'Toolbox contains test files:\n%s', ...
+        char(join(unexpectedTests, newline)));
+end
+
+requiredSuffixes = [ ...
+    "/fsroot/.env.example"
+    "/fsroot/ks.ks"
+    "/fsroot/+kssolv/+core/kssolv-3o/ppdata/default/PBE-1.3"
+    "/fsroot/+kssolv/+analysis/+matgenlab/+core/+data/periodic_table.json"
+    "/fsroot/+kssolv/+analysis/+matgenlab/+analysis/+compatibility/data/MITCompatibility.yaml"
+    ];
+for suffix = requiredSuffixes
+    if ~any(endsWith(normalizedFiles, suffix) | ...
+            contains(normalizedFiles, suffix + "/"))
+        error('KSSOLV:Build:RequiredToolboxPayloadMissing', ...
+            'Required Toolbox payload is missing: %s', suffix);
+    end
+end
+
+kssolvRuntimeFiles = getToolboxKssolv3oFiles(toolboxFolder);
+relativeRuntimeFiles = packagingRelativePaths( ...
+    kssolvRuntimeFiles, toolboxFolder);
+for relativeFile = relativeRuntimeFiles(:).'
+    suffix = "/fsroot/" + replace(relativeFile, "\", "/");
+    if ~any(endsWith(normalizedFiles, suffix))
+        error('KSSOLV:Build:KssolvRuntimeFileMissing', ...
+            'Toolbox is missing KSSOLV-3o file: %s', relativeFile);
+    end
+end
+clear cleanup
 end

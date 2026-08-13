@@ -333,6 +333,7 @@ button {
 
 .viewer-toolbar {
   position: absolute;
+  z-index: 20;
   top: 18px;
   right: 18px;
   display: flex;
@@ -1169,7 +1170,7 @@ button {
   position: absolute;
   top: 50%;
   left: 18px;
-  width: 248px;
+  width: 264px;
   max-height: calc(100% - 36px);
   padding: 15px 16px;
   overflow-x: hidden;
@@ -1178,6 +1179,14 @@ button {
   overscroll-behavior: contain;
   scrollbar-width: thin;
   transform: translateY(-50%);
+}
+
+@media (min-width: 721px) and (min-height: 541px) {
+  .selection-inspector.measurement-mode {
+    top: 175px;
+    max-height: calc(100% - 265px);
+    transform: none;
+  }
 }
 
 .selection-inspector h2 {
@@ -1581,6 +1590,59 @@ button {
   letter-spacing: 0;
 }
 
+.measurement-editor {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 9px;
+  padding: 9px;
+  border: 1px solid color-mix(in srgb, var(--viewer-accent) 20%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--viewer-accent) 5%, transparent);
+  gap: 7px;
+}
+
+.measurement-editor .measurement-value-field {
+  grid-column: 1 / -1;
+}
+
+.measurement-editor label {
+  display: grid;
+  color: var(--viewer-muted);
+  font-size: 9.5px;
+  font-weight: 620;
+  gap: 3px;
+}
+
+.measurement-editor input,
+.measurement-editor select {
+  min-width: 0;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid color-mix(in srgb, var(--viewer-foreground) 18%, transparent);
+  border-radius: 6px;
+  color: var(--viewer-foreground);
+  background: var(--viewer-panel);
+  font: inherit;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.measurement-editor button {
+  grid-column: 1 / -1;
+  min-height: 28px;
+  border: 0;
+  border-radius: 6px;
+  color: white;
+  background: var(--viewer-accent);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.measurement-editor .measurement-error {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
 .measurement-neighbor-list {
   display: grid;
   margin: 9px 0 0;
@@ -1788,6 +1850,17 @@ button {
   width: min(460px, calc(100% - 500px));
   transform: translateX(-50%);
   gap: 7px;
+  z-index: 16;
+}
+
+/* Keep persistent chemistry diagnostics available without covering the primary
+   sketch controls. The left rail also leaves the right-side viewer toolbar and
+   lower-corner orientation aids unobstructed. */
+.warning-stack--modeling {
+  top: 144px;
+  left: 24px;
+  width: min(316px, calc(100% - 164px));
+  transform: none;
 }
 
 .warning-stack > div,
@@ -1817,6 +1890,55 @@ button {
 .warning-stack span {
   flex: 1;
   line-height: 1.4;
+}
+
+.warning-locate,
+.warning-summary {
+  border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+  border-radius: 6px;
+  color: inherit;
+  background: color-mix(in srgb, var(--viewer-panel) 78%, transparent);
+  cursor: pointer;
+  font: inherit;
+}
+
+.warning-summary span:first-child {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.warning-summary span:last-child {
+  flex: 0 0 auto;
+  margin-left: 12px;
+}
+
+.warning-locate {
+  flex: 0 0 auto;
+  min-height: 22px;
+  padding: 2px 8px;
+  color: var(--viewer-accent);
+  font-weight: 650;
+}
+
+.warning-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 30px;
+  padding: 6px 11px;
+  box-shadow: var(--viewer-shadow);
+  backdrop-filter: blur(18px) saturate(130%);
+  -webkit-backdrop-filter: blur(18px) saturate(130%);
+}
+
+.warning-locate:hover,
+.warning-locate:focus-visible,
+.warning-summary:hover,
+.warning-summary:focus-visible {
+  border-color: color-mix(in srgb, var(--viewer-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--viewer-accent) 9%, var(--viewer-panel));
+  outline: none;
 }
 
 .warning-dismiss {
@@ -2567,5 +2689,557 @@ button {
 @media (prefers-reduced-motion: reduce) {
   * {
     scroll-behavior: auto !important;
+  }
+}
+
+.live-geometry-readout {
+  z-index: 19;
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--viewer-foreground);
+  background: color-mix(in srgb, var(--viewer-panel) 94%, transparent);
+  border: 1px solid var(--viewer-accent);
+  border-radius: 6px;
+  box-shadow: var(--viewer-shadow);
+  padding: 7px 11px;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.modeling-interaction-layer {
+  position: absolute;
+  z-index: 16;
+  inset: 0;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.modeling-interaction-layer[data-tool='move'] {
+  cursor: move;
+  pointer-events: none;
+}
+
+.modeling-interaction-layer[data-tool='rotate'] {
+  cursor: ew-resize;
+  pointer-events: none;
+}
+
+.modeling-interaction-layer[data-tool='adsorbate'] {
+  cursor: crosshair;
+}
+
+.sketch-palette {
+  position: absolute;
+  z-index: 18;
+  top: 54px;
+  left: 50%;
+  display: flex;
+  max-width: calc(100% - 32px);
+  padding: 7px 9px;
+  color: var(--viewer-foreground);
+  background: color-mix(in srgb, var(--viewer-panel) 96%, transparent);
+  border: 1px solid var(--viewer-panel-border);
+  border-radius: 8px;
+  box-shadow: var(--viewer-shadow);
+  cursor: default;
+  transform: translateX(-50%);
+  gap: 7px;
+}
+
+.adsorbate-palette {
+  top: 54px;
+}
+
+.sketch-palette label {
+  display: grid;
+  color: var(--viewer-muted);
+  font-size: 9px;
+  font-weight: 620;
+  gap: 2px;
+}
+
+.sketch-palette select,
+.sketch-palette input {
+  width: auto;
+  min-width: 70px;
+  height: 26px;
+  padding: 0 6px;
+  color: var(--viewer-foreground);
+  background: var(--viewer-panel);
+  border: 1px solid color-mix(in srgb, var(--viewer-foreground) 20%, transparent);
+  border-radius: 5px;
+  font: inherit;
+}
+
+.sketch-palette input {
+  width: 58px;
+  min-width: 58px;
+}
+
+.sketch-palette-readout {
+  align-self: end;
+  min-width: 110px;
+  height: 26px;
+  padding: 5px 7px;
+  color: var(--viewer-muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.sketch-palette-action {
+  align-self: end;
+  height: 26px;
+  padding: 0 12px;
+  color: white;
+  background: var(--viewer-accent);
+  border: 1px solid color-mix(in srgb, var(--viewer-accent) 78%, black);
+  border-radius: 5px;
+  font: inherit;
+  font-weight: 680;
+  cursor: pointer;
+}
+
+.sketch-palette-action:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+@media (max-width: 680px) {
+  .sketch-palette {
+    right: 10px;
+    left: 10px;
+    flex-wrap: wrap;
+    transform: none;
+  }
+}
+
+.modeling-interaction-layer svg {
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.modeling-interaction-layer polygon {
+  fill: color-mix(in srgb, var(--viewer-selection) 18%, transparent);
+  stroke: var(--viewer-selection);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 3;
+}
+
+.transform-readout {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  padding: 7px 10px;
+  color: var(--viewer-foreground);
+  background: var(--viewer-panel);
+  border: 1px solid var(--viewer-panel-border);
+  border-radius: 5px;
+  transform: translate(12px, 12px);
+}
+
+.adsorbate-readout {
+  top: 18px;
+  font-variant-numeric: tabular-nums;
+  transform: translateX(-50%);
+}
+
+.adsorbate-readout.invalid {
+  color: #b42318;
+  border-color: #d92d20;
+}
+
+.compatible-transform-readout {
+  z-index: 17;
+  pointer-events: none;
+}
+
+.content-zoom-readout {
+  position: absolute;
+  z-index: 19;
+  right: 62px;
+  bottom: 12px;
+  padding: 5px 8px;
+  color: var(--viewer-foreground);
+  font-size: 10px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  background: color-mix(in srgb, var(--viewer-panel) 96%, transparent);
+  border: 1px solid var(--viewer-panel-border);
+  border-radius: 7px;
+  box-shadow: var(--viewer-shadow);
+  pointer-events: none;
+}
+
+/* At 175–200% the component has the same usable area as a narrow viewport.
+   Keep every tool reachable without letting long vertical overlays dominate
+   the structure. These rules are tied to the product zoom state because
+   MATLAB's embedded Chromium does not update CSS media queries for transforms. */
+.content-zoom-high .viewer-toolbar {
+  top: 10px;
+  right: 10px;
+  display: grid;
+  grid-template-columns: repeat(3, 30px);
+  align-content: start;
+  max-width: 102px;
+  max-height: calc(100% - 20px);
+  overflow: auto;
+}
+
+.content-zoom-high .viewer-toolbar > .toolbar-separator {
+  grid-column: 1 / -1;
+}
+
+.content-zoom-high .warning-stack {
+  top: 10px;
+  right: 122px;
+  left: 10px;
+  width: auto;
+  transform: none;
+}
+
+.content-zoom-high .warning-stack--modeling {
+  top: 82px;
+  right: auto;
+  left: 10px;
+  width: min(280px, calc(100% - 132px));
+}
+
+.content-zoom-high .content-zoom-readout {
+  right: 10px;
+  bottom: 10px;
+}
+
+.content-zoom-high .shortcut-help-backdrop {
+  padding: 8px;
+}
+
+.content-zoom-high .shortcut-help-dialog {
+  width: 100%;
+  max-height: 100%;
+}
+
+.content-zoom-high .shortcut-help-header {
+  min-height: 48px;
+  padding: 6px 8px 6px 10px;
+}
+
+.content-zoom-high .shortcut-help-content {
+  padding: 7px 9px 10px;
+}
+
+.content-zoom-high .shortcut-tier--common .shortcut-groups {
+  grid-template-columns: 1fr;
+}
+
+.content-zoom-high .shortcut-tier-heading {
+  margin-bottom: 6px;
+}
+
+.content-zoom-high .shortcut-row {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
+  min-height: 30px;
+  padding: 3px 8px 4px;
+}
+
+.content-zoom-high .shortcut-keys {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+.modeling-mode-indicator {
+  position: absolute;
+  z-index: 17;
+  top: 54px;
+  left: 50%;
+  padding: 6px 10px;
+  color: var(--viewer-foreground);
+  background: color-mix(in srgb, var(--viewer-panel) 96%, transparent);
+  border: 1px solid color-mix(in srgb, var(--viewer-accent) 55%, var(--viewer-panel-border));
+  border-radius: 7px;
+  box-shadow: var(--viewer-shadow);
+  font-size: 11px;
+  font-weight: 620;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.shortcut-help-backdrop {
+  position: absolute;
+  z-index: 60;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(0 0 0 / 38%);
+}
+
+.shortcut-help-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(820px, 100%);
+  max-height: min(740px, 100%);
+  overflow: hidden;
+  color: var(--viewer-foreground);
+  background: var(--viewer-panel);
+  border: 1px solid var(--viewer-panel-border);
+  border-radius: 12px;
+  box-shadow: var(--viewer-shadow);
+}
+
+.shortcut-help-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 62px;
+  padding: 10px 12px 10px 16px;
+  background: var(--viewer-panel);
+  border-bottom: 1px solid var(--viewer-panel-border);
+}
+
+.shortcut-help-title {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+}
+
+.shortcut-help-header h2 {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.shortcut-help-close {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: var(--viewer-muted);
+  font-size: 20px;
+  line-height: 1;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.shortcut-help-close:hover,
+.shortcut-help-close:focus-visible {
+  color: var(--viewer-foreground);
+  background: color-mix(in srgb, var(--viewer-accent) 10%, transparent);
+  outline: none;
+}
+
+.shortcut-tier-switch {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.shortcut-tier-switch button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 25px;
+  padding: 3px 8px;
+  color: var(--viewer-muted);
+  font-size: 10.5px;
+  font-weight: 620;
+  line-height: 1;
+  background: color-mix(in srgb, var(--viewer-foreground) 3%, var(--viewer-panel));
+  border: 1px solid var(--viewer-panel-border);
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.shortcut-tier-switch button small {
+  display: inline-grid;
+  place-items: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  color: inherit;
+  font-size: 8.5px;
+  font-variant-numeric: tabular-nums;
+  background: color-mix(in srgb, currentColor 8%, transparent);
+  border-radius: 3px;
+}
+
+.shortcut-tier-switch button[aria-selected='true'] {
+  color: var(--viewer-accent);
+  background: color-mix(in srgb, var(--viewer-accent) 9%, var(--viewer-panel));
+  border-color: color-mix(in srgb, var(--viewer-accent) 38%, var(--viewer-panel-border));
+}
+
+.shortcut-tier-switch button:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--viewer-accent) 68%, transparent);
+  outline-offset: 1px;
+}
+
+.shortcut-help-content {
+  min-height: 0;
+  padding: 13px 14px 16px;
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+
+.shortcut-tier .shortcut-groups {
+  display: grid;
+  gap: 8px;
+}
+
+.shortcut-tier--common .shortcut-groups {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.shortcut-tier--advanced .shortcut-groups {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.shortcut-group {
+  min-width: 0;
+  overflow: hidden;
+  background: var(--viewer-panel);
+  border: 1px solid var(--viewer-panel-border);
+  border-radius: 9px;
+}
+
+.shortcut-group h4 {
+  position: relative;
+  padding: 8px 10px;
+  padding-left: 15px;
+  margin: 0;
+  color: var(--viewer-foreground);
+  font-size: 12px;
+  font-weight: 680;
+  line-height: 1.25;
+  background: color-mix(in srgb, var(--viewer-foreground) 4%, var(--viewer-panel));
+}
+
+.shortcut-group h4::before {
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  left: 5px;
+  width: 3px;
+  background: color-mix(in srgb, var(--viewer-accent) 62%, transparent);
+  border-radius: 999px;
+  content: '';
+}
+
+.shortcut-list {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.shortcut-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 37px;
+  padding: 5px 9px;
+  border-top: 1px solid var(--viewer-panel-border);
+}
+
+.shortcut-tier--advanced .shortcut-row {
+  min-height: 37px;
+  padding: 5px 10px;
+}
+
+.shortcut-copy {
+  display: grid;
+  min-width: 0;
+}
+
+.shortcut-copy strong {
+  color: var(--viewer-foreground);
+  font-size: 11.75px;
+  font-weight: 480;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.shortcut-keys {
+  display: flex;
+  flex: none;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+}
+
+.shortcut-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  place-items: center;
+  min-width: 25px;
+  height: 23px;
+  padding: 0 5px;
+  margin: 0;
+  color: var(--viewer-accent);
+  font:
+    600 10.5px/1 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    monospace;
+  text-align: center;
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--viewer-accent) 8%, var(--viewer-panel));
+  border: 1px solid color-mix(in srgb, var(--viewer-accent) 32%, var(--viewer-panel-border));
+  border-radius: 5px;
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--viewer-foreground) 12%, transparent);
+}
+
+.shortcut-mouse {
+  width: 13px;
+  height: 15px;
+  flex: none;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.15;
+}
+
+.shortcut-mouse rect {
+  fill: currentColor;
+  stroke: none;
+  opacity: 0.88;
+}
+
+.shortcut-key-join {
+  color: var(--viewer-muted);
+  font-size: 9px;
+  font-weight: 500;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+@media (max-width: 680px) {
+  .shortcut-tier--common .shortcut-groups {
+    grid-template-columns: 1fr;
+  }
+
+  .shortcut-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 5px;
+  }
+
+  .shortcut-keys {
+    flex-wrap: wrap;
+    justify-content: flex-start;
   }
 }

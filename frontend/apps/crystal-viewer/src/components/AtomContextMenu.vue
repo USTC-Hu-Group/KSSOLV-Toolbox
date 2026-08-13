@@ -20,6 +20,7 @@ const emit = defineEmits<{
   close: [];
   command: [commandId: ContextModelingCommandId, parameters: ContextModelingParameters];
   selectSameElement: [symbol: string];
+  selectConnected: [siteIndex: number];
 }>();
 
 type DialogKind = 'delete' | 'substitute' | 'move' | 'translate';
@@ -35,6 +36,7 @@ const validationError = ref('');
 const position = ref({ left: props.x, top: props.y });
 
 const plural = computed(() => props.selectionCount !== 1);
+const periodicModel = computed(() => props.site.fractional !== undefined);
 const elementSymbol = computed(() => primaryElementSymbol(props.site));
 const deleteDisabled = computed(() => !props.backendAvailable);
 const moveDisabled = computed(() => !props.backendAvailable || props.selectedSiteCount !== 1);
@@ -61,6 +63,10 @@ const openDialog = (kind: DialogKind): void => {
   if (kind === 'move' && moveDisabled.value) return;
   validationError.value = '';
   activeDialog.value = kind;
+  if (!periodicModel.value) {
+    cartesian.value = true;
+    fractional.value = false;
+  }
   if (kind === 'move') {
     coordinates.value = cartesian.value
       ? [...props.site.cartesian]
@@ -206,6 +212,15 @@ onBeforeUnmount(() => {
         >
           Delete {{ plural ? 'Atoms' : 'Atom' }}
         </button>
+        <button
+          v-if="selectedSiteCount === 1"
+          class="selection-action"
+          type="button"
+          role="menuitem"
+          @click="emit('selectConnected', site.siteIndex)"
+        >
+          Select Connected Component
+        </button>
       </div>
       <p v-if="!backendAvailable" class="atom-context-notice">
         Requires KSSOLV Toolbox. Editing is unavailable in offline HTML.
@@ -249,7 +264,7 @@ onBeforeUnmount(() => {
       </label>
 
       <template v-else-if="activeDialog === 'move'">
-        <label class="atom-modeling-check">
+        <label v-if="periodicModel" class="atom-modeling-check">
           <input v-model="cartesian" type="checkbox" @change="updateCoordinateMode" />
           Cartesian coordinates (Å)
         </label>
@@ -262,7 +277,7 @@ onBeforeUnmount(() => {
       </template>
 
       <template v-else>
-        <label class="atom-modeling-check">
+        <label v-if="periodicModel" class="atom-modeling-check">
           <input v-model="fractional" type="checkbox" />
           Fractional translation vector
         </label>

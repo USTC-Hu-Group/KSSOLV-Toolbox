@@ -5,6 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
     <title>KSSOLV Crystal Viewer</title>
+    <script>
+      // MATLAB may invoke setup while the deferred module entry is still
+      // evaluating. Preserve the component so main.ts can attach it once the
+      // application bundle is ready. Keep this in <head>: the single-file
+      // build plugin also hoists its module bundle into <head>.
+      window.setup = function (htmlComponent) {
+        window.__KSSOLV_PENDING_MATLAB_COMPONENT__ = htmlComponent;
+        htmlComponent.sendEventToMATLAB('viewer:bootstrap', {
+          schemaVersion: '1.0',
+        });
+      };
+    </script>
   </head>
   <body>
     <div id="app"></div>

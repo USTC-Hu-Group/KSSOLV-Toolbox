@@ -60,7 +60,9 @@ classdef CommandPresentationCatalog
                     join(missing, ", "), join(extra, ", "));
             end
             assetIds = [
-                presentationIds
+                sort(unique( ...
+                    kssolv.ui.features.modeling. ...
+                    CommandPresentationCatalog.iconNames()))
                 "category_" + ...
                     kssolv.ui.features.modeling.CommandPresentationCatalog. ...
                     categoryIds()
@@ -143,6 +145,35 @@ classdef CommandPresentationCatalog
                 "rotate_atoms"
                 "substitute_atoms"
                 "translate_atoms"
+                "sketch_atom"
+                "add_bond"
+                "delete_bond"
+                "set_bond_order"
+                "sketch_ring"
+                "set_atom_chemistry"
+                "add_hydrogens"
+                "remove_hydrogens"
+                "diagnose_molecule"
+                "measure_geometry"
+                "set_distance"
+                "set_angle"
+                "set_dihedral"
+                "align_geometry"
+                "clean_geometry"
+                "optimize_geometry"
+                "attach_fragment"
+                "save_user_fragment"
+                "build_homopolymer"
+                "build_block_copolymer"
+                "build_random_copolymer"
+                "build_branched_polymer"
+                "build_dendrimer"
+                "save_user_repeat_unit"
+                "construct_amorphous"
+                "pack_mixture"
+                "build_confined_layer"
+                "pack_into_existing_box"
+                "pack_around_nanoparticle"
                 "apply_strain"
                 "edit_lattice"
                 "mirror_lattice"
@@ -154,6 +185,7 @@ classdef CommandPresentationCatalog
                 "strain_structure"
                 "perturb_structure"
                 "create_point_defects"
+                "enumerate_point_defects"
                 "generate_sqs_model"
                 "roll_nanotube"
                 "cut_nanoribbon"
@@ -166,8 +198,12 @@ classdef CommandPresentationCatalog
                 "twist_moire"
                 "interpolate_neb"
                 "find_adsorption_sites"
+                "locate_adsorbate"
+                "place_adsorbate"
                 "passivate_surface"
                 "add_solvent_layer"
+                "build_from_spacegroup"
+                "make_p1"
                 "find_symmetry"
                 "primitive_cell"
                 "conventional_cell"
@@ -219,6 +255,10 @@ classdef CommandPresentationCatalog
         function ids = categoryIds()
             ids = [
                 "atomic_editor"
+                "selection_sets"
+                "molecule_builder"
+                "polymer_builder"
+                "amorphous_builder"
                 "lattice_editor"
                 "supercell_lattice"
                 "defects_alloys"
@@ -230,7 +270,16 @@ classdef CommandPresentationCatalog
         end
 
         function ids = utilityIds()
-            ids = ["undo"; "redo"];
+            ids = [
+                "undo"
+                "redo"
+                "reset"
+                "record_start"
+                "record_save"
+                "jobs"
+                "library"
+                "guide"
+                ];
         end
 
         function path = assetPath(assetId, size)

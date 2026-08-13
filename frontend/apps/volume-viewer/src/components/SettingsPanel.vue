@@ -54,33 +54,23 @@ const resetAppearance = (): void => {
   });
 };
 
-const sliceAxes = ['i', 'j', 'k'] as const;
-const axisMaximum = (axisIndex: number): number =>
-  props.scene.grid.dimensions[axisIndex] - 1;
-const updateSliceIndex = (axisIndex: number, requested: number): void => {
-  const value = Math.min(axisMaximum(axisIndex), Math.max(0, Math.round(requested)));
-  const sliceIndices = [...props.modelValue.sliceIndices] as [number, number, number];
-  sliceIndices[axisIndex] = value;
-  emit('update:modelValue', {
-    ...props.modelValue,
-    sliceAxis: sliceAxes[axisIndex],
-    sliceIndex: value,
-    sliceIndices,
-  });
-};
-const updateSliceVisibility = (axisIndex: number, visible: boolean): void => {
-  const sliceVisibility = [...props.modelValue.sliceVisibility] as [
-    boolean,
-    boolean,
-    boolean,
-  ];
-  sliceVisibility[axisIndex] = visible;
-  emit('update:modelValue', {
-    ...props.modelValue,
-    sliceAxis: sliceAxes[axisIndex],
-    sliceIndex: props.modelValue.sliceIndices[axisIndex],
-    sliceVisibility,
-  });
+const millerLabels = ['I', 'J', 'K'] as const;
+const updateMillerIndex = (
+  axisIndex: number,
+  requested: number,
+  input: HTMLInputElement,
+): void => {
+  if (!Number.isFinite(requested)) {
+    input.value = String(props.modelValue.millerIndices[axisIndex]);
+    return;
+  }
+  const millerIndices = [...props.modelValue.millerIndices] as [number, number, number];
+  millerIndices[axisIndex] = Math.round(requested);
+  if (millerIndices.every((value) => value === 0)) {
+    input.value = String(props.modelValue.millerIndices[axisIndex]);
+    return;
+  }
+  update('millerIndices', millerIndices);
 };
 
 const channel = () =>
@@ -197,7 +187,7 @@ const updateClip = (
         Display mode
         <select :value="modelValue.mode" @change="update('mode', ($event.target as HTMLSelectElement).value as VolumeOptions['mode'])">
           <option value="isosurface" :disabled="backend === 'canvas2d'">Isosurfaces</option>
-          <option value="slices">Orthogonal slice</option>
+          <option value="slices">Miller plane slice</option>
           <option value="volume" :disabled="scene.grid.dimensionality === 2 || backend === 'canvas2d'">Direct volume (GPU)</option>
         </select>
       </label>
@@ -236,29 +226,22 @@ const updateClip = (
     </section>
 
     <section v-if="modelValue.mode === 'slices'">
-      <h3>Orthogonal slices</h3>
-      <div v-for="(axis, axisIndex) in sliceAxes" :key="axis" class="slice-row">
-        <label class="check slice-toggle">
+      <h3>Miller plane</h3>
+      <div class="miller-index-row" aria-label="Miller indices I J K">
+        <label v-for="(axis, axisIndex) in millerLabels" :key="axis">
+          <span>{{ axis }}</span>
           <input
-            type="checkbox"
-            :aria-label="`Show ${axis.toUpperCase()} slice`"
-            :checked="modelValue.sliceVisibility[axisIndex]"
-            @change="updateSliceVisibility(axisIndex, ($event.target as HTMLInputElement).checked)"
+            :aria-label="`Miller index ${axis}`"
+            type="number"
+            step="1"
+            :value="modelValue.millerIndices[axisIndex]"
+            @change="updateMillerIndex(axisIndex, Number(($event.target as HTMLInputElement).value), $event.target as HTMLInputElement)"
           />
-          {{ axis.toUpperCase() }}
         </label>
-        <input
-          :aria-label="`${axis.toUpperCase()} slice index`"
-          type="range"
-          min="0"
-          :max="axisMaximum(axisIndex)"
-          step="1"
-          :value="Math.min(modelValue.sliceIndices[axisIndex], axisMaximum(axisIndex))"
-          @input="updateSliceIndex(axisIndex, Number(($event.target as HTMLInputElement).value))"
-        />
-        <output>{{ Math.min(modelValue.sliceIndices[axisIndex], axisMaximum(axisIndex)) }}</output>
       </div>
-      <p class="setting-hint">Each plane can be positioned and shown independently. Slice export uses the last adjusted plane.</p>
+      <p class="setting-hint">
+        I, J, and K are one Miller-index triplet. Together they define a single plane through the volume center; (0 0 0) is not valid.
+      </p>
     </section>
 
     <section v-if="modelValue.mode === 'slices' || modelValue.mode === 'volume'">
@@ -334,6 +317,12 @@ const updateClip = (
       <label class="check"><input type="checkbox" :checked="modelValue.showCell" @change="update('showCell', ($event.target as HTMLInputElement).checked)" />Unit cell</label>
       <label class="check"><input type="checkbox" :checked="modelValue.showPolyhedra" @change="update('showPolyhedra', ($event.target as HTMLInputElement).checked)" />Polyhedra</label>
       <label class="check"><input type="checkbox" :checked="modelValue.showAxes" @change="update('showAxes', ($event.target as HTMLInputElement).checked)" />Orientation axes</label>
+      <label class="check"><input type="checkbox" :checked="modelValue.depthCueing" @change="update('depthCueing', ($event.target as HTMLInputElement).checked)" />Depth Cueing</label>
+      <label class="check"><input type="checkbox" :checked="modelValue.showBoundaryAtoms" @change="update('showBoundaryAtoms', ($event.target as HTMLInputElement).checked)" />Boundary image atoms</label>
+      <label class="check"><input type="checkbox" :checked="modelValue.showBondedOutside" @change="update('showBondedOutside', ($event.target as HTMLInputElement).checked)" />One-hop bonded atoms</label>
+      <label class="check"><input type="checkbox" :checked="modelValue.hideIncompleteBonds" @change="update('hideIncompleteBonds', ($event.target as HTMLInputElement).checked)" />Hide incomplete bonds</label>
+      <label class="check"><input type="checkbox" :checked="modelValue.showMagmoms" @change="update('showMagmoms', ($event.target as HTMLInputElement).checked)" />Magnetic moments</label>
+      <label class="check"><input type="checkbox" :checked="modelValue.showStatistics" @change="update('showStatistics', ($event.target as HTMLInputElement).checked)" />Performance statistics</label>
     </section>
 
     <section v-if="scene.atomicOverlay" class="appearance-settings">
@@ -410,16 +399,5 @@ const updateClip = (
       </div>
     </section>
 
-    <section>
-      <h3>Image export</h3>
-      <label>
-        PNG scale
-        <select :value="modelValue.pngScale" @change="update('pngScale', Number(($event.target as HTMLSelectElement).value) as VolumeOptions['pngScale'])">
-          <option :value="1">1×</option>
-          <option :value="1.5">1.5×</option>
-          <option :value="2">2×</option>
-        </select>
-      </label>
-    </section>
   </aside>
 </template>

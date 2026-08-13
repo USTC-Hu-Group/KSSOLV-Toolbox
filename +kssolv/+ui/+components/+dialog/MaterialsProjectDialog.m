@@ -9,16 +9,19 @@ classdef MaterialsProjectDialog < controllib.ui.internal.dialog.AbstractDialog
     end
 
     properties (Access = private)
-        width = 1180
-        height = 780
+        width = 1020
+        height = 710
         importFcn = []
         apiKey (1, 1) string = ""
-        apiKeyVisible (1, 1) logical = false
         results = struct([])
         selectedResultIndex (1, 1) double = 0
         requestFuture = []
         completionFuture = []
         requestToken (1, 1) uint64 = uint64(0)
+        currentPage (1, 1) double = 1
+        pageSize (1, 1) double = 10
+        totalResults (1, 1) double = 0
+        searchCriteria = struct()
     end
 
     methods
@@ -62,17 +65,18 @@ classdef MaterialsProjectDialog < controllib.ui.internal.dialog.AbstractDialog
             figure = this.getWidget();
             figure.Position(3:4) = [this.width, this.height];
             layout = uigridlayout(figure, [5, 1], ...
-                "RowHeight", {76, 48, 340, "1x", 36}, ...
+                "RowHeight", {28, 26, 360, "1x", 26}, ...
                 "ColumnWidth", {"1x"}, ...
-                "RowSpacing", 10, ...
-                "Padding", [14, 14, 14, 12]);
+                "RowSpacing", 2, ...
+                "Padding", [10, 8, 10, 8]);
+            this.widgets.MainLayout = layout;
 
             this.buildSearchHeader(layout);
             this.buildSearchMode(layout);
             this.buildPeriodicTable(layout);
             this.buildResultsTable(layout);
             this.buildFooter(layout);
-            this.updateAPIKeyDisplay();
+            this.updateSearchInputForMode("only");
             this.updateSelectedElements();
         end
     end
@@ -81,53 +85,31 @@ classdef MaterialsProjectDialog < controllib.ui.internal.dialog.AbstractDialog
         function buildSearchHeader(this, parent)
             import kssolv.ui.util.Localizer.message
 
-            layout = uigridlayout(parent, [2, 5], ...
-                "RowHeight", {30, 30}, ...
-                "ColumnWidth", {105, "1x", 34, 145, 95}, ...
-                "RowSpacing", 6, "ColumnSpacing", 7, "Padding", 0);
+            layout = uigridlayout(parent, [1, 3], ...
+                "RowHeight", {28}, ...
+                "ColumnWidth", {105, "1x", 88}, ...
+                "ColumnSpacing", 6, "Padding", 0);
             layout.Layout.Row = 1;
-
-            keyLabel = uilabel(layout, "Text", ...
-                message("KSSOLV:dialogs:MaterialsProjectAPIKey"));
-            keyLabel.Layout.Row = 1;
-            keyLabel.Layout.Column = 1;
-            keyField = uieditfield(layout, "text", ...
-                "Placeholder", "32-character API key", ...
-                "ValueChangedFcn", @(source, ~) ...
-                this.apiKeyChanged(source));
-            keyField.Layout.Row = 1;
-            keyField.Layout.Column = 2;
-            keyVisibility = uibutton(layout, ...
-                "Text", "", ...
-                "Icon", kssolv.ui.util.GetIcon("eye.svg"), ...
-                "ButtonPushedFcn", @(~, ~) this.toggleAPIKeyVisibility());
-            keyVisibility.Layout.Row = 1;
-            keyVisibility.Layout.Column = 3;
-            dashboardButton = uibutton(layout, ...
-                "Text", message( ...
-                "KSSOLV:dialogs:MaterialsProjectDashboard"), ...
-                "ButtonPushedFcn", @(~, ~) web( ...
-                "https://materialsproject.org/dashboard", "-browser"));
-            dashboardButton.Layout.Row = 1;
-            dashboardButton.Layout.Column = 4;
 
             queryLabel = uilabel(layout, "Text", ...
                 message("KSSOLV:dialogs:MaterialsProjectQuery"));
-            queryLabel.Layout.Row = 2;
+            queryLabel.Layout.Row = 1;
             queryLabel.Layout.Column = 1;
+            searchCallback = @(~, ~) this.startSearch();
             queryField = uieditfield(layout, "text", ...
-                "Placeholder", "LiFePO4 or mp-19017");
-            queryField.Layout.Row = 2;
-            queryField.Layout.Column = [2, 4];
+                "Placeholder", message( ...
+                "KSSOLV:dialogs:MaterialsProjectFormulaPlaceholder"), ...
+                "ValueChangedFcn", searchCallback);
+            queryField.Layout.Row = 1;
+            queryField.Layout.Column = 2;
             searchButton = uibutton(layout, ...
                 "Text", message("KSSOLV:dialogs:MaterialsProjectSearch"), ...
-                "ButtonPushedFcn", @(~, ~) this.startSearch(), ...
+                "ButtonPushedFcn", searchCallback, ...
                 "Interruptible", "off");
-            searchButton.Layout.Row = 2;
-            searchButton.Layout.Column = 5;
+            searchButton.Layout.Row = 1;
+            searchButton.Layout.Column = 3;
 
-            this.widgets.APIKeyField = keyField;
-            this.widgets.APIKeyVisibilityButton = keyVisibility;
+            this.widgets.QueryLabel = queryLabel;
             this.widgets.QueryField = queryField;
             this.widgets.SearchButton = searchButton;
         end
@@ -135,48 +117,40 @@ classdef MaterialsProjectDialog < controllib.ui.internal.dialog.AbstractDialog
         function buildSearchMode(this, parent)
             import kssolv.ui.util.Localizer.message
 
-            layout = uigridlayout(parent, [1, 2], ...
-                "ColumnWidth", {510, "1x"}, "Padding", 0);
-            layout.Layout.Row = 2;
-            group = uibuttongroup(layout, ...
+            group = uibuttongroup(parent, ...
                 "BorderType", "none", ...
                 "SelectionChangedFcn", @(~, event) ...
                 this.searchModeChanged(event));
-            group.Layout.Column = 1;
+            group.Layout.Row = 2;
             only = uiradiobutton(group, ...
                 "Text", message( ...
                 "KSSOLV:dialogs:MaterialsProjectOnlyElements"), ...
-                "Tag", "only", "Position", [8, 8, 155, 26]);
+                "Tag", "only", "Position", [8, 1, 155, 24]);
             atLeast = uiradiobutton(group, ...
                 "Text", message( ...
                 "KSSOLV:dialogs:MaterialsProjectAtLeastElements"), ...
-                "Tag", "at-least", "Position", [170, 8, 170, 26]);
+                "Tag", "at-least", "Position", [170, 1, 170, 24]);
             formula = uiradiobutton(group, ...
                 "Text", message( ...
                 "KSSOLV:dialogs:MaterialsProjectFormulaOrId"), ...
-                "Tag", "formula", "Position", [350, 8, 155, 26]);
+                "Tag", "formula", "Position", [350, 1, 155, 24]);
             group.SelectedObject = only;
-
-            selected = uilabel(layout, ...
-                "Text", "", "HorizontalAlignment", "right", ...
-                "FontColor", [0.35, 0.35, 0.35]);
-            selected.Layout.Column = 2;
 
             this.widgets.SearchModeGroup = group;
             this.widgets.OnlyElementsButton = only;
             this.widgets.AtLeastElementsButton = atLeast;
             this.widgets.FormulaButton = formula;
-            this.widgets.SelectedElementsLabel = selected;
         end
 
         function buildPeriodicTable(this, parent)
             panel = uipanel(parent, "BorderType", "line");
             panel.Layout.Row = 3;
-            grid = uigridlayout(panel, [9, 18], ...
-                "RowHeight", repmat({"1x"}, 1, 9), ...
-                "ColumnWidth", repmat({"1x"}, 1, 18), ...
+            grid = uigridlayout(panel, [9, 20], ...
+                "RowHeight", repmat({36}, 1, 9), ...
+                "ColumnWidth", [{"1x"}, repmat({36}, 1, 18), {"1x"}], ...
                 "RowSpacing", 3, "ColumnSpacing", 3, ...
-                "Padding", [8, 8, 8, 8]);
+                "Padding", [6, 6, 6, 6]);
+            this.widgets.PeriodicTableGrid = grid;
 
             map = this.periodicTableMap();
             elementButtons = struct();
@@ -189,12 +163,14 @@ classdef MaterialsProjectDialog < controllib.ui.internal.dialog.AbstractDialog
                     button = uibutton(grid, "state", ...
                         "Text", char(symbol), ...
                         "FontWeight", "bold", ...
+                        "FontColor", [74, 74, 74] ./ 255, ...
                         "BackgroundColor", this.elementColor(symbol), ...
+                        "Enable", this.elementEnabledState(symbol), ...
                         "UserData", symbol, ...
                         "ValueChangedFcn", @(~, ~) ...
                         this.updateSelectedElements());
                     button.Layout.Row = row;
-                    button.Layout.Column = column;
+                    button.Layout.Column = column + 1;
                     elementButtons.(char(symbol)) = button;
                 end
             end
@@ -205,16 +181,25 @@ classdef MaterialsProjectDialog < controllib.ui.internal.dialog.AbstractDialog
             import kssolv.ui.util.Localizer.message
 
             resultsTable = uitable(parent, ...
-                "Data", cell(0, 7), ...
+                "Data", cell(0, 11), ...
                 "ColumnName", { ...
                 message("KSSOLV:dialogs:MaterialsProjectIdColumn"), ...
                 message("KSSOLV:dialogs:MaterialsProjectFormulaColumn"), ...
+                message("KSSOLV:dialogs:MaterialsProjectCrystalSystemColumn"), ...
                 message("KSSOLV:dialogs:MaterialsProjectSpaceGroupColumn"), ...
+                message("KSSOLV:dialogs:MaterialsProjectSitesColumn"), ...
+                message("KSSOLV:dialogs:MaterialsProjectVolumeColumn"), ...
+                message("KSSOLV:dialogs:MaterialsProjectDensityColumn"), ...
                 message("KSSOLV:dialogs:MaterialsProjectBandGapColumn"), ...
+                message("KSSOLV:dialogs:MaterialsProjectFormationEnergyColumn"), ...
                 message("KSSOLV:dialogs:MaterialsProjectHullColumn"), ...
-                message("KSSOLV:dialogs:MaterialsProjectStableColumn"), ...
-                message("KSSOLV:dialogs:MaterialsProjectSitesColumn")}, ...
-                "ColumnWidth", {110, 120, "1x", 105, 125, 70, 70}, ...
+                message("KSSOLV:dialogs:MaterialsProjectStableColumn")}, ...
+                "ColumnWidth", {125, 85, 105, 140, 70, 95, ...
+                110, 100, 145, 135, 60}, ...
+                "ColumnFormat", {'char', 'char', 'char', 'char', ...
+                'numeric', 'numeric', 'numeric', 'numeric', 'numeric', ...
+                'numeric', 'char'}, ...
+                "ColumnSortable", true(1, 11), ...
                 "RowName", {}, ...
                 "CellSelectionCallback", @(~, event) ...
                 this.resultSelected(event));
@@ -225,107 +210,160 @@ classdef MaterialsProjectDialog < controllib.ui.internal.dialog.AbstractDialog
         function buildFooter(this, parent)
             import kssolv.ui.util.Localizer.message
 
-            layout = uigridlayout(parent, [1, 4], ...
-                "ColumnWidth", {"1x", "fit", "fit", "fit"}, ...
+            layout = uigridlayout(parent, [1, 7], ...
+                "ColumnWidth", {"1x", "fit", 82, "fit", "fit", ...
+                "fit", "fit"}, ...
                 "Padding", 0);
             layout.Layout.Row = 5;
+            this.widgets.FooterLayout = layout;
             status = uilabel(layout, "Text", ...
                 message("KSSOLV:dialogs:MaterialsProjectReady"), ...
                 "FontColor", [0.35, 0.35, 0.35]);
             status.Layout.Column = 1;
+            experimentalLegend = uilabel(layout, ...
+                "Text", message( ...
+                "KSSOLV:dialogs:MaterialsProjectExperimentalLegend"), ...
+                "FontColor", [0.25, 0.25, 0.25], ...
+                "HorizontalAlignment", "right");
+            experimentalLegend.Layout.Column = 2;
+            pageSizeDropDown = uidropdown(layout, ...
+                "Items", ["10/page", "15/page", "20/page", "30/page"], ...
+                "ItemsData", [10, 15, 20, 30], ...
+                "Value", this.pageSize, ...
+                "Tooltip", message( ...
+                "KSSOLV:dialogs:MaterialsProjectPageSizeTooltip"), ...
+                "ValueChangedFcn", @(source, ~) ...
+                this.pageSizeChanged(source));
+            pageSizeDropDown.Layout.Column = 3;
+            pagination = uigridlayout(layout, [1, 5], ...
+                "ColumnWidth", {28, 28, 82, 28, 28}, ...
+                "ColumnSpacing", 3, "Padding", 0);
+            pagination.Layout.Column = 4;
+            firstPage = uibutton(pagination, "Text", "|<", ...
+                "Tooltip", message( ...
+                "KSSOLV:dialogs:MaterialsProjectFirstPage"), ...
+                "ButtonPushedFcn", @(~, ~) this.goToPage(1));
+            previousPage = uibutton(pagination, "Text", "<", ...
+                "Tooltip", message( ...
+                "KSSOLV:dialogs:MaterialsProjectPreviousPage"), ...
+                "ButtonPushedFcn", @(~, ~) ...
+                this.goToPage(this.currentPage - 1));
+            pageLabel = uilabel(pagination, ...
+                "HorizontalAlignment", "center");
+            nextPage = uibutton(pagination, "Text", ">", ...
+                "Tooltip", message( ...
+                "KSSOLV:dialogs:MaterialsProjectNextPage"), ...
+                "ButtonPushedFcn", @(~, ~) ...
+                this.goToPage(this.currentPage + 1));
+            lastPage = uibutton(pagination, "Text", ">|", ...
+                "Tooltip", message( ...
+                "KSSOLV:dialogs:MaterialsProjectLastPage"), ...
+                "ButtonPushedFcn", @(~, ~) this.goToPage( ...
+                max(1, ceil(this.totalResults / this.pageSize))));
+
             clearButton = uibutton(layout, ...
                 "Text", message( ...
                 "KSSOLV:dialogs:MaterialsProjectClearElements"), ...
                 "ButtonPushedFcn", @(~, ~) this.clearElements());
-            clearButton.Layout.Column = 2;
+            clearButton.Layout.Column = 5;
             importButton = uibutton(layout, ...
                 "Text", message( ...
                 "KSSOLV:dialogs:MaterialsProjectImportSelected"), ...
                 "Enable", "off", ...
                 "ButtonPushedFcn", @(~, ~) this.startImport(), ...
                 "Interruptible", "off");
-            importButton.Layout.Column = 3;
+            importButton.Layout.Column = 6;
             closeButton = uibutton(layout, ...
                 "Text", message("KSSOLV:dialogs:DialogCloseButton"), ...
                 "ButtonPushedFcn", @(~, ~) close(this));
-            closeButton.Layout.Column = 4;
+            closeButton.Layout.Column = 7;
 
             this.widgets.StatusLabel = status;
+            this.widgets.ExperimentalLegend = experimentalLegend;
+            this.widgets.PageSizeDropDown = pageSizeDropDown;
+            this.widgets.FirstPageButton = firstPage;
+            this.widgets.PreviousPageButton = previousPage;
+            this.widgets.PageLabel = pageLabel;
+            this.widgets.NextPageButton = nextPage;
+            this.widgets.LastPageButton = lastPage;
             this.widgets.ClearElementsButton = clearButton;
             this.widgets.ImportButton = importButton;
-        end
-
-        function apiKeyChanged(this, editField)
-            value = strip(string(editField.Value));
-            if ~this.apiKeyVisible && value == this.maskedAPIKey() && ...
-                    strlength(this.apiKey) > 0
-                return
-            end
-            this.apiKey = value;
-            this.apiKeyVisible = false;
-            this.updateAPIKeyDisplay();
-        end
-
-        function toggleAPIKeyVisibility(this)
-            this.apiKeyVisible = ~this.apiKeyVisible;
-            this.updateAPIKeyDisplay();
-        end
-
-        function updateAPIKeyDisplay(this)
-            import kssolv.ui.util.Localizer.message
-
-            if ~isfield(this.widgets, "APIKeyField")
-                return
-            end
-            if this.apiKeyVisible
-                value = this.apiKey;
-                icon = "eyeOff.svg";
-                tooltip = message( ...
-                    "KSSOLV:dialogs:MaterialsProjectHideAPIKey");
-            else
-                value = "";
-                if strlength(this.apiKey) > 0
-                    value = this.maskedAPIKey();
-                end
-                icon = "eye.svg";
-                tooltip = message( ...
-                    "KSSOLV:dialogs:MaterialsProjectShowAPIKey");
-            end
-            this.widgets.APIKeyField.Value = char(value);
-            this.widgets.APIKeyVisibilityButton.Icon = ...
-                kssolv.ui.util.GetIcon(icon);
-            this.widgets.APIKeyVisibilityButton.Tooltip = tooltip;
+            this.updatePaginationControls();
         end
 
         function searchModeChanged(this, event)
-            formulaMode = string(event.NewValue.Tag) == "formula";
+            mode = string(event.NewValue.Tag);
+            formulaMode = mode == "formula";
             names = fieldnames(this.widgets.ElementButtons);
             for index = 1:numel(names)
                 if formulaMode
                     this.widgets.ElementButtons.(names{index}).Enable = "off";
                 else
-                    this.widgets.ElementButtons.(names{index}).Enable = "on";
+                    symbol = string(this.widgets.ElementButtons. ...
+                        (names{index}).UserData);
+                    this.widgets.ElementButtons.(names{index}).Enable = ...
+                        this.elementEnabledState(symbol);
                 end
             end
+            this.updateSearchInputForMode(mode);
             this.updateSelectedElements();
         end
 
-        function updateSelectedElements(this)
+        function updateSearchInputForMode(this, mode)
             import kssolv.ui.util.Localizer.message
 
+            if ~isfield(this.widgets, "QueryField")
+                return
+            end
+            if mode == "formula"
+                elements = this.selectedElements();
+                if isempty(elements)
+                    elementQuery = "";
+                else
+                    elementQuery = join(elements, "-");
+                end
+                if string(this.widgets.QueryField.Value) == elementQuery
+                    this.widgets.QueryField.Value = "";
+                end
+                this.widgets.QueryLabel.Text = message( ...
+                    "KSSOLV:dialogs:MaterialsProjectQuery");
+                this.widgets.QueryField.Editable = "on";
+                this.widgets.QueryField.Placeholder = message( ...
+                    "KSSOLV:dialogs:MaterialsProjectFormulaPlaceholder");
+                this.widgets.QueryField.Tooltip = message( ...
+                    "KSSOLV:dialogs:MaterialsProjectFormulaTooltip");
+            else
+                this.widgets.QueryLabel.Text = message( ...
+                    "KSSOLV:dialogs:MaterialsProjectElementsQuery");
+                this.widgets.QueryField.Editable = "off";
+                this.widgets.QueryField.Placeholder = message( ...
+                    "KSSOLV:dialogs:MaterialsProjectElementsPlaceholder");
+                if mode == "only"
+                    tooltipKey = ...
+                        "KSSOLV:dialogs:MaterialsProjectOnlyElementsTooltip";
+                else
+                    tooltipKey = ...
+                        "KSSOLV:dialogs:MaterialsProjectAtLeastElementsTooltip";
+                end
+                this.widgets.QueryField.Tooltip = message(tooltipKey);
+            end
+        end
+
+        function updateSelectedElements(this)
             if ~isfield(this.widgets, "ElementButtons")
                 return
             end
             elements = this.selectedElements();
-            if isempty(elements)
-                text = message( ...
-                    "KSSOLV:dialogs:MaterialsProjectNoElementsSelected");
-            else
-                text = sprintf(message( ...
-                    "KSSOLV:dialogs:MaterialsProjectSelectedElements"), ...
-                    char(join(elements, ", ")));
+            if isfield(this.widgets, "QueryField") && ...
+                    string(this.widgets.SearchModeGroup. ...
+                    SelectedObject.Tag) ~= "formula"
+                if isempty(elements)
+                    query = "";
+                else
+                    query = join(elements, "-");
+                end
+                this.widgets.QueryField.Value = char(query);
             end
-            this.widgets.SelectedElementsLabel.Text = text;
         end
 
         function elements = selectedElements(this)
@@ -350,6 +388,8 @@ classdef MaterialsProjectDialog < controllib.ui.internal.dialog.AbstractDialog
         function startSearch(this)
             import kssolv.ui.util.Localizer.message
 
+            this.apiKey = kssolv.analysis.matgenlab.ext.matproj. ...
+                MPRester.default_api_key();
             keyValue = strip(this.apiKey);
             query = strip(string(this.widgets.QueryField.Value));
             mode = string(this.widgets.SearchModeGroup.SelectedObject.Tag);
@@ -362,12 +402,52 @@ classdef MaterialsProjectDialog < controllib.ui.internal.dialog.AbstractDialog
                 return
             end
 
+            this.currentPage = 1;
+            this.totalResults = 0;
+            this.searchCriteria = struct( ...
+                "APIKey", keyValue, "Query", query, ...
+                "Elements", elements, "Mode", mode);
+            this.startSearchRequest();
+        end
+
+        function goToPage(this, page)
+            if isempty(fieldnames(this.searchCriteria))
+                return
+            end
+            pageCount = max(1, ceil(this.totalResults / this.pageSize));
+            page = min(max(1, round(page)), pageCount);
+            if page == this.currentPage
+                return
+            end
+            this.currentPage = page;
+            this.startSearchRequest();
+        end
+
+        function pageSizeChanged(this, dropDown)
+            newPageSize = double(dropDown.Value);
+            if newPageSize == this.pageSize
+                return
+            end
+            this.pageSize = newPageSize;
+            this.currentPage = 1;
+            this.updatePaginationControls();
+            if ~isempty(fieldnames(this.searchCriteria))
+                this.startSearchRequest();
+            end
+        end
+
+        function startSearchRequest(this)
+            import kssolv.ui.util.Localizer.message
+
+            criteria = this.searchCriteria;
+            offset = (this.currentPage - 1) * this.pageSize;
+
             this.stopRequest();
             this.requestToken = this.requestToken + 1;
             token = this.requestToken;
             this.selectedResultIndex = 0;
             this.results = struct([]);
-            this.widgets.ResultsTable.Data = cell(0, 7);
+            this.widgets.ResultsTable.Data = cell(0, 11);
             this.widgets.ImportButton.Enable = "off";
             this.setBusy(true, ...
                 message("KSSOLV:dialogs:MaterialsProjectSearching"));
@@ -377,7 +457,8 @@ classdef MaterialsProjectDialog < controllib.ui.internal.dialog.AbstractDialog
             try
                 future = parfeval(backgroundPool, ...
                     @kssolv.ui.components.dialog.MaterialsProjectDialog.fetchSummaries, ...
-                    1, keyValue, query, elements, mode, 100);
+                    2, criteria.APIKey, criteria.Query, criteria.Elements, ...
+                    criteria.Mode, this.pageSize, offset);
                 this.requestFuture = future;
                 this.completionFuture = afterEach(future, ...
                     @(completed) this.searchFinished(completed, token), ...
@@ -408,15 +489,18 @@ classdef MaterialsProjectDialog < controllib.ui.internal.dialog.AbstractDialog
             end
 
             this.results = future.OutputArguments{1};
+            this.totalResults = double(future.OutputArguments{2});
             this.widgets.ResultsTable.Data = ...
                 this.resultsTableData(this.results);
             if isempty(this.results)
                 status = message( ...
                     "KSSOLV:dialogs:MaterialsProjectNoResults");
             else
+                first = (this.currentPage - 1) * this.pageSize + 1;
+                last = first + numel(this.results) - 1;
                 status = sprintf(message( ...
-                    "KSSOLV:dialogs:MaterialsProjectResultsFound"), ...
-                    numel(this.results));
+                    "KSSOLV:dialogs:MaterialsProjectResultsFoundPaged"), ...
+                    this.totalResults, first, last);
             end
             this.setBusy(false, status);
         end
@@ -428,10 +512,17 @@ classdef MaterialsProjectDialog < controllib.ui.internal.dialog.AbstractDialog
                 return
             end
             row = event.Indices(1, 1);
-            if row < 1 || row > numel(this.results)
+            if row < 1 || row > size(this.widgets.ResultsTable.Data, 1)
                 return
             end
-            this.selectedResultIndex = row;
+            materialId = erase( ...
+                string(this.widgets.ResultsTable.Data{row, 1}), "★ ");
+            resultIds = string({this.results.MaterialId});
+            index = find(resultIds == materialId, 1);
+            if isempty(index)
+                return
+            end
+            this.selectedResultIndex = index;
             this.widgets.ImportButton.Enable = "on";
         end
 
@@ -508,12 +599,51 @@ classdef MaterialsProjectDialog < controllib.ui.internal.dialog.AbstractDialog
             end
             this.widgets.SearchButton.Enable = state;
             this.widgets.ClearElementsButton.Enable = state;
+            this.widgets.PageSizeDropDown.Enable = state;
             if busy || this.selectedResultIndex == 0
                 this.widgets.ImportButton.Enable = "off";
             else
                 this.widgets.ImportButton.Enable = "on";
             end
             this.widgets.StatusLabel.Text = status;
+            if busy
+                this.setPaginationButtons("off");
+            else
+                this.updatePaginationControls();
+            end
+        end
+
+        function updatePaginationControls(this)
+            import kssolv.ui.util.Localizer.message
+
+            if ~isfield(this.widgets, "PageLabel")
+                return
+            end
+            pageCount = max(1, ceil(this.totalResults / this.pageSize));
+            this.widgets.PageLabel.Text = sprintf(message( ...
+                "KSSOLV:dialogs:MaterialsProjectPageStatus"), ...
+                this.currentPage, pageCount);
+            if this.currentPage > 1
+                previousState = "on";
+            else
+                previousState = "off";
+            end
+            if this.currentPage < pageCount
+                nextState = "on";
+            else
+                nextState = "off";
+            end
+            this.widgets.FirstPageButton.Enable = previousState;
+            this.widgets.PreviousPageButton.Enable = previousState;
+            this.widgets.NextPageButton.Enable = nextState;
+            this.widgets.LastPageButton.Enable = nextState;
+        end
+
+        function setPaginationButtons(this, state)
+            this.widgets.FirstPageButton.Enable = state;
+            this.widgets.PreviousPageButton.Enable = state;
+            this.widgets.NextPageButton.Enable = state;
+            this.widgets.LastPageButton.Enable = state;
         end
 
         function stopRequest(this)
@@ -531,7 +661,13 @@ classdef MaterialsProjectDialog < controllib.ui.internal.dialog.AbstractDialog
 
             value = lower(string(exception.identifier) + " " + ...
                 string(exception.message));
-            if contains(value, "401") || contains(value, "403") || ...
+            if contains(value, "temporarily blocked") || ...
+                    contains(value, "ip address or asn") || ...
+                    contains(value, "inefficient or abusive traffic") || ...
+                    contains(value, '"version":"blocked"')
+                detail = message( ...
+                    "KSSOLV:dialogs:MaterialsProjectAccessBlocked");
+            elseif contains(value, "401") || contains(value, "403") || ...
                     contains(value, "api key")
                 detail = message( ...
                     "KSSOLV:dialogs:MaterialsProjectAuthenticationFailed");
@@ -551,9 +687,13 @@ classdef MaterialsProjectDialog < controllib.ui.internal.dialog.AbstractDialog
     end
 
     methods (Static)
-        function records = fetchSummaries(apiKey, query, elements, ...
-                mode, limit)
+        function [records, total] = fetchSummaries(apiKey, query, elements, ...
+                mode, limit, offset)
             import kssolv.analysis.matgenlab.ext.matproj.MPRester
+
+            if nargin < 6
+                offset = 0;
+            end
 
             rester = MPRester(apiKey, false);
             cleanup = onCleanup(@() rester.close());
@@ -571,14 +711,19 @@ classdef MaterialsProjectDialog < controllib.ui.internal.dialog.AbstractDialog
                 end
             end
             fields = ["material_id", "formula_pretty", "symmetry", ...
-                "band_gap", "energy_above_hull", "is_stable", "nsites"];
+                "nsites", "volume", "density", "band_gap", ...
+                "formation_energy_per_atom", "energy_above_hull", ...
+                "is_stable", "theoretical"];
             arguments = [arguments, {"_fields", fields, ...
-                "_limit", limit, "_sort_fields", "energy_above_hull", ...
+                "_limit", limit, "_skip", offset, ...
+                "_sort_fields", "material_id", ...
                 "id_format", "legacy"}];
-            docs = rester.summary_search(arguments{:});
+            [docs, metadata] = rester.summary_search(arguments{:});
             records = ...
                 kssolv.ui.components.dialog.MaterialsProjectDialog. ...
                 summaryRecords(docs);
+            total = double(fieldOr(metadata, "total_doc", ...
+                offset + numel(records)));
             clear cleanup
         end
 
@@ -616,11 +761,16 @@ classdef MaterialsProjectDialog < controllib.ui.internal.dialog.AbstractDialog
             template = struct( ...
                 "MaterialId", "", ...
                 "Formula", "", ...
+                "ExperimentallyObserved", false, ...
+                "CrystalSystem", "", ...
                 "SpaceGroup", "", ...
+                "Sites", NaN, ...
+                "Volume", NaN, ...
+                "Density", NaN, ...
                 "BandGap", NaN, ...
+                "FormationEnergy", NaN, ...
                 "EnergyAboveHull", NaN, ...
-                "Stable", false, ...
-                "Sites", NaN);
+                "Stable", false);
             records = repmat(template, numel(docs), 1);
             for index = 1:numel(docs)
                 doc = docs{index};
@@ -628,8 +778,16 @@ classdef MaterialsProjectDialog < controllib.ui.internal.dialog.AbstractDialog
                     fieldOr(doc, "material_id", ""));
                 records(index).Formula = string( ...
                     fieldOr(doc, "formula_pretty", ""));
+                theoretical = fieldOr(doc, "theoretical", true);
+                if isempty(theoretical)
+                    theoretical = true;
+                end
+                records(index).ExperimentallyObserved = ...
+                    ~logical(theoretical);
                 symmetry = fieldOr(doc, "symmetry", struct());
                 if isstruct(symmetry)
+                    records(index).CrystalSystem = string( ...
+                        fieldOr(symmetry, "crystal_system", ""));
                     symbol = string(fieldOr(symmetry, "symbol", ""));
                     number = fieldOr(symmetry, "number", []);
                     if ~isempty(number)
@@ -639,41 +797,53 @@ classdef MaterialsProjectDialog < controllib.ui.internal.dialog.AbstractDialog
                         records(index).SpaceGroup = symbol;
                     end
                 end
+                records(index).Sites = double( ...
+                    fieldOr(doc, "nsites", NaN));
+                records(index).Volume = double( ...
+                    fieldOr(doc, "volume", NaN));
+                records(index).Density = double( ...
+                    fieldOr(doc, "density", NaN));
                 records(index).BandGap = double( ...
                     fieldOr(doc, "band_gap", NaN));
+                records(index).FormationEnergy = double( ...
+                    fieldOr(doc, "formation_energy_per_atom", NaN));
                 records(index).EnergyAboveHull = double( ...
                     fieldOr(doc, "energy_above_hull", NaN));
                 records(index).Stable = logical( ...
                     fieldOr(doc, "is_stable", false));
-                records(index).Sites = double( ...
-                    fieldOr(doc, "nsites", NaN));
             end
         end
 
         function data = resultsTableData(records)
             import kssolv.ui.util.Localizer.message
 
-            data = cell(numel(records), 7);
+            data = cell(numel(records), 11);
             for index = 1:numel(records)
-                data{index, 1} = char(records(index).MaterialId);
-                data{index, 2} = char(records(index).Formula);
-                data{index, 3} = char(records(index).SpaceGroup);
-                data{index, 4} = displayNumber(records(index).BandGap);
-                data{index, 5} = ...
-                    displayNumber(records(index).EnergyAboveHull);
-                if records(index).Stable
-                    data{index, 6} = message( ...
-                        "KSSOLV:dialogs:MaterialsProjectYes");
-                else
-                    data{index, 6} = message( ...
-                        "KSSOLV:dialogs:MaterialsProjectNo");
+                materialId = records(index).MaterialId;
+                if records(index).ExperimentallyObserved
+                    materialId = "★ " + materialId;
                 end
-                data{index, 7} = displayNumber(records(index).Sites);
+                data{index, 1} = char(materialId);
+                data{index, 2} = char(records(index).Formula);
+                data{index, 3} = char(records(index).CrystalSystem);
+                data{index, 4} = char(records(index).SpaceGroup);
+                data{index, 5} = records(index).Sites;
+                data{index, 6} = records(index).Volume;
+                data{index, 7} = records(index).Density;
+                data{index, 8} = records(index).BandGap;
+                data{index, 9} = records(index).FormationEnergy;
+                data{index, 10} = records(index).EnergyAboveHull;
+                if records(index).Stable
+                    data{index, 11} = char(message( ...
+                        "KSSOLV:dialogs:MaterialsProjectYes"));
+                else
+                    data{index, 11} = char(message( ...
+                        "KSSOLV:dialogs:MaterialsProjectNo"));
+                end
             end
-        end
-
-        function value = maskedAPIKey()
-            value = "********";
+            stringCells = cellfun(@isstring, data);
+            data(stringCells) = cellfun(@char, data(stringCells), ...
+                "UniformOutput", false);
         end
 
         function map = periodicTableMap()
@@ -704,34 +874,49 @@ classdef MaterialsProjectDialog < controllib.ui.internal.dialog.AbstractDialog
         function color = elementColor(symbol)
             alkali = ["Li", "Na", "K", "Rb", "Cs", "Fr"];
             alkaline = ["Be", "Mg", "Ca", "Sr", "Ba", "Ra"];
-            noble = ["He", "Ne", "Ar", "Kr", "Xe", "Rn", "Og"];
-            halogen = ["F", "Cl", "Br", "I", "At", "Ts"];
+            noble = ["He", "Ne", "Ar", "Kr", "Xe", "Rn"];
+            halogen = ["F", "Cl", "Br", "I", "At"];
             lanthanide = ["La", "Ce", "Pr", "Nd", "Pm", "Sm", "Eu", ...
                 "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu"];
             actinide = ["Ac", "Th", "Pa", "U", "Np", "Pu", "Am", ...
                 "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"];
             if any(symbol == alkali)
-                color = [0.78, 0.88, 0.28];
+                color = [186, 208, 70] ./ 255;
             elseif any(symbol == alkaline)
-                color = [0.45, 0.82, 0.63];
+                color = [112, 202, 159] ./ 255;
             elseif any(symbol == noble)
-                color = [0.63, 0.62, 0.86];
+                color = [145, 145, 205] ./ 255;
             elseif any(symbol == halogen)
-                color = [0.82, 0.68, 0.36];
+                color = [194, 161, 88] ./ 255;
             elseif any(symbol == lanthanide)
-                color = [1.00, 0.88, 0.25];
+                color = [255, 235, 17] ./ 255;
             elseif any(symbol == actinide)
-                color = [1.00, 0.68, 0.22];
-            elseif any(symbol == ["B", "Si", "Ge", "As", "Sb", "Te"])
-                color = [0.90, 0.42, 0.42];
-            elseif any(symbol == ["Al", "Ga", "In", "Sn", "Tl", "Pb", ...
-                    "Bi", "Nh", "Fl", "Mc", "Lv"])
-                color = [0.70, 0.70, 0.70];
+                color = [255, 188, 30] ./ 255;
+            elseif any(symbol == ["B", "Si", "Ge", "As", "Sb", "Te", ...
+                    "Bi", "Po"])
+                color = [222, 104, 104] ./ 255;
+            elseif any(symbol == ["Al", "Zn", "Ga", "Cd", "In", "Sn", ...
+                    "Hg", "Tl", "Pb"])
+                color = [178, 178, 178] ./ 255;
             elseif any(symbol == ["H", "C", "N", "O", "P", "S", ...
                     "Se", "Po"])
-                color = [0.62, 0.69, 0.71];
+                color = [142, 159, 166] ./ 255;
+            elseif any(symbol == ["Nh", "Fl", "Mc", "Lv", "Ts", "Og"])
+                color = [239, 239, 239] ./ 255;
             else
-                color = [0.48, 0.76, 0.93];
+                color = [136, 203, 254] ./ 255;
+            end
+        end
+
+        function state = elementEnabledState(symbol)
+            disabled = ["Po", "At", "Rn", "Fr", "Ra", ...
+                "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr", ...
+                "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", ...
+                "Nh", "Fl", "Mc", "Lv", "Ts", "Og"];
+            if any(symbol == disabled)
+                state = "off";
+            else
+                state = "on";
             end
         end
 
@@ -755,15 +940,5 @@ if isstruct(input) && isfield(input, name)
     value = input.(name);
 else
     value = defaultValue;
-end
-end
-
-function value = displayNumber(input)
-if isempty(input) || ~isfinite(input)
-    value = "—";
-elseif abs(input - round(input)) < eps(max(1, abs(input)))
-    value = sprintf("%d", round(input));
-else
-    value = sprintf("%.4g", input);
 end
 end

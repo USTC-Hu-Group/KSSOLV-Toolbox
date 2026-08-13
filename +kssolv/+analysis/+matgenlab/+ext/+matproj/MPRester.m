@@ -12,8 +12,8 @@ classdef MPRester < handle
     %       "_fields", ["material_id", "formula_pretty"]);
     %   structure = mpr.get_structure_by_material_id("mp-19017");
     %
-    % Explicit MP_API_KEY, PMG_MAPI_KEY, MAPI_KEY, or settings-file values
-    % take precedence over KSSOLV's encrypted bundled default.
+    % Configure credentials in KSSOLV settings or through the MP_API_KEY,
+    % PMG_MAPI_KEY, or MAPI_KEY environment variables.
 
     properties (Constant)
         MATERIALS_DOCS = [ ...
@@ -117,7 +117,7 @@ classdef MPRester < handle
             obj.close();
         end
 
-        function allData = request(obj, subUrl, payload, method, ...
+        function [allData, metadata] = request(obj, subUrl, payload, method, ...
                 mpDecode, timeout)
             if nargin < 3, payload = []; end
             if nargin < 4 || isempty(method), method = "GET"; end
@@ -127,6 +127,7 @@ classdef MPRester < handle
             perPage = 1000;
             page = 1;
             allData = cell(1, 0);
+            metadata = struct();
             paginationDisabled = ~isempty(regexp(url, ...
                 "[?&]_(?:limit|skip|page|per_page)=", "once"));
             while true
@@ -147,8 +148,16 @@ classdef MPRester < handle
                     response = obj.invokeTransport(requestData, false);
                     status = responseStatus(response);
                     if ~any(status == [200, 400])
-                        obj.raiseRest("REST query returned with error " + ...
-                            "status code " + status);
+                        detail = "";
+                        if any(status == [401, 403])
+                            detail = strip(responseText(response));
+                        end
+                        errorMessage = "REST query returned with error " + ...
+                            "status code " + status;
+                        if detail ~= ""
+                            errorMessage = errorMessage + ". " + detail;
+                        end
+                        obj.raiseRest(errorMessage);
                     end
                     data = decodeResponse(response, logical(mpDecode));
                     detail = fieldOr(data, "detail", []);
@@ -159,12 +168,16 @@ classdef MPRester < handle
                         paginationDisabled = true;
                         page = 1;
                         allData = cell(1, 0);
+                        metadata = struct();
                         continue
                     end
                     if ~isstruct(data) || ~isfield(data, "data")
                         obj.raiseRest(responseText(response));
                     end
                     batch = toCell(data.data);
+                    if isempty(fieldnames(metadata)) && isfield(data, "meta")
+                        metadata = data.meta;
+                    end
                     allData = [allData, reshape(batch, 1, [])]; %#ok<AGROW>
                     if paginationDisabled || numel(batch) < perPage
                         break
@@ -184,7 +197,7 @@ classdef MPRester < handle
             end
         end
 
-        function value = search(obj, document, varargin)
+        function [value, metadata] = search(obj, document, varargin)
             kwargs = keywordStruct(varargin);
             names = fieldnames(kwargs);
             criteria = struct();
@@ -214,12 +227,13 @@ classdef MPRester < handle
                     commaCat(kwargs.(fieldName));
                 query(end + 1) = "_all_fields=False";
             end
-            value = obj.request("materials/" + string(document) + ...
+            [value, metadata] = obj.request( ...
+                "materials/" + string(document) + ...
                 "/?" + join(query, "&"), criteria);
         end
 
-        function value = summary_search(obj, varargin)
-            value = obj.search("summary", varargin{:});
+        function [value, metadata] = summary_search(obj, varargin)
+            [value, metadata] = obj.search("summary", varargin{:});
         end
 
         function value = get_summary(obj, criteria, fields)
@@ -484,10 +498,6 @@ classdef MPRester < handle
             end
             if value == ""
                 value = string(getenv("MAPI_KEY"));
-            end
-            if value == ""
-                value = kssolv.settings.BundledCredentials. ...
-                    readMaterialsProjectAPIKey();
             end
         end
     end

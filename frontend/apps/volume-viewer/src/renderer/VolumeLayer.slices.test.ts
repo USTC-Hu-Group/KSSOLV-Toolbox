@@ -54,10 +54,7 @@ const options: VolumeOptions = {
   colormap: 'viridis',
   rangeMinimum: 0,
   rangeMaximum: 119,
-  sliceAxis: 'k',
-  sliceIndex: 3,
-  sliceIndices: [1, 2, 3],
-  sliceVisibility: [true, true, true],
+  millerIndices: [0, 0, 1],
   interpolation: 'nearest',
   volumeQuality: 'balanced',
   gradientOpacity: 0,
@@ -69,10 +66,16 @@ const options: VolumeOptions = {
   showCell: false,
   showPolyhedra: false,
   showAxes: false,
+  depthCueing: false,
+  showBoundaryAtoms: false,
+  showBondedOutside: false,
+  hideIncompleteBonds: true,
+  showMagmoms: false,
+  showStatistics: false,
 };
 
-describe('orthogonal slice layer', () => {
-  it('creates independently positioned I, J, and K planes', () => {
+describe('Miller slice layer', () => {
+  it('creates one plane from the complete Miller-index triplet', () => {
     const status = vi.fn();
     const layer = new VolumeLayer(
       grid,
@@ -85,27 +88,32 @@ describe('orthogonal slice layer', () => {
       (child): child is Mesh => child instanceof Mesh && child !== layer.probeMesh,
     );
 
-    expect(planes).toHaveLength(3);
-    expect(new Set(Array.from(planes[0].geometry.getAttribute('position').array).filter((_, index) => index % 3 === 0))).toEqual(new Set([1]));
-    expect(new Set(Array.from(planes[1].geometry.getAttribute('position').array).filter((_, index) => index % 3 === 1))).toEqual(new Set([2]));
-    expect(new Set(Array.from(planes[2].geometry.getAttribute('position').array).filter((_, index) => index % 3 === 2))).toEqual(new Set([3]));
-    expect(status).toHaveBeenLastCalledWith('ready', '3 orthogonal slices ready');
+    expect(planes).toHaveLength(1);
+    expect(new Set(Array.from(planes[0].geometry.getAttribute('position').array).filter((_, index) => index % 3 === 2))).toEqual(new Set([2.5]));
+    expect(status).toHaveBeenLastCalledWith('ready', 'Miller plane (0 0 1) ready');
 
     layer.dispose();
   });
 
-  it('shows any requested combination of planes', () => {
+  it('uses all three indices to orient an oblique plane', () => {
     const status = vi.fn();
     const layer = new VolumeLayer(
       grid,
       channel,
       new Float32Array(120),
-      { ...options, sliceVisibility: [true, false, true] },
+      { ...options, millerIndices: [1, 1, 1] },
       status,
     );
 
-    expect(layer.children.filter((child) => child !== layer.probeMesh)).toHaveLength(2);
-    expect(status).toHaveBeenLastCalledWith('ready', '2 orthogonal slices ready');
+    const plane = layer.children.find((child) => child !== layer.probeMesh) as Mesh;
+    const positions = Array.from(plane.geometry.getAttribute('position').array);
+    for (let offset = 0; offset < positions.length; offset += 3) {
+      expect(
+        positions[offset] / 3 + positions[offset + 1] / 4 + positions[offset + 2] / 5,
+      ).toBeCloseTo(1.5);
+    }
+    expect(layer.children.filter((child) => child !== layer.probeMesh)).toHaveLength(1);
+    expect(status).toHaveBeenLastCalledWith('ready', 'Miller plane (1 1 1) ready');
 
     layer.dispose();
   });

@@ -2,26 +2,35 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import { matlabBridge } from '@kssolv/matlab-bridge';
+import type { SelectionInfo } from '@kssolv/atomic-scene';
 
 import HistogramPanel from './components/HistogramPanel.vue';
+import FractionalCoordinatesPanel from './components/FractionalCoordinatesPanel.vue';
 import type {
   HistogramRangeBound,
   HistogramThresholdSign,
 } from './components/histogramInteraction';
 import SettingsPanel from './components/SettingsPanel.vue';
+import SelectionInspector from './components/SelectionInspector.vue';
 import ViewerToolbar from './components/ViewerToolbar.vue';
 import {
   densityDisplayFor,
   toDisplayedDensity,
   type DensityDisplayUnit,
 } from './densityUnits';
+import { toggleFullscreen } from './fullscreen';
 import { createVolumeRenderer } from './renderer/createVolumeRenderer';
 import { sliceExportStem, volumeExportStem } from './renderer/exportNames';
 import { decodeValues } from './renderer/gridMath';
+import {
+  imageExportExtension,
+  type ImageExportFormat,
+} from './renderer/imageExport';
 import type {
   IsosurfaceExportFormat,
   VolumeProbe,
   VolumeRendererApi,
+  VolumeRendererDiagnostics,
 } from './renderer/VolumeRendererApi';
 import { useVolumeStore, type VolumeOptions } from './state/volumeStore';
 import { BoundedLruCache } from './state/BoundedLruCache';
@@ -31,13 +40,18 @@ import { volumeViewerThemes } from './themes';
 const store = useVolumeStore();
 const viewport = ref<HTMLElement>();
 const settingsOpen = ref(false);
+const informationOpen = ref(false);
+const autoRotating = ref(false);
 const minimalUi = ref(false);
 const probe = ref<VolumeProbe>();
+const selection = ref<SelectionInfo>();
 const percentiles = ref<Float32Array>();
 const histogramCounts = ref<Uint32Array>();
 const rendererBackend = ref<'webgl2' | 'canvas2d'>('webgl2');
 const densityUnit = ref<DensityDisplayUnit>('angstrom-3');
 const statusVisible = ref(false);
+const imageExporting = ref(false);
+const performanceStatistics = ref<VolumeRendererDiagnostics>();
 const acceptanceMode = new URLSearchParams(window.location.search).has('kssolvTest');
 let renderer: VolumeRendererApi | undefined;
 let renderedRequestId = '';
@@ -45,6 +59,7 @@ let statisticsWorker: Worker | undefined;
 let statisticsGeneration = 0;
 let configuredChannelId = '';
 let statusDismissTimer: number | undefined;
+let performanceTimer: number | undefined;
 interface StatisticsResult {
   percentiles: Float32Array;
   histogram: Uint32Array;
@@ -95,6 +110,21 @@ const values = computed(() => {
 const densityDisplay = computed(() =>
   densityDisplayFor(store.activeChannel.value?.units ?? '', densityUnit.value),
 );
+const informationAvailable = computed(
+  () => (store.scene.value?.atomicOverlay?.sites.length ?? 0) > 0,
+);
+watch(informationAvailable, (available) => {
+  if (!available) informationOpen.value = false;
+});
+const toggleInformationPanel = (): void => {
+  if (!informationAvailable.value) return;
+  settingsOpen.value = false;
+  informationOpen.value = !informationOpen.value;
+};
+const toggleAutoRotation = (): void => {
+  autoRotating.value = !autoRotating.value;
+  renderer?.setAutoRotation(autoRotating.value);
+};
 const toggleDensityUnit = (): void => {
   if (!densityDisplay.value.convertible) return;
   densityUnit.value = densityUnit.value === 'angstrom-3' ? 'bohr-3' : 'angstrom-3';
@@ -205,8 +235,7 @@ const exportSlice = (format: 'csv' | 'png'): void => {
     const basename = sliceExportStem(
       store.scene.value.source.name,
       store.options.channelId,
-      store.options.sliceAxis,
-      store.options.sliceIndex,
+      store.options.millerIndices,
     );
     if (format === 'csv') {
       downloadText(renderer.exportSliceCsv(), `${basename}.csv`, 'text/csv');
@@ -221,27 +250,41 @@ const exportSlice = (format: 'csv' | 'png'): void => {
   }
 };
 
-const exportScreenshot = (): void => {
-  if (!renderer || !store.scene.value) return;
+const exportImage = async (format: ImageExportFormat): Promise<void> => {
+  if (!renderer || !store.scene.value || imageExporting.value) return;
+  imageExporting.value = true;
   try {
     const stem = volumeExportStem(
       store.scene.value.source.name,
       store.options.channelId,
     );
+    const suffix =
+      format === 'pdf-vector'
+        ? '-vector'
+        : format === 'pdf-raster'
+          ? '-raster'
+          : '';
+    store.status.phase = 'building';
+    store.status.message = `Exporting ${format.startsWith('pdf-') ? 'PDF' : format.toUpperCase()}…`;
+    const blob = await renderer.exportImage(format, store.options.pngScale);
+    const url = URL.createObjectURL(blob);
     download(
-      renderer.screenshot(store.options.pngScale),
-      `${stem}.${store.options.mode}.png`,
+      url,
+      `${stem}.${store.options.mode}${suffix}.${imageExportExtension(format)}`,
     );
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
     store.status.phase = 'ready';
-    store.status.message = 'PNG export ready';
+    store.status.message = `${format.startsWith('pdf-') ? 'PDF' : format.toUpperCase()} export ready`;
   } catch (error) {
     store.status.phase = 'error';
     store.status.message = error instanceof Error ? error.message : String(error);
+  } finally {
+    imageExporting.value = false;
   }
 };
 
-const fullscreen = (): void => {
-  void window.document.documentElement.requestFullscreen?.();
+const fullscreen = async (): Promise<void> => {
+  await toggleFullscreen(window.document.documentElement);
 };
 
 const acceptance = useAcceptanceSoak({
@@ -392,6 +435,22 @@ const statusStop = watch(
   },
   { immediate: true },
 );
+const performanceStop = watch(
+  () => store.options.showStatistics,
+  (visible) => {
+    if (performanceTimer !== undefined) {
+      window.clearInterval(performanceTimer);
+      performanceTimer = undefined;
+    }
+    performanceStatistics.value = visible ? renderer?.diagnostics() : undefined;
+    if (visible) {
+      performanceTimer = window.setInterval(() => {
+        performanceStatistics.value = renderer?.diagnostics();
+      }, 500);
+    }
+  },
+  { immediate: true },
+);
 
 onMounted(() => {
   if (!viewport.value) return;
@@ -402,6 +461,7 @@ onMounted(() => {
       store.status.phase = phase;
       store.status.message = message;
     },
+    (next) => (selection.value = next),
   );
   rendererBackend.value = renderer.backend;
   if (renderer.backend === 'canvas2d') store.options.mode = 'slices';
@@ -433,7 +493,9 @@ onBeforeUnmount(() => {
   channelStop();
   valuesStop();
   statusStop();
+  performanceStop();
   if (statusDismissTimer !== undefined) window.clearTimeout(statusDismissTimer);
+  if (performanceTimer !== undefined) window.clearInterval(performanceTimer);
   statisticsWorker?.terminate();
   statisticsCache.clear();
   stopAcceptanceSoak();
@@ -483,12 +545,24 @@ onBeforeUnmount(() => {
     <ViewerToolbar
       v-if="!minimalUi"
       :settings-open="settingsOpen"
+      :information-open="informationOpen"
+      :information-available="informationAvailable"
+      :auto-rotating="autoRotating"
+      :image-exporting="imageExporting"
       @reset="renderer?.resetView()"
+      @toggle-auto-rotation="toggleAutoRotation"
       @axis="renderer?.setCameraAxis($event)"
-      @toggle-settings="settingsOpen = !settingsOpen"
-      @screenshot="exportScreenshot"
+      @toggle-settings="informationOpen = false; settingsOpen = !settingsOpen"
+      @toggle-information="toggleInformationPanel"
+      @export-image="exportImage"
       @export-scene="exportManifest"
       @fullscreen="fullscreen"
+    />
+
+    <FractionalCoordinatesPanel
+      v-if="informationOpen && informationAvailable && store.scene.value?.atomicOverlay"
+      :scene="store.scene.value.atomicOverlay"
+      @close="informationOpen = false"
     />
 
     <SettingsPanel
@@ -504,6 +578,8 @@ onBeforeUnmount(() => {
       @export-slice="exportSlice"
       @close="settingsOpen = false"
     />
+
+    <SelectionInspector v-if="!minimalUi" :selection="selection" />
 
     <div v-if="probe && !minimalUi" class="probe-card">
       <strong>{{ store.activeChannel.value?.label }}</strong>
@@ -534,6 +610,17 @@ onBeforeUnmount(() => {
       aria-live="polite"
     >
       {{ store.status.message }}
+    </div>
+
+    <div
+      v-if="store.options.showStatistics && performanceStatistics && !minimalUi"
+      class="performance-badge"
+      aria-live="polite"
+    >
+      {{ performanceStatistics.drawCalls }} draws ·
+      {{ performanceStatistics.triangles.toLocaleString() }} triangles ·
+      {{ performanceStatistics.geometries }} geometries ·
+      {{ performanceStatistics.textures }} textures
     </div>
 
     <div v-if="acceptanceMode" class="acceptance-controls" aria-label="Acceptance controls">

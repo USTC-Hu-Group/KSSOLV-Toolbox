@@ -4,6 +4,7 @@ import type {
   VolumeProbe,
   VolumeRendererApi,
 } from './VolumeRendererApi';
+import type { SelectionInfo } from '@kssolv/atomic-scene';
 
 export const createVolumeRenderer = (
   container: HTMLElement,
@@ -12,6 +13,7 @@ export const createVolumeRenderer = (
     phase: 'ready' | 'building' | 'error',
     message: string,
   ) => void,
+  onSelection: (selection?: SelectionInfo) => void = () => undefined,
 ): VolumeRendererApi => {
   const query = new URLSearchParams(window.location.search);
   const forceCanvasFallback =
@@ -34,7 +36,7 @@ export const createVolumeRenderer = (
   }
   probeContext.getExtension('WEBGL_lose_context')?.loseContext();
   try {
-    return new VolumeRenderer(container, onProbe, onStatus);
+    return new VolumeRenderer(container, onProbe, onStatus, onSelection);
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
     return new CanvasVolumeFallback(

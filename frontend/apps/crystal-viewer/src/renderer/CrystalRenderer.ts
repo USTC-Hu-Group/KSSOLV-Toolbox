@@ -14,6 +14,7 @@ import {
   MeshBasicMaterial,
   NoToneMapping,
   OrthographicCamera,
+  Plane,
   PCFShadowMap,
   PMREMGenerator,
   Quaternion,
@@ -38,12 +39,15 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls.js';
 
 import type { MeasurementDiagram } from '../measurement';
+import { atomIdsInPolygon, type ScreenPoint } from '../selectionGeometry';
 import type {
+  AtomInstanceSpec,
   CameraSnapshot,
   AtomHoverInfo,
   AtomicSceneSpec,
   RendererStatistics,
   SelectionInfo,
+  SiteSpec,
   ThemeId,
   Vector3Tuple,
   ViewerOptions,
@@ -116,6 +120,11 @@ export interface RenderExportProgress {
   value: number;
   label: string;
   detail?: string;
+}
+
+export interface PickedAtom {
+  atom: AtomInstanceSpec;
+  site: SiteSpec;
 }
 
 export type RenderExportProgressCallback = (progress: RenderExportProgress) => void;
@@ -220,6 +229,14 @@ const createMeasurementCometTailGeometry = (
 const selectionHaloColor = 0x1557b0;
 const measurementCometColor = 0x36b8ff;
 const measurementCometCoreColor = 0xd9f7ff;
+const adsorbatePreviewColor = (species: string): number =>
+  (({ H: 0xf5f5f5, C: 0x7a4b2a, N: 0x315fca, O: 0xe53935, S: 0xe0ad16 }) as const)[
+    species as 'H' | 'C' | 'N' | 'O' | 'S'
+  ] ?? 0x7d8794;
+const adsorbatePreviewScale = (species: string): number =>
+  (({ H: 0.25, C: 0.4, N: 0.4, O: 0.42, S: 0.48 }) as const)[
+    species as 'H' | 'C' | 'N' | 'O' | 'S'
+  ] ?? 0.4;
 
 const createOrientationAxes = (): Group => {
   const axes = new Group();
@@ -353,6 +370,46 @@ export class CrystalRenderer {
     this.selectionHaloGeometry,
     this.selectionHaloMaterial,
   );
+  private readonly adsorbatePreview = new Group();
+  private readonly sketchPreview = new Group();
+  private readonly sketchAtomGeometry = new SphereGeometry(1, 32, 24);
+  private readonly sketchBondGeometry = new CylinderGeometry(1, 1, 1, 24);
+  private readonly sketchAtomMaterial = new MeshBasicMaterial({
+    color: 0x424b57,
+    transparent: true,
+    opacity: 0.92,
+    depthTest: true,
+  });
+  private readonly sketchBondMaterial = new MeshBasicMaterial({
+    color: 0x38a4ff,
+    transparent: true,
+    opacity: 0.82,
+    depthTest: true,
+  });
+  private readonly sketchAtom = new Mesh(this.sketchAtomGeometry, this.sketchAtomMaterial);
+  private readonly sketchBond = new Mesh(this.sketchBondGeometry, this.sketchBondMaterial);
+  private readonly adsorbateAtomGeometry = new SphereGeometry(1, 32, 24);
+  private readonly adsorbateBondGeometry = new CylinderGeometry(1, 1, 1, 24);
+  private readonly adsorbateHostBondMaterial = new MeshBasicMaterial({
+    color: 0x38a4ff,
+    transparent: true,
+    opacity: 0.68,
+    depthTest: true,
+  });
+  private readonly adsorbateBondMaterial = new MeshBasicMaterial({
+    color: 0xd8e2ec,
+    transparent: true,
+    opacity: 0.9,
+    depthTest: true,
+  });
+  private readonly adsorbateHostBond = new Mesh(
+    this.adsorbateBondGeometry,
+    this.adsorbateHostBondMaterial,
+  );
+  private readonly adsorbateAtomMaterials = new Map<string, MeshBasicMaterial>();
+  private adsorbateAtoms: Mesh[] = [];
+  private adsorbateBonds: Mesh[] = [];
+  private adsorbateTopologySignature = '';
   private readonly resizeObserver?: ResizeObserver;
   private sceneSpec?: AtomicSceneSpec;
   private options: ViewerOptions;
@@ -429,6 +486,17 @@ export class CrystalRenderer {
     this.measurementHoverMarker.visible = false;
     this.measurementHoverMarker.renderOrder = 31;
     this.scene.add(this.measurementMarkers, this.measurementHoverMarker);
+    this.adsorbatePreview.name = 'interactive-adsorbate-preview';
+    this.adsorbatePreview.visible = false;
+    this.adsorbateHostBond.matrixAutoUpdate = false;
+    this.adsorbatePreview.add(this.adsorbateHostBond);
+    this.scene.add(this.adsorbatePreview);
+    this.sketchPreview.name = 'interactive-sketch-preview';
+    this.sketchPreview.visible = false;
+    this.sketchAtom.scale.setScalar(0.42);
+    this.sketchBond.matrixAutoUpdate = false;
+    this.sketchPreview.add(this.sketchBond, this.sketchAtom);
+    this.scene.add(this.sketchPreview);
 
     this.orientationScene.add(this.materialsAxes, this.gleamoeAxes);
     this.orientationCamera.position.set(3, 3, 3);
@@ -473,6 +541,7 @@ export class CrystalRenderer {
       (this.sceneSpec?.kind !== 'crystal' || this.sceneSpec.viewHint !== 'slab');
     const snapshot =
       preserveCamera && this.sceneSpec && !enteringSlab ? this.cameraSnapshot() : undefined;
+    this.clearAdsorbatePreview();
     this.clearHover();
     this.clearSelection();
     this.clearMeasurementSelection();
@@ -612,6 +681,8 @@ export class CrystalRenderer {
     this.clearHover();
     this.clearSelection(false);
     this.measurementLayer.setAnnotations([]);
+    this.clearAdsorbatePreview();
+    this.clearSketchPreview();
     this.requestRender();
   }
 
@@ -646,6 +717,288 @@ export class CrystalRenderer {
     }
     this.requestRender();
     return selectedIds;
+  }
+
+  projectedAtoms(): Array<ScreenPoint & { id: string }> {
+    if (!this.sceneSpec || !this.atomLayer) return [];
+    const bounds = this.canvas.getBoundingClientRect();
+    const result: Array<ScreenPoint & { id: string }> = [];
+    for (const atom of this.sceneSpec.atomInstances) {
+      if (!this.atomLayer.isAtomVisible(atom.id)) continue;
+      const projected = vector(atom.position).project(this.camera);
+      result.push({
+        id: atom.id,
+        x: bounds.left + ((projected.x + 1) * bounds.width) / 2,
+        y: bounds.top + ((1 - projected.y) * bounds.height) / 2,
+      });
+    }
+    return result;
+  }
+
+  selectAtomInstancesInPolygon(polygon: readonly ScreenPoint[]): string[] {
+    return this.selectAtomInstances(atomIdsInPolygon(this.projectedAtoms(), polygon));
+  }
+
+  selectionAnchor(atomIds: readonly string[]): Vector3Tuple {
+    if (!this.sceneSpec || atomIds.length === 0) return [0, 0, 0];
+    const requested = new Set(atomIds);
+    const atoms = this.sceneSpec.atomInstances.filter((atom) => requested.has(atom.id));
+    if (atoms.length === 0) return [0, 0, 0];
+    const center = atoms
+      .reduce((sum, atom) => sum.add(vector(atom.position)), new Vector3())
+      .multiplyScalar(1 / atoms.length);
+    return [center.x, center.y, center.z];
+  }
+
+  modelingAxisVector(
+    axis: 'x' | 'y' | 'z',
+    coordinateMode: 'cartesian' | 'fractional',
+  ): Vector3Tuple {
+    const index = axis === 'x' ? 0 : axis === 'y' ? 1 : 2;
+    const source =
+      coordinateMode === 'fractional' && this.sceneSpec?.kind === 'crystal'
+        ? this.sceneSpec.structure.lattice[index]
+        : ([index === 0 ? 1 : 0, index === 1 ? 1 : 0, index === 2 ? 1 : 0] as Vector3Tuple);
+    const value = vector(source).normalize();
+    return [value.x, value.y, value.z];
+  }
+
+  cameraViewAxis(): Vector3Tuple {
+    const value = this.camera.getWorldDirection(new Vector3());
+    return [value.x, value.y, value.z];
+  }
+
+  cameraRightAxis(): Vector3Tuple {
+    const value = new Vector3(1, 0, 0).applyQuaternion(this.camera.quaternion).normalize();
+    return [value.x, value.y, value.z];
+  }
+
+  pickAtomAt(clientX: number, clientY: number): PickedAtom | undefined {
+    if (!this.atomLayer || !this.sceneSpec) return undefined;
+    const bounds = this.canvas.getBoundingClientRect();
+    this.pointer.set(
+      ((clientX - bounds.left) / Math.max(bounds.width, 1)) * 2 - 1,
+      -((clientY - bounds.top) / Math.max(bounds.height, 1)) * 2 + 1,
+    );
+    this.raycaster.setFromCamera(this.pointer, this.camera);
+    const hit = (
+      this.raycaster.intersectObject(this.atomLayer.mesh, false) as BatchIntersection[]
+    )[0];
+    if (hit?.batchId === undefined) return undefined;
+    const picked = this.atomLayer.get(hit.batchId);
+    return picked ? { atom: picked.atom, site: picked.site } : undefined;
+  }
+
+  pointOnViewPlane(clientX: number, clientY: number, anchor: Vector3Tuple): Vector3Tuple {
+    const bounds = this.canvas.getBoundingClientRect();
+    this.pointer.set(
+      ((clientX - bounds.left) / Math.max(bounds.width, 1)) * 2 - 1,
+      -((clientY - bounds.top) / Math.max(bounds.height, 1)) * 2 + 1,
+    );
+    this.raycaster.setFromCamera(this.pointer, this.camera);
+    const normal = this.camera.getWorldDirection(new Vector3());
+    const plane = new Plane().setFromNormalAndCoplanarPoint(normal, vector(anchor));
+    const point = this.raycaster.ray.intersectPlane(plane, new Vector3()) ?? vector(anchor);
+    return [point.x, point.y, point.z];
+  }
+
+  previewAdsorbate(
+    host: Vector3Tuple,
+    species: readonly string[],
+    coordinates: readonly Vector3Tuple[],
+    bonds: ReadonlyArray<readonly [number, number, number]>,
+    anchorAtomIndex: number,
+    valid = true,
+  ): void {
+    if (
+      species.length === 0 ||
+      coordinates.length !== species.length ||
+      anchorAtomIndex < 0 ||
+      anchorAtomIndex >= coordinates.length
+    ) {
+      this.clearAdsorbatePreview();
+      return;
+    }
+    const signature = JSON.stringify([species, bonds]);
+    if (signature !== this.adsorbateTopologySignature) {
+      this.rebuildAdsorbatePreview(species, bonds);
+      this.adsorbateTopologySignature = signature;
+    }
+    this.adsorbateAtoms.forEach((atom, index) => atom.position.copy(vector(coordinates[index]!)));
+    this.adsorbateBonds.forEach((bond, index) => {
+      const [first, second] = bonds[index]!;
+      bond.matrix.copy(cylinderMatrix(coordinates[first]!, coordinates[second]!, 0.085));
+    });
+    const anchor = coordinates[anchorAtomIndex]!;
+    this.adsorbateHostBond.matrix.copy(cylinderMatrix(host, anchor, 0.075));
+    const bondColor = valid ? 0x38a4ff : 0xd92d20;
+    this.adsorbateHostBondMaterial.color.setHex(bondColor);
+    this.adsorbateBondMaterial.color.setHex(valid ? 0xd8e2ec : 0xd92d20);
+    this.adsorbatePreview.visible = true;
+    this.requestRender();
+  }
+
+  clearAdsorbatePreview(): void {
+    if (!this.adsorbatePreview.visible) return;
+    this.adsorbatePreview.visible = false;
+    this.requestRender();
+  }
+
+  private rebuildAdsorbatePreview(
+    species: readonly string[],
+    bonds: ReadonlyArray<readonly [number, number, number]>,
+  ): void {
+    this.adsorbatePreview.clear();
+    this.adsorbatePreview.add(this.adsorbateHostBond);
+    this.adsorbateAtoms = species.map((element) => {
+      let material = this.adsorbateAtomMaterials.get(element);
+      if (!material) {
+        material = new MeshBasicMaterial({
+          color: adsorbatePreviewColor(element),
+          transparent: true,
+          opacity: element === 'H' ? 0.94 : 0.92,
+          depthTest: true,
+        });
+        this.adsorbateAtomMaterials.set(element, material);
+      }
+      const atom = new Mesh(this.adsorbateAtomGeometry, material);
+      atom.scale.setScalar(adsorbatePreviewScale(element));
+      this.adsorbatePreview.add(atom);
+      return atom;
+    });
+    this.adsorbateBonds = bonds.map(() => {
+      const bond = new Mesh(this.adsorbateBondGeometry, this.adsorbateBondMaterial);
+      bond.matrixAutoUpdate = false;
+      this.adsorbatePreview.add(bond);
+      return bond;
+    });
+  }
+
+  previewSketch(
+    start: Vector3Tuple | undefined,
+    end: Vector3Tuple,
+    valid = true,
+    showAtom = true,
+  ): void {
+    this.sketchAtom.position.copy(vector(end));
+    this.sketchAtom.visible = showAtom;
+    this.sketchBond.visible = Boolean(start);
+    if (start) this.sketchBond.matrix.copy(cylinderMatrix(start, end, 0.085));
+    const color = valid ? 0x38a4ff : 0xd92d20;
+    this.sketchAtomMaterial.color.setHex(valid ? 0x424b57 : 0xd92d20);
+    this.sketchBondMaterial.color.setHex(color);
+    this.sketchPreview.visible = true;
+    this.requestRender();
+  }
+
+  clearSketchPreview(): void {
+    if (!this.sketchPreview.visible) return;
+    this.sketchPreview.visible = false;
+    this.requestRender();
+  }
+
+  translationForPointerDelta(
+    deltaX: number,
+    deltaY: number,
+    axis: 'screen' | 'x' | 'y' | 'z',
+    coordinateMode: 'cartesian' | 'fractional',
+  ): Vector3Tuple {
+    const width = Math.max(this.canvas.clientWidth, 1);
+    const height = Math.max(this.canvas.clientHeight, 1);
+    const worldPerPixelX = (this.camera.right - this.camera.left) / this.camera.zoom / width;
+    const worldPerPixelY = (this.camera.top - this.camera.bottom) / this.camera.zoom / height;
+    if (axis === 'screen') {
+      const right = new Vector3(1, 0, 0).applyQuaternion(this.camera.quaternion);
+      const up = new Vector3(0, 1, 0).applyQuaternion(this.camera.quaternion);
+      const value = right
+        .multiplyScalar(deltaX * worldPerPixelX)
+        .add(up.multiplyScalar(-deltaY * worldPerPixelY));
+      return [value.x, value.y, value.z];
+    }
+    const direction = vector(this.modelingAxisVector(axis, coordinateMode));
+    const screenRight = new Vector3(1, 0, 0).applyQuaternion(this.camera.quaternion);
+    const screenUp = new Vector3(0, 1, 0).applyQuaternion(this.camera.quaternion);
+    const screenAxis = new Vector2(
+      direction.dot(screenRight) / worldPerPixelX,
+      -direction.dot(screenUp) / worldPerPixelY,
+    );
+    const denominator = screenAxis.lengthSq();
+    if (denominator < 1e-12) return [0, 0, 0];
+    const distance = new Vector2(deltaX, deltaY).dot(screenAxis) / denominator;
+    const value = direction.multiplyScalar(distance);
+    return [value.x, value.y, value.z];
+  }
+
+  previewAtomTransform(
+    atomIds: readonly string[],
+    translation: Vector3Tuple = [0, 0, 0],
+    rotation?: { axis: Vector3Tuple; angleDegrees: number; anchor: Vector3Tuple },
+  ): void {
+    if (!this.sceneSpec || !this.atomLayer) return;
+    const requested = new Set(atomIds);
+    const offset = vector(translation);
+    const rotationState = rotation
+      ? {
+          axis: vector(rotation.axis),
+          angleRadians: (rotation.angleDegrees * Math.PI) / 180,
+          anchor: vector(rotation.anchor),
+        }
+      : undefined;
+    this.atomLayer.previewTransform(requested, offset, rotationState);
+    const quaternion = rotationState
+      ? new Quaternion().setFromAxisAngle(
+          rotationState.axis.clone().normalize(),
+          rotationState.angleRadians,
+        )
+      : undefined;
+    for (const atom of this.sceneSpec.atomInstances) {
+      const selected = this.selectedAtoms.get(atom.id);
+      if (!selected || !requested.has(atom.id)) continue;
+      const position = vector(atom.position);
+      if (quaternion && rotationState) {
+        position.sub(rotationState.anchor).applyQuaternion(quaternion).add(rotationState.anchor);
+      }
+      selected.marker.position.copy(position.add(offset));
+    }
+    this.requestRender();
+  }
+
+  clearAtomTransformPreview(): void {
+    this.atomLayer?.clearPreview();
+    if (this.sceneSpec) {
+      const atoms = new Map(this.sceneSpec.atomInstances.map((atom) => [atom.id, atom]));
+      for (const [atomId, selected] of this.selectedAtoms) {
+        const atom = atoms.get(atomId);
+        if (atom) selected.marker.position.copy(vector(atom.position));
+      }
+    }
+    this.requestRender();
+  }
+
+  benchmarkDirectManipulation(sampleCount = 30): RendererStatistics & {
+    sampleCount: number;
+    framesPerSecond: number;
+  } {
+    if (!this.sceneSpec || !this.atomLayer) {
+      throw new Error('A rendered atomic scene is required for the interaction benchmark.');
+    }
+    const count = Math.max(5, Math.min(Math.floor(sampleCount), 120));
+    const atomIds = new Set(this.sceneSpec.atomInstances.slice(0, 1_000).map((atom) => atom.id));
+    this.frameDurations.length = 0;
+    for (let index = 0; index < count; index += 1) {
+      const offset = new Vector3(index % 2 === 0 ? 0.015 : -0.015, 0, 0);
+      this.atomLayer.previewTransform(atomIds, offset);
+      this.render();
+    }
+    this.atomLayer.clearPreview();
+    this.render();
+    const statistics = this.statisticsSnapshot();
+    return {
+      ...statistics,
+      sampleCount: count,
+      framesPerSecond:
+        statistics.p95FrameMilliseconds > 0 ? 1_000 / statistics.p95FrameMilliseconds : Infinity,
+    };
   }
 
   resetView = (animated = true): void => {
@@ -1303,6 +1656,15 @@ export class CrystalRenderer {
     this.measurementCometCoreTailMaterial.dispose();
     this.measurementMarkerStarMaterial.dispose();
     this.measurementMarkerGlowMaterial.dispose();
+    this.adsorbateAtomGeometry.dispose();
+    this.adsorbateBondGeometry.dispose();
+    this.adsorbateHostBondMaterial.dispose();
+    this.adsorbateBondMaterial.dispose();
+    this.adsorbateAtomMaterials.forEach((material) => material.dispose());
+    this.sketchAtomGeometry.dispose();
+    this.sketchBondGeometry.dispose();
+    this.sketchAtomMaterial.dispose();
+    this.sketchBondMaterial.dispose();
     const orientationGeometries = new Set<BufferGeometry>();
     const orientationMaterials = new Set<Material>();
     this.orientationScene.traverse((object) => {
@@ -2290,15 +2652,29 @@ export class CrystalRenderer {
   private reportStatistics(): void {
     if (!this.sceneSpec) return;
     this.render();
+    this.callbacks.onStatistics?.(this.statisticsSnapshot());
+  }
+
+  private statisticsSnapshot(): RendererStatistics {
+    if (!this.sceneSpec) {
+      return {
+        atoms: 0,
+        bonds: 0,
+        polyhedra: 0,
+        drawCalls: 0,
+        triangles: 0,
+        p95FrameMilliseconds: 0,
+      };
+    }
     const orderedFrames = [...this.frameDurations].sort((a, b) => a - b);
     const p95Index = Math.max(Math.ceil(orderedFrames.length * 0.95) - 1, 0);
-    this.callbacks.onStatistics?.({
+    return {
       atoms: this.sceneSpec.atomInstances.length,
       bonds: this.sceneSpec.bondInstances.length,
       polyhedra: this.sceneSpec.polyhedra.length,
       drawCalls: this.renderer.info.render.calls,
       triangles: this.renderer.info.render.triangles,
       p95FrameMilliseconds: orderedFrames[p95Index] ?? 0,
-    });
+    };
   }
 }

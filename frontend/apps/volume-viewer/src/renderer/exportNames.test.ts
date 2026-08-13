@@ -7,8 +7,8 @@ describe('volume export filenames', () => {
     expect(volumeExportStem('CHGCAR', 'magnetization-z')).toBe(
       'CHGCAR.magnetization-z',
     );
-    expect(sliceExportStem('density.cube', 'orbital 7', 'k', 12.4)).toBe(
-      'density.cube.orbital_7.slice-k12',
+    expect(sliceExportStem('density.cube', 'orbital 7', [1, -1, 2])).toBe(
+      'density.cube.orbital_7.slice-1_-1_2',
     );
   });
 

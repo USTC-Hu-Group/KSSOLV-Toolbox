@@ -1,11 +1,13 @@
 import {
   AmbientLight,
   DirectionalLight,
+  Fog,
   Group,
   OrthographicCamera,
   Quaternion,
   Raycaster,
   Scene,
+  Sphere,
   Vector2,
   Vector3,
   WebGLRenderer,
@@ -21,6 +23,7 @@ import {
 } from '@kssolv/three-scene';
 import type { CrystalCameraAxis } from '@kssolv/three-scene';
 import type { VolumeChannelSpec, VolumeSceneSpec } from '@kssolv/volume-scene';
+import type { SelectionInfo } from '@kssolv/atomic-scene';
 
 import type { VolumeOptions } from '../state/volumeStore';
 import { appearanceScale, volumeViewerThemes } from '../themes';
@@ -33,6 +36,12 @@ import {
 } from './gridMath';
 import { VolumeLayer } from './VolumeLayer';
 import { OrientationAxes } from './OrientationAxes';
+import {
+  encodeCanvasImage,
+  flipRgbaRows,
+  rgbaToTiffBlob,
+  type ImageExportFormat,
+} from './imageExport';
 import { encodeGlb, encodeGltf, encodePly, encodeStl } from './meshExport';
 import type {
   IsosurfaceExportFormat,
@@ -43,7 +52,7 @@ import type {
 import {
   encodeSliceCsv,
   encodeSlicePng,
-  extractScalarSlice,
+  extractMillerSlice,
 } from './sliceExport';
 
 export class VolumeRenderer implements VolumeRendererApi {
@@ -74,6 +83,10 @@ export class VolumeRenderer implements VolumeRendererApi {
   private contextLossExtension?: WEBGL_lose_context;
   private pointerPrevious?: { x: number; y: number };
   private mouseRotating = false;
+  private pointerTravel = 0;
+  private suppressNextClick = false;
+  private autoRotating = false;
+  private autoRotationTimestamp?: number;
 
   constructor(
     private readonly container: HTMLElement,
@@ -82,6 +95,7 @@ export class VolumeRenderer implements VolumeRendererApi {
       phase: 'ready' | 'building' | 'error',
       message: string,
     ) => void = () => undefined,
+    private readonly onSelection: (selection?: SelectionInfo) => void = () => undefined,
   ) {
     this.renderer = new WebGLRenderer({
       antialias: true,
@@ -92,6 +106,7 @@ export class VolumeRenderer implements VolumeRendererApi {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.renderer.setClearColor(0xffffff, 1);
     this.renderer.outputColorSpace = 'srgb';
+    this.renderer.info.autoReset = false;
     this.container.append(this.renderer.domElement);
     this.scene.add(this.root);
     this.scene.add(this.ambientLight);
@@ -106,6 +121,7 @@ export class VolumeRenderer implements VolumeRendererApi {
     this.camera.position.copy(defaultCameraDirection().multiplyScalar(18));
     this.camera.lookAt(0, 0, 0);
     this.controls = new TrackballControls(this.camera, this.renderer.domElement);
+    this.controls.addEventListener('change', this.handleControlsChange);
     configureViewerInteraction(this.controls, {
       zoomSpeed: 2.2,
       panSpeed: 1.4,
@@ -116,6 +132,7 @@ export class VolumeRenderer implements VolumeRendererApi {
     this.renderer.domElement.addEventListener('pointercancel', this.handlePointerUp);
     this.renderer.domElement.addEventListener('pointerleave', this.handlePointerLeave);
     this.renderer.domElement.addEventListener('dblclick', this.handleProbe);
+    this.renderer.domElement.addEventListener('click', this.handleClick);
     this.renderer.domElement.addEventListener('webglcontextlost', this.handleContextLost);
     this.renderer.domElement.addEventListener('webglcontextrestored', this.handleContextRestored);
     this.resizeObserver = new ResizeObserver(() => this.resize());
@@ -132,6 +149,7 @@ export class VolumeRenderer implements VolumeRendererApi {
     preserveCamera = false,
   ): void {
     this.sceneSpec = scene;
+    this.onSelection(undefined);
     this.channel = channel;
     this.sourceBuffer = buffer;
     this.values = decodeValues(
@@ -160,12 +178,7 @@ export class VolumeRenderer implements VolumeRendererApi {
     this.root.add(this.volumeLayer);
     if (scene.atomicOverlay) {
       this.atomicLayer = new AtomicOverlayLayer(scene.atomicOverlay, options);
-      this.atomicLayer.setVisibility(
-        effectiveOptions.showAtoms,
-        effectiveOptions.showBonds,
-        effectiveOptions.showCell,
-        effectiveOptions.showPolyhedra,
-      );
+      this.atomicLayer.setVisibility(effectiveOptions);
       this.root.add(this.atomicLayer);
     }
     this.orientationAxes = new OrientationAxes(scene.grid);
@@ -184,13 +197,8 @@ export class VolumeRenderer implements VolumeRendererApi {
       options.showNegative !== this.options.showNegative ||
       options.smoothIsosurface !== this.options.smoothIsosurface ||
       options.periodicWrap !== this.options.periodicWrap ||
-      options.sliceAxis !== this.options.sliceAxis ||
-      options.sliceIndex !== this.options.sliceIndex ||
-      options.sliceIndices.some(
-        (index, axis) => index !== this.options!.sliceIndices[axis],
-      ) ||
-      options.sliceVisibility.some(
-        (visible, axis) => visible !== this.options!.sliceVisibility[axis],
+      options.millerIndices.some(
+        (index, axis) => index !== this.options!.millerIndices[axis],
       ) ||
       options.interpolation !== this.options.interpolation ||
       options.colormap !== this.options.colormap;
@@ -223,13 +231,9 @@ export class VolumeRenderer implements VolumeRendererApi {
       );
       this.root.add(this.atomicLayer);
     }
-    this.atomicLayer?.setVisibility(
-      options.showAtoms,
-      options.showBonds,
-      options.showCell,
-      options.showPolyhedra,
-    );
+    this.atomicLayer?.setVisibility(options);
     if (this.orientationAxes) this.orientationAxes.visible = options.showAxes;
+    this.updateDepthCueing();
   }
 
   centerView(): void {
@@ -248,6 +252,7 @@ export class VolumeRenderer implements VolumeRendererApi {
     this.camera.position.copy(center).add(defaultCameraDirection().multiplyScalar(radius * 1.8));
     this.camera.lookAt(center);
     this.centerView();
+    this.updateDepthCueing();
   }
 
   setCameraAxis(axis: CrystalCameraAxis): void {
@@ -267,6 +272,13 @@ export class VolumeRenderer implements VolumeRendererApi {
     this.camera.lookAt(this.controls.target);
     this.camera.updateProjectionMatrix();
     this.controls.update();
+    this.updateDepthCueing();
+  }
+
+  setAutoRotation(enabled: boolean): void {
+    if (enabled === this.autoRotating) return;
+    this.autoRotating = enabled;
+    this.autoRotationTimestamp = undefined;
   }
 
   private sceneBounds() {
@@ -282,6 +294,7 @@ export class VolumeRenderer implements VolumeRendererApi {
     this.keyLight.intensity = 2.1 * appearanceScale(options.directionalLight);
     this.fillLight.intensity = 1.1 * appearanceScale(options.directionalLight);
     this.renderer.domElement.style.filter = `brightness(${appearanceScale(options.brightness)}) contrast(${appearanceScale(options.contrast)})`;
+    this.updateDepthCueing();
   }
 
   screenshot(scale = 1.5): string {
@@ -292,6 +305,37 @@ export class VolumeRenderer implements VolumeRendererApi {
       this.renderer.setSize(original.x * scale, original.y * scale, false);
       this.renderer.render(this.scene, this.camera);
       return this.renderer.domElement.toDataURL('image/png');
+    } finally {
+      this.renderer.setPixelRatio(originalPixelRatio);
+      this.renderer.setSize(original.x, original.y, false);
+      if (!this.contextLost) this.renderer.render(this.scene, this.camera);
+    }
+  }
+
+  async exportImage(format: ImageExportFormat, scale = 1.5): Promise<Blob> {
+    const original = this.renderer.getSize(new Vector2());
+    const originalPixelRatio = this.renderer.getPixelRatio();
+    try {
+      this.renderer.setPixelRatio(1);
+      this.renderer.setSize(original.x * scale, original.y * scale, false);
+      this.renderer.render(this.scene, this.camera);
+      if (format === 'tiff') {
+        const width = this.renderer.domElement.width;
+        const height = this.renderer.domElement.height;
+        const rgba = new Uint8Array(width * height * 4);
+        const context = this.renderer.getContext();
+        context.readPixels(
+          0,
+          0,
+          width,
+          height,
+          context.RGBA,
+          context.UNSIGNED_BYTE,
+          rgba,
+        );
+        return rgbaToTiffBlob(flipRgbaRows(rgba, width, height), width, height);
+      }
+      return await encodeCanvasImage(this.renderer.domElement, format);
     } finally {
       this.renderer.setPixelRatio(originalPixelRatio);
       this.renderer.setSize(original.x, original.y, false);
@@ -323,11 +367,11 @@ export class VolumeRenderer implements VolumeRendererApi {
       throw new Error('No volume slice is available.');
     }
     return encodeSliceCsv(
-      extractScalarSlice(
+      extractMillerSlice(
         this.values,
         this.sceneSpec.grid,
-        this.options.sliceAxis,
-        this.options.sliceIndex,
+        this.options.millerIndices,
+        this.options.interpolation,
       ),
     );
   }
@@ -337,11 +381,11 @@ export class VolumeRenderer implements VolumeRendererApi {
       throw new Error('No volume slice is available.');
     }
     return encodeSlicePng(
-      extractScalarSlice(
+      extractMillerSlice(
         this.values,
         this.sceneSpec.grid,
-        this.options.sliceAxis,
-        this.options.sliceIndex,
+        this.options.millerIndices,
+        this.options.interpolation,
       ),
       this.options.rangeMinimum,
       this.options.rangeMaximum,
@@ -385,6 +429,8 @@ export class VolumeRenderer implements VolumeRendererApi {
       geometries: this.renderer.info.memory.geometries,
       textures: this.renderer.info.memory.textures,
       programs: this.renderer.info.programs?.length ?? 0,
+      drawCalls: this.renderer.info.render.calls,
+      triangles: this.renderer.info.render.triangles,
     };
   }
 
@@ -392,6 +438,7 @@ export class VolumeRenderer implements VolumeRendererApi {
     cancelAnimationFrame(this.animationFrame);
     this.resizeObserver.disconnect();
     this.renderer.domElement.removeEventListener('dblclick', this.handleProbe);
+    this.renderer.domElement.removeEventListener('click', this.handleClick);
     this.renderer.domElement.removeEventListener('pointerdown', this.handlePointerDown);
     this.renderer.domElement.removeEventListener('pointermove', this.handlePointerMove);
     this.renderer.domElement.removeEventListener('pointerup', this.handlePointerUp);
@@ -399,6 +446,7 @@ export class VolumeRenderer implements VolumeRendererApi {
     this.renderer.domElement.removeEventListener('pointerleave', this.handlePointerLeave);
     this.renderer.domElement.removeEventListener('webglcontextlost', this.handleContextLost);
     this.renderer.domElement.removeEventListener('webglcontextrestored', this.handleContextRestored);
+    this.controls.removeEventListener('change', this.handleControlsChange);
     this.controls.dispose();
     this.volumeLayer?.dispose();
     this.atomicLayer?.dispose();
@@ -436,6 +484,8 @@ export class VolumeRenderer implements VolumeRendererApi {
 
   private readonly handlePointerDown = (event: PointerEvent): void => {
     this.pointerPrevious = { x: event.clientX, y: event.clientY };
+    this.pointerTravel = 0;
+    this.suppressNextClick = false;
     this.renderer.domElement.dataset.interaction =
       event.button === 2 ? 'pan' : 'rotate';
     if (event.pointerType !== 'mouse' || event.button !== 0) return;
@@ -460,11 +510,13 @@ export class VolumeRenderer implements VolumeRendererApi {
 
   private readonly handlePointerMove = (event: PointerEvent): void => {
     if (event.buttons === 0) return;
+    const previous = this.pointerPrevious ?? { x: event.clientX, y: event.clientY };
+    this.pointerTravel += Math.hypot(
+      event.movementX || event.clientX - previous.x,
+      event.movementY || event.clientY - previous.y,
+    );
+    if (this.pointerTravel > 4) this.suppressNextClick = true;
     if (this.mouseRotating && (event.buttons & 1) !== 0) {
-      const previous = this.pointerPrevious ?? {
-        x: event.clientX,
-        y: event.clientY,
-      };
       const pointerLocked =
         document.pointerLockElement === this.renderer.domElement;
       const deltaX = pointerLocked
@@ -504,6 +556,35 @@ export class VolumeRenderer implements VolumeRendererApi {
     delete this.renderer.domElement.dataset.interaction;
   };
 
+  private readonly handleClick = (event: MouseEvent): void => {
+    if (this.suppressNextClick) {
+      this.suppressNextClick = false;
+      return;
+    }
+    if (!this.atomicLayer) {
+      this.onSelection(undefined);
+      return;
+    }
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    this.pointer.set(
+      ((event.clientX - rect.left) / rect.width) * 2 - 1,
+      -((event.clientY - rect.top) / rect.height) * 2 + 1,
+    );
+    this.raycaster.setFromCamera(this.pointer, this.camera);
+    const hit = this.raycaster.intersectObjects(
+      this.atomicLayer.pickableObjects(),
+      false,
+    )[0];
+    const selected = hit
+      ? this.atomicLayer.selectionForObject(hit.object)
+      : undefined;
+    this.onSelection(
+      selected
+        ? { ...selected, clientX: event.clientX, clientY: event.clientY }
+        : undefined,
+    );
+  };
+
   private rotateCameraByPointerDelta(deltaX: number, deltaY: number): void {
     const width = Math.max(this.renderer.domElement.clientWidth, 1);
     const horizontal = (2 * deltaX) / width;
@@ -534,6 +615,36 @@ export class VolumeRenderer implements VolumeRendererApi {
     this.camera.up.applyQuaternion(rotation).normalize();
     this.camera.position.copy(this.controls.target).add(eye);
     this.camera.lookAt(this.controls.target);
+    this.updateDepthCueing();
+  }
+
+  private readonly handleControlsChange = (): void => {
+    this.updateDepthCueing();
+  };
+
+  private updateDepthCueing(): void {
+    if (!this.options?.depthCueing || !this.sceneSpec) {
+      this.scene.fog = null;
+      return;
+    }
+    const sphere = this.sceneBounds().getBoundingSphere(new Sphere());
+    const cameraDirection = this.camera.getWorldDirection(new Vector3());
+    const centerDepth = sphere.center
+      .clone()
+      .sub(this.camera.position)
+      .dot(cameraDirection);
+    const radius = Math.max(Number.isFinite(sphere.radius) ? sphere.radius : 0, 0.5);
+    const safeCenter = Math.max(Number.isFinite(centerDepth) ? centerDepth : 0, radius);
+    const near = Math.max(safeCenter - radius, 0);
+    const far = Math.max(safeCenter + radius * 1.5, near + radius);
+    const color = volumeViewerThemes[this.options.theme].background;
+    if (this.scene.fog instanceof Fog) {
+      this.scene.fog.color.set(color);
+      this.scene.fog.near = near;
+      this.scene.fog.far = far;
+    } else {
+      this.scene.fog = new Fog(color, near, far);
+    }
   }
 
   private readonly handleContextLost = (event: Event): void => {
@@ -570,10 +681,7 @@ export class VolumeRenderer implements VolumeRendererApi {
       return {
         ...options,
         mode: 'slices',
-        sliceAxis: 'k',
-        sliceIndex: 0,
-        sliceIndices: [options.sliceIndices[0], options.sliceIndices[1], 0],
-        sliceVisibility: [false, false, true],
+        millerIndices: [0, 0, 1],
       };
     }
     const gl = this.renderer.getContext() as WebGL2RenderingContext;
@@ -587,14 +695,7 @@ export class VolumeRenderer implements VolumeRendererApi {
       return {
         ...options,
         mode: 'slices',
-        sliceAxis: 'k',
-        sliceIndex: Math.floor(scene.grid.dimensions[2] / 2),
-        sliceIndices: [
-          options.sliceIndices[0],
-          options.sliceIndices[1],
-          Math.floor(scene.grid.dimensions[2] / 2),
-        ],
-        sliceVisibility: [false, false, true],
+        millerIndices: [0, 0, 1],
       };
     }
     if (
@@ -624,9 +725,13 @@ export class VolumeRenderer implements VolumeRendererApi {
     this.controls.handleResize();
   }
 
-  private animate(): void {
-    this.animationFrame = requestAnimationFrame(() => this.animate());
+  private animate(timestamp = performance.now()): void {
+    this.animationFrame = requestAnimationFrame((nextTimestamp) =>
+      this.animate(nextTimestamp),
+    );
     if (this.contextLost) return;
+    this.renderer.info.reset();
+    this.updateAutoRotation(timestamp);
     this.controls.update();
     this.renderer.setViewport(0, 0, this.container.clientWidth, this.container.clientHeight);
     this.renderer.setScissorTest(false);
@@ -645,5 +750,28 @@ export class VolumeRenderer implements VolumeRendererApi {
       this.renderer.render(this.orientationScene, this.orientationCamera);
       this.renderer.setScissorTest(false);
     }
+  }
+
+  private updateAutoRotation(timestamp: number): void {
+    if (!this.autoRotating || !this.sceneSpec) return;
+    if (this.autoRotationTimestamp === undefined) {
+      this.autoRotationTimestamp = timestamp;
+      return;
+    }
+    const elapsedSeconds = Math.min(
+      Math.max(timestamp - this.autoRotationTimestamp, 0) / 1000,
+      0.1,
+    );
+    this.autoRotationTimestamp = timestamp;
+    if (elapsedSeconds === 0) return;
+    const eye = this.camera.position.clone().sub(this.controls.target);
+    const axis = this.camera.up.clone().normalize();
+    if (eye.lengthSq() === 0 || axis.lengthSq() === 0) return;
+    eye.applyQuaternion(
+      new Quaternion().setFromAxisAngle(axis, elapsedSeconds * -0.45),
+    );
+    this.camera.position.copy(this.controls.target).add(eye);
+    this.camera.lookAt(this.controls.target);
+    this.updateDepthCueing();
   }
 }

@@ -33,10 +33,18 @@ classdef SymmetryAnalysisTask < kssolv.services.workflow.module.AbstractTask
                 ~
             end
 
-            if isempty(this.optionsUI)
-                return
+            context = kssolv.services.workflow.module.preprocessing. ...
+                SymmetryAnalysisTask.executeWithOptions( ...
+                context, this.getExecutionOptions());
+        end
+    end
+
+    methods (Static)
+        function context = executeWithOptions(context, taskOptions)
+            arguments
+                context containers.Map
+                taskOptions (1, 1) struct
             end
-            taskOptions = this.optionsUI.options;
 
             structure = convertMoleculeToCell(context("molecule"));
             result = kssolv.analysis.seekpath.hpkot.getPath(structure, taskOptions.withTimeReversal, ...

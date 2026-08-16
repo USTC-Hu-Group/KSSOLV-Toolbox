@@ -1,0 +1,22 @@
+{
+  "Version": 1,
+  "Mode": "Mirror",
+  "ClientMatlabRelease": "2026b",
+  "RemoteMatlabRelease": "2024a",
+  "Hostname": "node7",
+  "MatlabProfileName": "",
+  "MatlabJobId": null,
+  "SlurmJobIds": [],
+  "Converged": true,
+  "ScfError": 9.090700615717597e-9,
+  "TotalEnergyHa": -5.966600267096851,
+  "RelativeEnergyError": 8.187210621916722e-15,
+  "ElapsedSeconds": 4.523095,
+  "TaskStates": [
+    {"NodeId": "build", "State": "Finished", "ElapsedSeconds": 2.953388},
+    {"NodeId": "scf", "State": "Finished", "ElapsedSeconds": 1.561172}
+  ],
+  "BundleSha256": "",
+  "DiarySha256": "6b1dfa8ce4185c015b7127bb8419a16cc0d37e08b16d09b3eeb765c8ac839bd1",
+  "FinishedAt": "2026-08-14T07:35:18.543Z"
+}

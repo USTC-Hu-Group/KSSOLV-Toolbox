@@ -32,47 +32,58 @@ classdef DOSTask < kssolv.services.workflow.module.AbstractTask
                 ~
             end
 
-            if isempty(this.optionsUI)
-                return
+            context = kssolv.services.workflow.module.visualization. ...
+                DOSTask.executeWithOptions( ...
+                context, this.getExecutionOptions());
+            kssolv.services.workflow.module.visualization. ...
+                DOSTask.presentWithContext(context);
+        end
+    end
+
+    methods (Static)
+        function context = executeWithOptions(context, taskOptions)
+            arguments
+                context containers.Map
+                taskOptions (1, 1) struct
             end
-            taskOptions = this.optionsUI.options;
-
-            % 获取 UI 中设置的参数
-            NSCFGrid = taskOptions.NSCFGrid;
-            startEnergy = taskOptions.startEnergy;
-            endEnergy = taskOptions.endEnergy;
-            stepSize = taskOptions.stepSize;
-
-            % 进行 NSCF 和态密度的计算
             crystal = copy(context("molecule"));
             NSCFOptions = context("NSCFOptions");
             NSCFOptions.rho0 = context("H").rho;
             NSCFOptions.enableParallelPool = true;
-            energyBands = eband(crystal, NSCFOptions, NSCFGrid);
-
-            energyRange = startEnergy:stepSize:endEnergy;
-            dos = zeros(1, size(energyRange, 2));
+            energyBands = eband(crystal, NSCFOptions, ...
+                taskOptions.NSCFGrid);
+            energyRange = taskOptions.startEnergy:taskOptions.stepSize: ...
+                taskOptions.endEnergy;
+            dos = zeros(1, numel(energyRange));
             tetra = Tetrahedra(crystal.nkxyz);
-            for i = 1:size(energyRange, 2)
-                dos(i) = tetra.computeTDOS(crystal, energyBands, energyRange(i));
+            for index = 1:numel(energyRange)
+                dos(index) = tetra.computeTDOS( ...
+                    crystal, energyBands, energyRange(index));
             end
-
-            % 绘图
-            DOSPlot = kssolv.services.workflow.module.visualization.chart.DOSPlot('dos', dos, 'energyRange', energyRange);
-
-            % 将 plot 保存到 Project/Results
-            resultsItem = kssolv.services.filemanager.Results.getResultsItem();
-            plotTag = resultsItem.addPlot(copy(DOSPlot), 'Density of States (DOS)');
-
-            projectBrowser = kssolv.ui.util.DataStorage.getData('ProjectBrowser');
-            projectBrowser.refreshUIAfterItemCreation(resultsItem.plotsItem);
-
-            % 展示绘图结果
-            dataPlot = kssolv.ui.components.figuredocument.DataPlot(DOSPlot, plotTag);
-            dataPlot.Display('Density of States (DOS)');
-
-            % 输出 context
             context("NSCFOptions") = NSCFOptions;
+            context("DOS") = struct("dos", dos, ...
+                "energyRange", energyRange);
+        end
+
+        function presentWithContext(context)
+            arguments
+                context containers.Map
+            end
+            data = context("DOS");
+            DOSPlot = kssolv.services.workflow.module.visualization.chart. ...
+                DOSPlot("dos", data.dos, ...
+                "energyRange", data.energyRange);
+            resultsItem = ...
+                kssolv.services.filemanager.Results.getResultsItem();
+            plotTag = resultsItem.addPlot(copy(DOSPlot), ...
+                "Density of States (DOS)");
+            projectBrowser = ...
+                kssolv.ui.util.DataStorage.getData("ProjectBrowser");
+            projectBrowser.refreshUIAfterItemCreation( ...
+                resultsItem.plotsItem);
+            dataPlot = kssolv.ui.components.figuredocument.DataPlot( ...
+                DOSPlot, plotTag);
+            dataPlot.Display("Density of States (DOS)");
         end
     end
 end

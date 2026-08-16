@@ -62,6 +62,18 @@ classdef (Abstract) AbstractTask < matlab.mixin.SetGet
 
             this.taskUICreated = true;
         end
+
+        function value = getExecutionOptions(this)
+            %GETEXECUTIONOPTIONS Return a serializable task option snapshot.
+            if ~isempty(this.optionsUI)
+                value = this.optionsUI.options;
+                this.options = value;
+            elseif isempty(this.options)
+                value = struct();
+            else
+                value = this.options;
+            end
+        end
     end
 
     methods (Abstract, Access = protected)
@@ -82,4 +94,3 @@ classdef (Abstract) AbstractTask < matlab.mixin.SetGet
         %}
     end
 end
-

@@ -31,10 +31,18 @@ classdef BandProcessing3DTask < kssolv.services.workflow.module.AbstractTask
                 ~
             end
 
-            if isempty(this.optionsUI)
-                return
+            context = kssolv.services.workflow.module.postprocessing. ...
+                BandProcessing3DTask.executeWithOptions( ...
+                context, this.getExecutionOptions());
+        end
+    end
+
+    methods (Static)
+        function context = executeWithOptions(context, taskOptions)
+            arguments
+                context containers.Map
+                taskOptions (1, 1) struct
             end
-            taskOptions = this.optionsUI.options;
 
             % 获取 UI 中设置的参数
             sliceGridSpacing = taskOptions.sliceGridSpacing;

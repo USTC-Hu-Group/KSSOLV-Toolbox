@@ -8,11 +8,25 @@ classdef CommandWindow < matlab.ui.internal.databrowser.AbstractDataBrowser
         Widgets % 小组件
         ChatBot % 对话机器人
         Workspace % 命令行变量工作空间
+        RemoteCommandExecutor % 远程命令执行器
+        RemoteConfigurationStore % 远程集群配置存储
+        RemoteSelectionStore % 当前远程集群选择
+        RemoteStatusReporter % FooterBar 状态报告器
+        RemoteExecutionEnabled (1, 1) logical = false
     end
 
     methods
-        function this = CommandWindow()
+        function this = CommandWindow(options)
             %COMMANDWINDOW 构造此类的实例
+            arguments
+                options.RemoteCommandExecutor = ...
+                    kssolv.services.remote.execution.RemoteCommandExecutor()
+                options.RemoteConfigurationStore = ...
+                    kssolv.services.remote.config.RemoteConfigurationStore()
+                options.RemoteSelectionStore = ...
+                    kssolv.services.remote.config.RemoteSelectionStore()
+                options.RemoteStatusReporter = @remoteFooterStatus
+            end
             title = kssolv.ui.util.Localizer.message('KSSOLV:toolbox:CommandWindowTitle');
             % 调用超类构造函数
             this = this@matlab.ui.internal.databrowser.AbstractDataBrowser('CommandWindow', title);
@@ -26,10 +40,87 @@ classdef CommandWindow < matlab.ui.internal.databrowser.AbstractDataBrowser
             this.Panel.Region = "bottom";
             % 保存实例，设置变更后可使已有聊天会话失效。
             kssolv.ui.util.DataStorage.setData('CommandWindow', this);
+            this.RemoteCommandExecutor = options.RemoteCommandExecutor;
+            this.RemoteConfigurationStore = ...
+                options.RemoteConfigurationStore;
+            this.RemoteSelectionStore = options.RemoteSelectionStore;
+            this.RemoteStatusReporter = options.RemoteStatusReporter;
 
             % 初始化命令行变量工作空间
             if ~isMATLABReleaseOlderThan('R2025a', "release")
                 this.Workspace = matlab.lang.Workspace;
+            end
+        end
+
+        function setRemoteExecutionEnabled(this, value)
+            %SETREMOTEEXECUTIONENABLED 切换命令的本地/远程执行位置
+            value = logical(value);
+            if value
+                this.selectedRemoteConfiguration();
+            else
+                this.RemoteCommandExecutor.closeSession();
+            end
+            this.RemoteExecutionEnabled = value;
+            this.Widgets.html.sendEventToHTMLSource( ...
+                'RemoteExecutionChanged', value);
+        end
+
+        function resetRemoteSession(this)
+            %RESETREMOTESESSION Close the session after target changes.
+            this.RemoteCommandExecutor.closeSession();
+        end
+
+        function delete(this)
+            try
+                this.RemoteCommandExecutor.closeSession();
+            catch
+            end
+        end
+
+        function output = executeCommand(this, command)
+            %EXECUTECOMMAND 执行一条命令并返回 Command Window 显示文本
+            command = string(command);
+            if this.RemoteExecutionEnabled
+                try
+                    configuration = this.selectedRemoteConfiguration();
+                    output = this.RemoteCommandExecutor.execute( ...
+                        command, configuration, StatusReporter= ...
+                        @(phase, detail)this.reportRemoteStatus( ...
+                        phase, detail));
+                catch exception
+                    this.reportRemoteStatus( ...
+                        "Failed", string(exception.message));
+                    output = exception.message;
+                end
+                output = remoteMarked(output);
+                return
+            end
+
+            % 在函数工作区内预置持久变量 ANS，可简化上一次计算结果的使用
+            persistent ANS %#ok<NUSED>
+            if isMATLABReleaseOlderThan('R2025a', "release")
+                try
+                    output = evalc('base', char(command)); %#ok<EVLC>
+                catch exception
+                    output = exception.message;
+                end
+            else
+                try
+                    output = evaluateAndCapture(this.Workspace, char(command));
+                catch exception
+                    output = exception.message;
+                end
+            end
+        end
+
+        function reportRemoteStatus(this, phase, detail)
+            text = remoteStatusText(phase, detail);
+            if isempty(this.RemoteStatusReporter)
+                return
+            end
+            try
+                this.RemoteStatusReporter(text);
+            catch
             end
         end
     end
@@ -121,27 +212,23 @@ classdef CommandWindow < matlab.ui.internal.databrowser.AbstractDataBrowser
                 this.Widgets.html.sendEventToHTMLSource('ResultUpdated', '');
                 return
             end
-
-            % 在函数工作区内预置持久变量 ANS，可简化上一次计算结果的使用
-            persistent ANS %#ok<NUSED>
-
-            if isMATLABReleaseOlderThan('R2025a', "release")
-                % 若当前版本低于 R2025a，使用 evalc + ANS
-                try
-                    output = evalc('base', command); %#ok<EVLC>
-                catch ME
-                    output = ME.message;
-                end
-            else
-                % 若当前版本高于 R2025a，使用 evaluateAndCapture
-                try
-                    output = evaluateAndCapture(this.Workspace, command);
-                catch ME
-                    output = ME.message;
-                end
-            end
-
+            output = this.executeCommand(command);
             this.Widgets.html.sendEventToHTMLSource('ResultUpdated', output);
+        end
+
+        function configuration = selectedRemoteConfiguration(this)
+            selectedId = this.RemoteSelectionStore.get( ...
+                this.RemoteConfigurationStore);
+            if strlength(selectedId) == 0
+                error("KSSOLV:Remote:UI:NoConfigurationSelected", ...
+                    "%s", kssolv.ui.util.Localizer.message( ...
+                    "KSSOLV:dialogs:RemoteNoConfigurationSelected"));
+            end
+            configuration = this.RemoteConfigurationStore.get(selectedId);
+            if ~configuration.Enabled
+                error("KSSOLV:Remote:ConfigurationDisabled", ...
+                    "The selected remote configuration is disabled.");
+            end
         end
 
         function callbackUserPromptSubmitted(this, ~, event)
@@ -255,4 +342,36 @@ classdef CommandWindow < matlab.ui.internal.databrowser.AbstractDataBrowser
             app.Visible = true;
         end
     end
+end
+
+function value = remoteMarked(value)
+value = string(value);
+value = regexprep(value, '[\r\n]+$', '');
+if strlength(value) == 0
+    value = "[remote start]" + newline + "[remote end]";
+else
+    value = "[remote start]" + newline + value + newline + ...
+        "[remote end]";
+end
+value = char(value);
+end
+
+function remoteFooterStatus(text)
+footer = kssolv.ui.util.DataStorage.getData("FooterBar");
+if isempty(footer) || ~isvalid(footer)
+    return
+end
+footer.setLabelText(string(text));
+drawnow
+end
+
+function value = remoteStatusText(phase, detail)
+phase = string(phase);
+template = string(kssolv.ui.util.Localizer.message( ...
+    "KSSOLV:dialogs:RemoteCommand" + phase));
+if any(phase == ["Connecting", "Starting", "Failed"])
+    value = string(sprintf(char(template), string(detail)));
+else
+    value = template;
+end
 end

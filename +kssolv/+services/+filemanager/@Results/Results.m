@@ -24,18 +24,52 @@ classdef Results < kssolv.services.filemanager.AbstractItem
             this.addChildrenItem(this.plotsItem);
         end
 
-        function addDataset(this, data, workflowLabel)
+        function [datasetItem, created] = addDataset(this, data, ...
+                workflowLabel, sourceIdentity)
             % 将运行计算工作流得到的输出作为 Dataset 存入 Project/Results 下
             arguments
                 this
                 data (:, 1) {mustBeNonempty}
                 workflowLabel = 'Default'
+                sourceIdentity (1, 1) string = ""
             end
 
+            datasetItem = this.findDatasetBySourceIdentity(sourceIdentity);
+            if ~isempty(datasetItem)
+                created = false;
+                return
+            end
             datasetItem = kssolv.services.filemanager.AbstractItem('Dataset', 'Dataset');
             datasetItem.data = data;
             datasetItem.label = sprintf('Run %s', workflowLabel);
+            if strlength(sourceIdentity) > 0
+                datasetItem.description = ...
+                    kssolv.services.filemanager.Results. ...
+                    remoteSourcePrefix() + sourceIdentity;
+            end
             this.datasetsItem.addChildrenItem(datasetItem);
+            created = true;
+        end
+
+        function datasetItem = findDatasetBySourceIdentity(this, ...
+                sourceIdentity)
+            arguments
+                this
+                sourceIdentity (1, 1) string
+            end
+            datasetItem = [];
+            if strlength(sourceIdentity) == 0
+                return
+            end
+            expected = kssolv.services.filemanager.Results. ...
+                remoteSourcePrefix() + sourceIdentity;
+            for index = 1:numel(this.datasetsItem.children)
+                candidate = this.datasetsItem.children{index};
+                if string(candidate.description) == expected
+                    datasetItem = candidate;
+                    return
+                end
+            end
         end
 
         function tag = addPlot(this, figure, plotLabel)
@@ -60,5 +94,10 @@ classdef Results < kssolv.services.filemanager.AbstractItem
             resultsItem = project.findChildrenItem('Results');
         end
     end
-end
 
+    methods (Static, Access = private)
+        function value = remoteSourcePrefix()
+            value = "KSSOLV Remote Job: ";
+        end
+    end
+end

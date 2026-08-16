@@ -31,10 +31,18 @@ classdef TDDFTTask < kssolv.services.workflow.module.AbstractTask
                 ~
             end
 
-            if isempty(this.optionsUI)
-                return
+            context = kssolv.services.workflow.module.computation. ...
+                TDDFTTask.executeWithOptions( ...
+                context, this.getExecutionOptions());
+        end
+    end
+
+    methods (Static)
+        function context = executeWithOptions(context, taskOptions)
+            arguments
+                context containers.Map
+                taskOptions (1, 1) struct
             end
-            taskOptions = this.optionsUI.options;
 
             TDDFTOptions = tddft_setup(context("molecule"), context("SCFOptions"), ...
                 context("H"), context("X"), namedargs2cell(taskOptions));
@@ -45,4 +53,3 @@ classdef TDDFTTask < kssolv.services.workflow.module.AbstractTask
         end
     end
 end
-

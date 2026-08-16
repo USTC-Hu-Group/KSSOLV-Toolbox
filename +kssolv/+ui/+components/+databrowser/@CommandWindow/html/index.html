@@ -77,17 +77,17 @@
         }
 
         #container {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
+            flex: 1 1 auto;
+            min-height: 0;
+            display: grid;
+            grid-template-rows: minmax(0, 1fr) auto;
             overflow: hidden;
-            position: relative;
         }
 
         #terminal {
-            flex: 1;
+            min-height: 0;
             overflow-y: auto;
-            padding: 5px 5px 55px 5px; /* 给input-container留出空间 */
+            padding: 5px;
             font-family: monospace;
             font-size: 13px;
             white-space: pre-wrap;
@@ -115,10 +115,8 @@
             border-top: 1px solid #ccc;
             padding: 10px 5px 5px;
             background: white;
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
+            position: relative;
+            min-width: 0;
             z-index: 1000;
         }
 
@@ -130,6 +128,7 @@
 
         #command-input {
             flex-grow: 1;
+            min-width: 0;
             border: 1px solid #ccc;
             padding: 5px;
             font-size: 15px;
@@ -200,7 +199,7 @@
 <div id="container">
     <div id="terminal"></div>
     <div id="input-container">
-        <span>&gt;&gt;</span>
+        <span id="command-prompt">&gt;&gt;</span>
         <label for="command-input"></label>
         <input autofocus id="command-input" type="text" autocomplete="off">
         <div id="suggestions-container"></div>
@@ -216,8 +215,10 @@
 
     const terminal = document.getElementById("terminal");
     const input = document.getElementById("command-input");
+    const commandPrompt = document.getElementById("command-prompt");
     const suggestionsContainer = document.getElementById("suggestions-container");
     let autoScrolledUp = true;
+    let remoteExecutionEnabled = false;
 
     // 查找数组中所有字符串的最长公共前缀
     function findLongestCommonPrefix(strings, currentInput) {
@@ -436,11 +437,12 @@
                 if (terminal.innerHTML.length > 0 && !terminal.innerHTML.endsWith('\n')) {
                     terminal.innerHTML += `\n`;
                 }
-                terminal.innerHTML += `>> ${command}\n`;
+                const remoteMarker = remoteExecutionEnabled ? '[remote] ' : '';
+                terminal.innerHTML += `${remoteMarker}>> ${command}\n`;
                 currentResponseContent = '';
                 responseContainer = null;
 
-                if (command === "dev") {
+                if (command === "dev" && !remoteExecutionEnabled) {
                     command = "kssolv.ui.debug.WebWindow.openDevTools()";
                 }
 
@@ -567,6 +569,12 @@
         window.__kssolvHTMLComponent = htmlComponent;
         window.__kssolvFlushHtmlErrors();
         htmlComponent.addEventListener("ResultUpdated", resultFromMATLABToHTML);
+        htmlComponent.addEventListener("RemoteExecutionChanged", event => {
+            remoteExecutionEnabled = Boolean(event.Data);
+            commandPrompt.textContent = remoteExecutionEnabled
+                ? '[remote] >>'
+                : '>>';
+        });
         htmlComponent.addEventListener("DataChanged", () => {
             references = MATLAB.Data.join(',');
             references = references.split(',');

@@ -17,6 +17,8 @@ classdef HomeTab < handle
         licenseDialog  % 许可对话框
         aboutDialog    % 关于对话框
         materialsProjectDialog % Materials Project 结构检索对话框
+        remoteClusterManagerDialog % 远程集群配置窗口
+        remoteJobsDialog % 远程作业窗口
     end
 
     methods
@@ -120,7 +122,6 @@ classdef HomeTab < handle
             % 禁用尚未实现功能的按钮
             this.Widgets.ProjectSection.ProjectStructureButton.Popup.getChildByIndex(4).Enabled = false;
             this.Widgets.ProjectSection.ProjectVariableButton.Popup.getChildByIndex(1).Enabled = false;
-            this.Widgets.EnvironmentSection.EnvironmentRemoteButton.Popup.getChildByIndex(1).Enabled = false;
             this.Widgets.EnvironmentSection.EnvironmentExtraButton.Popup.getChildByIndex(1).Enabled = false;
             this.Widgets.ResourceSection.ExamplesListItem.Enabled = false;
         end
@@ -306,43 +307,56 @@ classdef HomeTab < handle
             % 创建 Environment Section
             section = Section(message("KSSOLV:toolbox:EnvironmentSectionTitle"));
             section.Tag = 'EnvironmentSection';
+            remoteComputingAvailable = ~isdeployed;
             % 创建 Column
             column1 = Column();
             column2 = Column();
             column3 = Column();
-            column4 = Column();
 
             % 创建 Button
             EnvironmentSettingsButton = CreateButton('push', 'EnvironmentSettings', section.Tag, 'settings');
-            EnvironmentRemoteButton = CreateButton('dropdown', 'EnvironmentRemote', section.Tag, 'matlabCloud');
             EnvironmentParallelButton = CreateButton('push', 'EnvironmentParallel', section.Tag, 'parallel');
             EnvironmentExtraButton = CreateButton('dropdown', 'EnvironmentExtra', section.Tag, 'addOns');
 
             % 创建并组装 PopupList(下拉菜单)
-            RemotePopup = PopupList();
             ExtraPopup = PopupList();
-            ConnectToClusterListItem = CreateListItem('default', 'ConnectToCluster', section.Tag, 0, 'new_cloud');
             GetExtraFeatureListItem = CreateListItem('default', 'GetExtraFeature', section.Tag, 0, 'addOns');
-            RemotePopup.add(ConnectToClusterListItem);
             ExtraPopup.add(GetExtraFeatureListItem);
-            EnvironmentRemoteButton.Popup = RemotePopup;
             EnvironmentExtraButton.Popup = ExtraPopup;
 
             % 组装 Column 和 Button
             column1.add(EnvironmentSettingsButton);
-            column2.add(EnvironmentRemoteButton);
-            column3.add(EnvironmentParallelButton);
-            column4.add(EnvironmentExtraButton);
+            if remoteComputingAvailable
+                EnvironmentRemoteButton = CreateButton('dropdown', ...
+                    'EnvironmentRemote', section.Tag, 'matlabCloud');
+                EnvironmentRemoteButton.DynamicPopupFcn = ...
+                    @(~, ~) this.createRemoteComputingPopup();
+                EnvironmentRemoteButton.Popup = ...
+                    this.createRemoteComputingPopup();
+                column2.add(EnvironmentRemoteButton);
+                column3.add(EnvironmentParallelButton);
+                column4 = Column();
+                column4.add(EnvironmentExtraButton);
+            else
+                column2.add(EnvironmentParallelButton);
+                column3.add(EnvironmentExtraButton);
+            end
             section.add(column1);
             section.add(column2);
             section.add(column3);
-            section.add(column4);
+            if remoteComputingAvailable
+                section.add(column4);
+            end
             this.Tab.add(section);
 
             % 添加到 Widgets
             this.Widgets.EnvironmentSection = struct('EnvironmentSettingsButton', EnvironmentSettingsButton, ...
-                'EnvironmentRemoteButton', EnvironmentRemoteButton, 'EnvironmentParallelButton', EnvironmentParallelButton, ...
+                'EnvironmentParallelButton', EnvironmentParallelButton, ...
                 'EnvironmentExtraButton', EnvironmentExtraButton);
+            if remoteComputingAvailable
+                this.Widgets.EnvironmentSection.EnvironmentRemoteButton = ...
+                    EnvironmentRemoteButton;
+            end
         end
 
         function createResourceSection(this)
@@ -771,13 +785,24 @@ classdef HomeTab < handle
             workflowRoot = project.findChildrenItem('Workflow');
             workflow = workflowRoot.findChildrenItem(workflowDocument.Tag);
 
-            % 运行工作流
-            kssolv.services.workflow.codegeneration.CodeGenerator.executeTasks(workflow.graph, workflow.label);
-
-            this.Widgets.RunningSection.RunningRunButton.Enabled = true;
-            this.Widgets.RunningSection.RunningStopButton.Enabled = false;
-            runBrowser.Widgets.ButtonPanel.RunButton.Enable = true;
-            runBrowser.Widgets.ButtonPanel.StopButton.Enable = false;
+            cleanup = onCleanup(@()runBrowser.restoreButtons());
+            try
+                [mode, record] = kssolv.ui.features.remote. ...
+                    RemoteRunController.execute(workflow.graph, ...
+                    string(workflow.label), string(workflowDocument.Tag));
+                if mode == "Remote"
+                    fprintf(char(string(message( ...
+                        "KSSOLV:dialogs:RemoteSubmitted")) + newline), ...
+                        record.LocalJobId);
+                end
+            catch exception
+                fprintf(2, char(string(message( ...
+                    "KSSOLV:dialogs:RemoteSubmissionFailed")) + newline), ...
+                    exception.message);
+                rethrow(exception)
+            end
+            clear cleanup
+            runBrowser.restoreButtons();
         end
 
         function callbackRunAndTime(this, ~, ~)
@@ -785,11 +810,17 @@ classdef HomeTab < handle
 
             footerBar = kssolv.ui.util.DataStorage.getData('FooterBar');
             footerBar.setLabelText('');
+            remoteSelected = strlength(kssolv.ui.features.remote. ...
+                RemoteRunController.selectedConfigurationId()) > 0;
 
             % 计时并运行
             tStart = tic;
             this.callbackRunningRunButton();
             tEnd = toc(tStart);
+
+            if remoteSelected
+                return
+            end
 
             % 在底部状态栏中更新本次计算用时
             timeUsedText = sprintf('%s%.2f %s', message('KSSOLV:dialogs:RunTimeUsed'), ...
@@ -814,6 +845,202 @@ classdef HomeTab < handle
             appContainer = ...
                 kssolv.ui.util.DataStorage.getData('AppContainer');
             this.settingsDialog.show(appContainer);
+        end
+
+        function popup = createRemoteComputingPopup(this)
+            import matlab.ui.internal.toolstrip.*
+            import kssolv.ui.util.Localizer.message
+
+            popup = PopupList();
+            useRemote = ListItemWithPopup( ...
+                message("KSSOLV:toolbox:UseRemoteComputingListItemLabel"), ...
+                Icon("matlabCloud"));
+            useRemote.Tag = "EnvironmentSection_UseRemoteComputing";
+            useRemote.DynamicPopupFcn = ...
+                @(~, ~) this.createRemoteSelectionPopup();
+            useRemote.Popup = this.createRemoteSelectionPopup();
+            remoteCommand = ListItemWithCheckBox( ...
+                message("KSSOLV:toolbox:RemoteCommandExecutionListItemLabel"), ...
+                "", ...
+                this.remoteCommandExecutionEnabled());
+            remoteCommand.Tag = ...
+                "EnvironmentSection_RemoteCommandExecution";
+            remoteCommand.ClosePopupOnClick = true;
+            remoteCommand.ValueChangedFcn = @(~, ~) ...
+                this.toggleRemoteCommandExecution(remoteCommand);
+            configure = ListItem( ...
+                message("KSSOLV:toolbox:ConfigureRemoteClustersListItemLabel"), ...
+                Icon("settings"));
+            configure.Tag = "EnvironmentSection_ConfigureRemoteClusters";
+            addlistener(configure, "ItemPushed", ...
+                @(~, ~) this.openRemoteClusterManager());
+            testConnection = ListItem( ...
+                message("KSSOLV:toolbox:TestRemoteClusterListItemLabel"), ...
+                Icon("new_cloud"));
+            testConnection.Tag = "EnvironmentSection_TestRemoteCluster";
+            addlistener(testConnection, "ItemPushed", ...
+                @(~, ~) this.testSelectedRemoteCluster());
+            jobs = ListItem( ...
+                message("KSSOLV:toolbox:RemoteJobsListItemLabel"), ...
+                Icon("parallel"));
+            jobs.Tag = "EnvironmentSection_RemoteJobs";
+            addlistener(jobs, "ItemPushed", ...
+                @(~, ~) this.openRemoteJobs());
+            popup.add(useRemote);
+            popup.addSeparator;
+            popup.add(configure);
+            popup.add(testConnection);
+            popup.add(jobs);
+            popup.addSeparator;
+            popup.add(remoteCommand);
+        end
+
+        function popup = createRemoteSelectionPopup(this)
+            import matlab.ui.internal.toolstrip.*
+            import kssolv.ui.util.Localizer.message
+
+            configurationStore = ...
+                kssolv.services.remote.config.RemoteConfigurationStore();
+            selectionStore = ...
+                kssolv.services.remote.config.RemoteSelectionStore();
+            selectedId = selectionStore.get(configurationStore);
+            configurations = configurationStore.list();
+            configurations = configurations([configurations.Enabled]);
+            popup = PopupList();
+            none = ListItemWithCheckBox( ...
+                message("KSSOLV:toolbox:RemoteDisabledListItemLabel"), ...
+                message("KSSOLV:toolbox:RemoteDisabledListItemTooltip"), ...
+                strlength(selectedId) == 0);
+            none.Tag = "EnvironmentSection_RemoteDisabled";
+            none.ClosePopupOnClick = true;
+            none.ValueChangedFcn = @(~, ~) ...
+                this.selectRemoteConfiguration("");
+            popup.add(none);
+            for index = 1:numel(configurations)
+                configuration = configurations(index);
+                label = sprintf("[%s] %s", ...
+                    remoteModeLabel(configuration.ExecutionMode), ...
+                    configuration.DisplayName);
+                target = configuration.Host;
+                if configuration.ExecutionMode == "Cloud"
+                    target = configuration.ExistingProfileName;
+                end
+                item = ListItemWithCheckBox( ...
+                    char(label), char(target), ...
+                    configuration.Id == selectedId);
+                item.Tag = "EnvironmentSection_Remote_" + ...
+                    configuration.Id;
+                item.ClosePopupOnClick = true;
+                configurationId = configuration.Id;
+                item.ValueChangedFcn = @(~, ~) ...
+                    this.selectRemoteConfiguration(configurationId);
+                popup.add(item);
+            end
+        end
+
+        function selectRemoteConfiguration(~, configurationId)
+            store = kssolv.services.remote.config.RemoteConfigurationStore();
+            if strlength(configurationId) > 0
+                configuration = store.get(configurationId);
+                if ~configuration.Enabled
+                    error("KSSOLV:Remote:ConfigurationDisabled", ...
+                        "The selected remote configuration is disabled.");
+                end
+            end
+            kssolv.services.remote.config.RemoteSelectionStore().set( ...
+                configurationId);
+            commandWindow = ...
+                kssolv.ui.util.DataStorage.getData("CommandWindow");
+            if ~isempty(commandWindow) && isvalid(commandWindow)
+                commandWindow.resetRemoteSession();
+                if strlength(configurationId) == 0
+                    commandWindow.setRemoteExecutionEnabled(false);
+                end
+            end
+        end
+
+        function value = remoteCommandExecutionEnabled(~)
+            commandWindow = ...
+                kssolv.ui.util.DataStorage.getData("CommandWindow");
+            value = ~isempty(commandWindow) && isvalid(commandWindow) && ...
+                commandWindow.RemoteExecutionEnabled;
+        end
+
+        function toggleRemoteCommandExecution(~, source)
+            commandWindow = ...
+                kssolv.ui.util.DataStorage.getData("CommandWindow");
+            if isempty(commandWindow) || ~isvalid(commandWindow)
+                source.Value = false;
+                error("KSSOLV:Remote:UI:CommandWindowUnavailable", ...
+                    "Command Window is not available.");
+            end
+            try
+                commandWindow.setRemoteExecutionEnabled( ...
+                    logical(source.Value));
+            catch exception
+                source.Value = false;
+                rethrow(exception)
+            end
+        end
+
+        function openRemoteClusterManager(this)
+            if isempty(this.remoteClusterManagerDialog) || ...
+                    ~isvalid(this.remoteClusterManagerDialog) || ...
+                    ~isvalid(this.remoteClusterManagerDialog.Figure)
+                this.remoteClusterManagerDialog = ...
+                    kssolv.ui.features.remote. ...
+                    RemoteClusterManagerDialog();
+            else
+                figure(this.remoteClusterManagerDialog.Figure);
+            end
+        end
+
+        function openRemoteJobs(this)
+            if isempty(this.remoteJobsDialog) || ...
+                    ~isvalid(this.remoteJobsDialog) || ...
+                    ~isvalid(this.remoteJobsDialog.Figure)
+                this.remoteJobsDialog = ...
+                    kssolv.ui.features.remote.RemoteJobsDialog();
+            else
+                this.remoteJobsDialog.reloadFromStore();
+                figure(this.remoteJobsDialog.Figure);
+            end
+        end
+
+        function testSelectedRemoteCluster(~)
+            import kssolv.ui.util.Localizer.message
+
+            configurationStore = ...
+                kssolv.services.remote.config.RemoteConfigurationStore();
+            selectedId = kssolv.services.remote.config.RemoteSelectionStore(). ...
+                get(configurationStore);
+            if strlength(selectedId) == 0
+                error("KSSOLV:Remote:UI:NoConfigurationSelected", ...
+                    message("KSSOLV:dialogs:RemoteNoConfigurationSelected"));
+            end
+            configuration = configurationStore.get(selectedId);
+            backend = kssolv.services.remote.backend.RemoteBackendFactory(). ...
+                create(configuration);
+            session = backend.testConnection(configuration, "");
+            cleanup = onCleanup(@()delete(session));
+            session.start();
+            started = tic;
+            while ~any(session.State == session.TerminalStates) && ...
+                    toc(started) < 300
+                pause(0.2);
+                session.poll();
+            end
+            if ~any(session.State == session.TerminalStates)
+                session.cancel();
+                error("KSSOLV:Remote:ConnectionTestTimeout", ...
+                    "The remote connection test timed out.");
+            elseif session.State ~= "Succeeded"
+                error(session.ErrorIdentifier, "%s", ...
+                    session.ErrorSummary);
+            end
+            fprintf("Remote connection test succeeded on %s (R%s).\n", ...
+                session.Report.Probe.Hostname, ...
+                session.Report.Probe.MatlabRelease);
         end
 
         function callbackResourceDocumentationButton(~, ~, ~)
@@ -922,4 +1149,22 @@ classdef HomeTab < handle
             app.Visible = true;
         end
     end
+end
+
+function label = remoteModeLabel(mode)
+switch string(mode)
+    case "Standard"
+        key = "RemoteModeStandardShort";
+    case "Bridge"
+        key = "RemoteModeBridgeShort";
+    case "Mirror"
+        key = "RemoteModeMirrorShort";
+    case "Cloud"
+        key = "RemoteModeCloudShort";
+    otherwise
+        label = string(mode);
+        return
+end
+label = string(kssolv.ui.util.Localizer.message( ...
+    "KSSOLV:dialogs:" + key));
 end

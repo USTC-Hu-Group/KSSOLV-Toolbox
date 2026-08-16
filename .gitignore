@@ -40,6 +40,15 @@ dev/crystal-viewer/*
 dev/volume-viewer/*
 !dev/volume-viewer/docs/
 !dev/volume-viewer/docs/**
+!dev/remote-computing/
+dev/remote-computing/*
+!dev/remote-computing/docs/
+!dev/remote-computing/docs/**
+!dev/remote-computing/acceptance/
+dev/remote-computing/acceptance/*
+!dev/remote-computing/acceptance/README.md
+!dev/remote-computing/acceptance/reports/
+!dev/remote-computing/acceptance/reports/**
 !dev/modeling/
 dev/modeling/*
 !dev/modeling/generateModelingExamples.m

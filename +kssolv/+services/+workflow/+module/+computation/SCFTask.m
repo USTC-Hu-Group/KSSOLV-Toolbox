@@ -31,10 +31,18 @@ classdef SCFTask < kssolv.services.workflow.module.AbstractTask
                 ~
             end
 
-            if isempty(this.optionsUI)
-                return
+            context = kssolv.services.workflow.module.computation. ...
+                SCFTask.executeWithOptions( ...
+                context, this.getExecutionOptions());
+        end
+    end
+
+    methods (Static)
+        function context = executeWithOptions(context, taskOptions)
+            arguments
+                context containers.Map
+                taskOptions (1, 1) struct
             end
-            taskOptions = this.optionsUI.options;
 
             SCFOptions = options.SCF();
             fields = fieldnames(taskOptions);
@@ -53,4 +61,3 @@ classdef SCFTask < kssolv.services.workflow.module.AbstractTask
         end
     end
 end
-

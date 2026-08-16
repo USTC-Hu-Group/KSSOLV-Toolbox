@@ -70,12 +70,94 @@ classdef CodeGenerator < handle
             end
 
             % 步骤 5: 将运行结果存入 Results
-            remove(context, "molecule");
-            resultsItem = kssolv.services.filemanager.Results.getResultsItem();
-            resultsItem.addDataset(context, workflowName);
+            kssolv.services.workflow.codegeneration.CodeGenerator. ...
+                storeResults(context, workflowName);
+        end
 
-            projectBrowser = kssolv.ui.util.DataStorage.getData('ProjectBrowser');
-            projectBrowser.refreshUIAfterItemCreation(resultsItem.datasetsItem);
+        function context = completeRemoteExecution(workflow, envelope, options)
+            %COMPLETEREMOTEEXECUTION Present local nodes and import results.
+            arguments
+                workflow kssolv.services.workflow.WorkflowGraph
+                envelope struct
+                options.ResultIdentity (1, 1) string = ""
+            end
+            required = ["Context", "RemoteNodeIds", "LocalNodeIds", ...
+                "WorkflowName"];
+            if ~all(isfield(envelope, required)) || ...
+                    ~isa(envelope.Context, "containers.Map")
+                error("KSSOLV:Workflow:InvalidRemoteEnvelope", ...
+                    "The remote workflow result envelope is invalid.");
+            end
+            context = envelope.Context;
+            resultsItem = ...
+                kssolv.services.filemanager.Results.getResultsItem();
+            existing = resultsItem.findDatasetBySourceIdentity( ...
+                options.ResultIdentity);
+            if ~isempty(existing)
+                context = existing.data;
+                return
+            end
+            for nodeId = string(envelope.RemoteNodeIds(:)).'
+                if isKey(workflow.Nodes, char(nodeId))
+                    changeNodeStatus(char(nodeId), 'success');
+                end
+            end
+            for nodeId = string(envelope.LocalNodeIds(:)).'
+                if ~isKey(workflow.Nodes, char(nodeId))
+                    error("KSSOLV:Workflow:RemoteNodeMissing", ...
+                        "Workflow node %s no longer exists.", nodeId);
+                end
+                node = workflow.Nodes(char(nodeId));
+                changeNodeStatus(char(nodeId), 'running');
+                try
+                    if isa(node.task, ...
+                            "kssolv.services.workflow.module." + ...
+                            "visualization.DOSTask")
+                        kssolv.services.workflow.module.visualization. ...
+                            DOSTask.presentWithContext(context);
+                    else
+                        input = containers.Map("KeyType", "char", ...
+                            "ValueType", "any");
+                        context = node.task.executeTask(context, input);
+                    end
+                    changeNodeStatus(char(nodeId), 'success');
+                catch exception
+                    changeNodeStatus(char(nodeId), 'failed');
+                    rethrow(exception)
+                end
+            end
+            kssolv.services.workflow.codegeneration.CodeGenerator. ...
+                storeResults(context, string(envelope.WorkflowName), ...
+                options.ResultIdentity);
+        end
+
+        function storeResults(context, workflowName, resultIdentity)
+            %STORERESULTS Add a completed execution context to the project.
+            arguments
+                context containers.Map
+                workflowName = "Default"
+                resultIdentity (1, 1) string = ""
+            end
+            resultContext = containers.Map("KeyType", "char", ...
+                "ValueType", "any");
+            names = keys(context);
+            for index = 1:numel(names)
+                resultContext(names{index}) = context(names{index});
+            end
+            if isKey(resultContext, "molecule")
+                remove(resultContext, "molecule");
+            end
+            resultsItem = ...
+                kssolv.services.filemanager.Results.getResultsItem();
+            [~, created] = resultsItem.addDataset( ...
+                resultContext, workflowName, resultIdentity);
+            if ~created
+                return
+            end
+            projectBrowser = ...
+                kssolv.ui.util.DataStorage.getData("ProjectBrowser");
+            projectBrowser.refreshUIAfterItemCreation( ...
+                resultsItem.datasetsItem);
         end
 
         function sortedNodes = topologicalSort(workflow)

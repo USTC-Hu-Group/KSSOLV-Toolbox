@@ -59,6 +59,13 @@
         <entry key="EnvironmentSettingsButtonTooltip">调整设置</entry>
         <entry key="EnvironmentRemoteButtonLabel">远程</entry>
         <entry key="EnvironmentRemoteButtonTooltip">连接远程服务器</entry>
+        <entry key="UseRemoteComputingListItemLabel">使用远程计算</entry>
+        <entry key="RemoteCommandExecutionListItemLabel">远程执行命令行窗口的命令</entry>
+        <entry key="ConfigureRemoteClustersListItemLabel">配置远程集群…</entry>
+        <entry key="TestRemoteClusterListItemLabel">测试当前集群</entry>
+        <entry key="RemoteJobsListItemLabel">远程作业与结果…</entry>
+        <entry key="RemoteDisabledListItemLabel">不使用</entry>
+        <entry key="RemoteDisabledListItemTooltip">在本机运行当前工作流</entry>
         <entry key="EnvironmentParallelButtonLabel">并行</entry>
         <entry key="EnvironmentParallelButtonTooltip">设置并行计算</entry>
         <entry key="EnvironmentExtraButtonLabel">附加功能</entry>

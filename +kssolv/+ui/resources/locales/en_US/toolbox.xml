@@ -59,6 +59,13 @@
         <entry key="EnvironmentSettingsButtonTooltip">Adjust settings</entry>
         <entry key="EnvironmentRemoteButtonLabel">Remote</entry>
         <entry key="EnvironmentRemoteButtonTooltip">Connect to remote server</entry>
+        <entry key="UseRemoteComputingListItemLabel">Use Remote Computing</entry>
+        <entry key="RemoteCommandExecutionListItemLabel">Run Command Window Commands Remotely</entry>
+        <entry key="ConfigureRemoteClustersListItemLabel">Configure Remote Clusters…</entry>
+        <entry key="TestRemoteClusterListItemLabel">Test Current Cluster</entry>
+        <entry key="RemoteJobsListItemLabel">Remote Jobs and Results…</entry>
+        <entry key="RemoteDisabledListItemLabel">Do Not Use</entry>
+        <entry key="RemoteDisabledListItemTooltip">Run the current workflow on this computer</entry>
         <entry key="EnvironmentParallelButtonLabel">Parallel</entry>
         <entry key="EnvironmentParallelButtonTooltip">Set up parallel computing</entry>
         <entry key="EnvironmentExtraButtonLabel">Add-Ons</entry>

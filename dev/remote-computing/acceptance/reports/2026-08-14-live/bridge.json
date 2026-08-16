@@ -1,0 +1,22 @@
+{
+  "Version": 1,
+  "Mode": "Bridge",
+  "ClientMatlabRelease": "2026b",
+  "RemoteMatlabRelease": "2024a",
+  "Hostname": "node5",
+  "MatlabProfileName": "mySLURMCluster",
+  "MatlabJobId": 2,
+  "SlurmJobIds": ["21367"],
+  "Converged": true,
+  "ScfError": 9.090700615717597e-9,
+  "TotalEnergyHa": -5.966600267096851,
+  "RelativeEnergyError": 8.187210621916722e-15,
+  "ElapsedSeconds": 6.381139,
+  "TaskStates": [
+    {"NodeId": "build", "State": "Finished", "ElapsedSeconds": 5.488104},
+    {"NodeId": "scf", "State": "Finished", "ElapsedSeconds": 0.887082}
+  ],
+  "BundleSha256": "8e4a8b0315cf2a561f4adef40ed907c1b841213751980f1fa33bd602ea5cd4c6",
+  "DiarySha256": "207792a7c25e73573286f63318d1b75cba207e92baef476eac8b57068400f8c4",
+  "FinishedAt": "2026-08-14T07:28:54.038Z"
+}

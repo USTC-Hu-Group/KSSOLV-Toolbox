@@ -166,8 +166,16 @@ classdef RunBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser
 
             workflowRoot = project.findChildrenItem('Workflow');
             workflow = workflowRoot.findChildrenItem(workflowDocument.Tag);
-            kssolv.services.workflow.codegeneration.CodeGenerator.executeTasks(workflow.graph, workflow.label);
-
+            cleanup = onCleanup(@()this.restoreButtons());
+            [mode, record] = kssolv.ui.features.remote. ...
+                RemoteRunController.execute(workflow.graph, ...
+                string(workflow.label), string(workflowDocument.Tag));
+            if mode == "Remote"
+                fprintf(char(string(kssolv.ui.util.Localizer.message( ...
+                    "KSSOLV:dialogs:RemoteSubmitted")) + newline), ...
+                    record.LocalJobId);
+            end
+            clear cleanup
             this.restoreButtons();
         end
 
@@ -259,4 +267,3 @@ classdef RunBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser
         end
     end
 end
-

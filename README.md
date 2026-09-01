@@ -7,16 +7,30 @@
 
 **KSSOLV Toolbox** is a MATLAB-based graphical tool designed to make running density functional theory (DFT) calculations provided by the **Kohn-Sham Solver (KSSOLV)** package easier and more intuitive. It helps researchers avoid writing complex scripts and instead complete the full workflow—from structure import and calculation setup to post-analysis—through a user-friendly interface.
 
+![KSSOLV Toolbox crystal modeling workspace](https://github.com/USTC-Hu-Group/KSSOLV-Toolbox/blob/main/assets/kssolv-crystal-modeling.png)
+
 ![KSSOLV Toolbox GUI](https://github.com/USTC-Hu-Group/KSSOLV-Toolbox/blob/main/assets/KSSOLV%20Toolbox%20GUI.png)
 
 ## Key Features
 
-**KSSOLV Toolbox** adopts a modular design:
+KSSOLV Toolbox brings structure preparation, workflow execution, and result
+analysis into a single project-based workspace:
 
-* **Preprocessing Module**: Import crystal/molecular structures, analyze symmetry, and inspect CHGCAR, Cube, and XSF scalar volumes with isosurfaces, lattice slices, and atomic overlays.
-* **Computation Module**: Supports SCF and Non-SCF calculation tasks.  
-* **Post-processing Module**: Computes and processes results such as band structures.  
-* **Visualization Module**: Provides built-in plotting templates for quickly visualizing results.
+- **Interactive materials modeling**: Build and edit molecules, crystals,
+  surfaces, interfaces, defects, polymers, and amorphous structures in a 3D
+  workspace with previews, measurements, and undoable operations.
+- **Workflow-driven DFT calculations**: Configure and connect calculation tasks,
+  including SCF and Non-SCF workflows, without assembling a collection of
+  standalone MATLAB scripts.
+- **Scientific visualization and analysis**: Inspect atomic structures, band
+  structures, and CHGCAR, Cube, or XSF scalar fields using isosurfaces,
+  lattice-aligned slices, direct volume rendering, and export tools.
+- **Flexible local and remote execution**: Run calculations locally or use
+  supported MATLAB Parallel Server, Slurm, remote MATLAB, and cluster-profile
+  configurations while tracking jobs and importing completed results.
+- **Reproducible modeling and automation**: Record and replay modeling
+  operations, run batch preparation tasks, and use versioned MATLAB APIs for
+  scripted workflows.
 
 ## Installation
 

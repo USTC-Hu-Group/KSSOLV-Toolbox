@@ -7,17 +7,24 @@
 
 **KSSOLV Toolbox** 是一个基于 MATLAB 的图形化工具箱，用来更轻松地运行 **Kohn-Sham Solver (KSSOLV)** 包提供的密度泛函理论 (DFT) 计算。它的目标是让研究人员摆脱繁琐的脚本编写，让研究人员能够以更直观的方式完成从结构导入、计算参数设置到结果分析的完整流程。
 
+![KSSOLV Toolbox 晶体建模工作区](https://github.com/USTC-Hu-Group/KSSOLV-Toolbox/blob/main/assets/kssolv-crystal-modeling.png)
+
 ![KSSOLV Toolbox GUI](https://github.com/USTC-Hu-Group/KSSOLV-Toolbox/blob/main/assets/KSSOLV%20Toolbox%20GUI.png)
 
 ## 主要特性
 
-**KSSOLV Toolbox** 采用模块化的设计： 
+KSSOLV Toolbox 将结构准备、工作流执行和结果分析整合在统一的项目工作区中：
 
-* **预处理模块**：导入晶体/分子结构并分析对称性；查看 CHGCAR、Cube、XSF
-  三维体数据、等值面、晶格切片和原子结构叠加。
-* **计算模块**：支持 SCF 和 Non-SCF 等常用计算任务。
-* **后处理模块**：负责能带结构等结果的计算与处理。
-* **可视化模块**：内置多种绘图模板，用于快速绘制计算结果。
+- **交互式材料建模**：在三维工作区中构建和编辑分子、晶体、表面、界面、
+  缺陷、高分子和非晶结构，并提供预览、测量和可撤销操作。
+- **工作流驱动的 DFT 计算**：通过连接和配置计算任务组织 SCF、Non-SCF 等
+  工作流，无需维护分散的 MATLAB 脚本。
+- **科学可视化与分析**：查看原子结构、能带结构以及 CHGCAR、Cube、XSF
+  标量场，并使用等值面、晶格方向切片、直接体渲染和数据导出工具。
+- **灵活的本地与远程执行**：支持本地计算，以及 MATLAB Parallel Server、
+  Slurm、远端 MATLAB 和 Cluster Profile 等配置；可以跟踪作业并导入完成的结果。
+- **可复现建模与自动化**：记录和重放建模操作，执行批量结构准备任务，并通过
+  版本化 MATLAB API 构建脚本工作流。
 
 ## 安装
 

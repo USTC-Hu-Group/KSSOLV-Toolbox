@@ -1,13 +1,13 @@
 # KSSOLV Toolbox
 
-[![Github Release Version](https://img.shields.io/github/v/release/yliu7949/KSSOLV-Toolbox?color=blue&include_prereleases)](https://github.com/yliu7949/KSSOLV-Toolbox/releases/latest)
-[![License: BUSL-1.1](https://img.shields.io/badge/license-BUSL--1.1-blue)](https://github.com/yliu7949/KSSOLV-Toolbox/blob/main/LICENSE)
-[![GitHub top language](https://img.shields.io/github/languages/top/yliu7949/KSSOLV-Toolbox)](https://matlab.mathworks.com/)
+[![Github Release Version](https://img.shields.io/github/v/release/USTC-Hu-Group/KSSOLV-Toolbox?color=blue&include_prereleases)](https://github.com/USTC-Hu-Group/KSSOLV-Toolbox/releases/latest)
+[![License: BUSL-1.1](https://img.shields.io/badge/license-BUSL--1.1-blue)](https://github.com/USTC-Hu-Group/KSSOLV-Toolbox/blob/main/LICENSE)
+[![GitHub top language](https://img.shields.io/github/languages/top/USTC-Hu-Group/KSSOLV-Toolbox)](https://matlab.mathworks.com/)
 ![MATLAB Versions Tested](https://img.shields.io/badge/tested%20with-R2026b%20%7C%20R2026a%20%7C%20R2025b-blue)
 
 **KSSOLV Toolbox** 是一个基于 MATLAB 的图形化工具箱，用来更轻松地运行 **Kohn-Sham Solver (KSSOLV)** 包提供的密度泛函理论 (DFT) 计算。它的目标是让研究人员摆脱繁琐的脚本编写，让研究人员能够以更直观的方式完成从结构导入、计算参数设置到结果分析的完整流程。
 
-![KSSOLV Toolbox GUI](https://github.com/yliu7949/KSSOLV-Toolbox/blob/main/assets/KSSOLV%20Toolbox%20GUI.png)
+![KSSOLV Toolbox GUI](https://github.com/USTC-Hu-Group/KSSOLV-Toolbox/blob/main/assets/KSSOLV%20Toolbox%20GUI.png)
 
 ## 主要特性
 
@@ -23,7 +23,7 @@
 
 **KSSOLV Toolbox** 支持在 **MATLAB® 桌面版环境** 中安装使用，同时也提供可在 Windows、macOS 和 Linux 平台上部署的**独立应用程序版本**。
 
-有关具体的安装方式与操作说明，请参阅[用户使用文档](https://github.com/yliu7949/KSSOLV-Toolbox/blob/main/docs/usage/start.md)。
+安装方法、使用说明和功能指南请参阅[用户文档](docs/README.md)。
 
 ## 贡献指南
 

@@ -22,7 +22,8 @@
 
 **KSSOLV Toolbox** supports installation and usage within the **MATLAB® desktop environment**, and also provides a **standalone application version** that can be deployed on Windows, macOS, and Linux platforms.
 
-For detailed installation procedures and usage instructions, please refer to the [User Documentation](https://github.com/USTC-Hu-Group/KSSOLV-Toolbox/blob/main/docs/usage/start.md).
+For installation, usage, and feature guides, see the
+[User Documentation](docs/README.md).
 
 ## Contributing
 

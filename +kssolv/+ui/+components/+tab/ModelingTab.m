@@ -280,8 +280,15 @@ classdef ModelingTab < handle
         end
 
         function openModelingGuide(~)
+            locale=string(kssolv.ui.util.Localizer. ...
+                getInstance().currentLocale);
+            if locale=="zh_CN"
+                filename="modeling-user-guide.zh-CN.md";
+            else
+                filename="modeling-user-guide.md";
+            end
             path=fullfile(KSSOLV_Toolbox.RootDirectory,"docs", ...
-                "modeling-user-guide.zh-CN.md");
+                filename);
             if ~isfile(path)
                 error("KSSOLV:Modeling:GuideMissing", ...
                     "The installed modeling user guide is missing: %s",path);

@@ -11,6 +11,6 @@ classdef Baseline
         PymatgenCoreMetadataVersion string = "2026.7.16"
         PymatgenCoreCommit string = "c71faa7a95df9bbcd20cb3d14ff112d0f72d8e39"
 
-        MinimumMATLABRelease string = "R2024a"
+        MinimumMATLABRelease string = "R2025a"
     end
 end

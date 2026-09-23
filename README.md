@@ -3,7 +3,8 @@
 [![Github Release Version](https://img.shields.io/github/v/release/USTC-Hu-Group/KSSOLV-Toolbox?color=blue&include_prereleases)](https://github.com/USTC-Hu-Group/KSSOLV-Toolbox/releases/latest)
 [![License: BUSL-1.1](https://img.shields.io/badge/license-BUSL--1.1-blue)](https://github.com/USTC-Hu-Group/KSSOLV-Toolbox/blob/main/LICENSE)
 [![GitHub top language](https://img.shields.io/github/languages/top/USTC-Hu-Group/KSSOLV-Toolbox)](https://matlab.mathworks.com/)
-![MATLAB Versions Tested](https://img.shields.io/badge/tested%20with-R2026b%20%7C%20R2026a%20%7C%20R2025b-blue)
+[![MATLAB R2025a or later](https://img.shields.io/badge/MATLAB-R2025a%2B-blue)](https://www.mathworks.com/products/matlab.html)
+[![MathWorks Connections Program](https://github.com/USTC-Hu-Group/KSSOLV-Toolbox/blob/main/assets/mathworks-connections-badge.svg?raw=true)](https://www.mathworks.com/products/connections.html)
 
 **KSSOLV Toolbox** is a MATLAB-based graphical tool designed to make running density functional theory (DFT) calculations provided by the **Kohn-Sham Solver (KSSOLV)** package easier and more intuitive. It helps researchers avoid writing complex scripts and instead complete the full workflow—from structure import and calculation setup to post-analysis—through a user-friendly interface.
 
@@ -34,7 +35,9 @@ analysis into a single project-based workspace:
 
 ## Installation
 
-**KSSOLV Toolbox** supports installation and usage within the **MATLAB® desktop environment**, and also provides a **standalone application version** that can be deployed on Windows, macOS, and Linux platforms.
+**KSSOLV Toolbox** requires **MATLAB® R2025a or later** when used in the
+MATLAB desktop environment. It also provides a **standalone application
+version** that can be deployed on Windows, macOS, and Linux platforms.
 
 For installation, usage, and feature guides, see the
 [User Documentation](docs/README.md).
@@ -99,3 +102,9 @@ If you use **KSSOLV Toolbox** in your research or publications, please cite the 
   eprint = {https://doi.org/10.1021/acs.jctc.6c00523}
 }
 ```
+
+<p align="center">
+  <a href="https://www.mathworks.com/products/connections.html">
+    <img src="https://github.com/USTC-Hu-Group/KSSOLV-Toolbox/blob/main/assets/mathworks-connections.svg?raw=true" alt="MathWorks Connections Program" width="302">
+  </a>
+</p>

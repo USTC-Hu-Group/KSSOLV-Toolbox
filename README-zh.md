@@ -3,7 +3,8 @@
 [![Github Release Version](https://img.shields.io/github/v/release/USTC-Hu-Group/KSSOLV-Toolbox?color=blue&include_prereleases)](https://github.com/USTC-Hu-Group/KSSOLV-Toolbox/releases/latest)
 [![License: BUSL-1.1](https://img.shields.io/badge/license-BUSL--1.1-blue)](https://github.com/USTC-Hu-Group/KSSOLV-Toolbox/blob/main/LICENSE)
 [![GitHub top language](https://img.shields.io/github/languages/top/USTC-Hu-Group/KSSOLV-Toolbox)](https://matlab.mathworks.com/)
-![MATLAB Versions Tested](https://img.shields.io/badge/tested%20with-R2026b%20%7C%20R2026a%20%7C%20R2025b-blue)
+[![MATLAB R2025a 或更高版本](https://img.shields.io/badge/MATLAB-R2025a%2B-blue)](https://www.mathworks.com/products/matlab.html)
+[![MathWorks Connections Program](https://github.com/USTC-Hu-Group/KSSOLV-Toolbox/blob/main/assets/mathworks-connections-badge.svg?raw=true)](https://www.mathworks.com/products/connections.html)
 
 **KSSOLV Toolbox** 是一个基于 MATLAB 的图形化工具箱，用来更轻松地运行 **Kohn-Sham Solver (KSSOLV)** 包提供的密度泛函理论 (DFT) 计算。它的目标是让研究人员摆脱繁琐的脚本编写，让研究人员能够以更直观的方式完成从结构导入、计算参数设置到结果分析的完整流程。
 
@@ -28,7 +29,9 @@ KSSOLV Toolbox 将结构准备、工作流执行和结果分析整合在统一�
 
 ## 安装
 
-**KSSOLV Toolbox** 支持在 **MATLAB® 桌面版环境** 中安装使用，同时也提供可在 Windows、macOS 和 Linux 平台上部署的**独立应用程序版本**。
+**KSSOLV Toolbox** 在 **MATLAB® 桌面版环境**中使用时需要 **MATLAB
+R2025a 或更高版本**，同时也提供可在 Windows、macOS 和 Linux 平台上部署的
+**独立应用程序版本**。
 
 安装方法、使用说明和功能指南请参阅[用户文档](docs/README.md)。
 
@@ -73,3 +76,9 @@ BUSL-1.1 是源码可用许可证；在适用的 Change Date 之前，它不是�
   eprint = {https://doi.org/10.1021/acs.jctc.6c00523}
 }
 ```
+
+<p align="center">
+  <a href="https://www.mathworks.com/products/connections.html">
+    <img src="https://github.com/USTC-Hu-Group/KSSOLV-Toolbox/blob/main/assets/mathworks-connections.svg?raw=true" alt="MathWorks Connections Program" width="302">
+  </a>
+</p>

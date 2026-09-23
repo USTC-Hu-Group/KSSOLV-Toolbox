@@ -19,7 +19,7 @@ classdef KSSOLV_Toolbox
         Summary string = "Plane Wave Basis, First-Principles Calculation"
 
         MinimumMATLABVersion char = 'R2025a'
-        RecommendedMinimumMATLABVersion char = 'R2026b'
+        RecommendedMinimumMATLABVersion char = 'R2025a'
         ModelingSchemaVersion double = 1
         BuildChannel string = "production"
 

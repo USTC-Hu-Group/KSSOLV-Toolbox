@@ -10,7 +10,7 @@ covers installation and a first local workflow.
 
 ### MATLAB toolbox
 
-KSSOLV Toolbox requires MATLAB R2024b or later when it is used as an Add-On.
+KSSOLV Toolbox requires MATLAB R2025a or later when it is used as an Add-On.
 
 1. Download `KSSOLV_Toolbox.mltbx` from the
    [latest release](https://github.com/USTC-Hu-Group/KSSOLV-Toolbox/releases/latest).

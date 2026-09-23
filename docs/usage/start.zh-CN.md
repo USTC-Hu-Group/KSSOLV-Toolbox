@@ -9,7 +9,7 @@ KSSOLV Toolbox 为基于 KSSOLV 的密度泛函理论计算提供图形化环境
 
 ### MATLAB 工具箱
 
-以 MATLAB Add-On 方式使用时，需要 MATLAB R2024b 或更高版本。
+以 MATLAB Add-On 方式使用时，需要 MATLAB R2025a 或更高版本。
 
 1. 从[最新发行版](https://github.com/USTC-Hu-Group/KSSOLV-Toolbox/releases/latest)
    下载 `KSSOLV_Toolbox.mltbx`。

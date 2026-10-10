@@ -152,10 +152,37 @@ classdef KSSOLVToolbox < handle
                 waitfor(this.projectBrowser.Figure, 'FigureViewReady', true);
             catch exception
                 % 若 HostInBrowser 为 true，但此时无法打开默认浏览器则会报错
+                if ~this.HostInBrowser
+                    rethrow(exception);
+                end
                 disp(this.getNewUrl());
             end
 
             this.AppContainer.Busy = false;
+        end
+
+        function waitUntilReady(this)
+            % 等待原生容器、Figure 和嵌入的 Project Browser 全部就绪。
+            started = tic;
+            while true
+                if ~isvalid(this.AppContainer) || ...
+                        this.AppContainer.State == ...
+                        matlab.ui.container.internal.appcontainer.AppState.TERMINATED
+                    error('KSSOLV:Startup:WindowClosed', ...
+                        'The application window closed before it was ready.');
+                end
+                if this.AppContainer.State == ...
+                        matlab.ui.container.internal.appcontainer.AppState.RUNNING && ...
+                        this.projectBrowser.Figure.FigureViewReady && ...
+                        this.projectBrowser.IsClientReady
+                    return
+                end
+                if toc(started) >= 900
+                    error('KSSOLV:Startup:RenderTimeout', ...
+                        'The application interface did not become ready within 900 seconds.');
+                end
+                pause(0.05);
+            end
         end
 
         function close(this)

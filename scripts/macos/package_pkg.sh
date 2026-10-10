@@ -7,8 +7,6 @@ RELEASE_DIR="$REPOSITORY_DIR/Release/StandaloneDesktopApp"
 PKG_ASSETS_DIR="$SCRIPTS_DIR/pkg"
 PKG_IDENTIFIER="com.hanhai.kssolv-toolbox"
 RUNTIME_RELEASE="${MATLAB_RUNTIME_RELEASE:-R2026b}"
-INSTALLER_IDENTITY="${PKG_SIGN_IDENTITY:-Developer ID Installer: Liu Yang (T3ML58STY8)}"
-NOTARY_PROFILE="${NOTARY_PROFILE:-AC_PASSWORD}"
 
 fail() {
     echo "错误: $*" >&2
@@ -23,8 +21,7 @@ VERSION=$(sed -nE \
 INSTALLER_APP="$RELEASE_DIR/KSSOLV_Toolbox_V$VERSION.app"
 BUNDLE_ZIP="$INSTALLER_APP/Contents/Resources/bundle.zip"
 OUTPUT_PKG="${PKG_OUTPUT_PATH:-$RELEASE_DIR/KSSOLV_Toolbox_V$VERSION.pkg}"
-[[ -f "$BUNDLE_ZIP" ]] || \
-    fail "找不到已生成的安装器载荷: $BUNDLE_ZIP"
+[[ -f "$BUNDLE_ZIP" ]] || fail "找不到已生成的安装器载荷: $BUNDLE_ZIP"
 
 for asset in \
     "$PKG_ASSETS_DIR/com.gleamoe.kssolv.prewarm.plist" \
@@ -38,6 +35,7 @@ EXTRACT_DIR="$WORK_DIR/extracted"
 PAYLOAD_ROOT="$WORK_DIR/root"
 PACKAGE_SCRIPTS="$WORK_DIR/scripts"
 UNSIGNED_PKG="$WORK_DIR/KSSOLV_Toolbox.pkg"
+COMPONENTS_PLIST="$WORK_DIR/components.plist"
 cleanup() {
     rm -rf "$WORK_DIR"
 }
@@ -73,43 +71,34 @@ chmod 0644 "$LAUNCH_AGENTS_DIR/com.gleamoe.kssolv.prewarm.plist"
 
 # ditto 解包带资源叉的 zip 时可能生成 AppleDouble 辅助文件。它们不属于
 # 安装载荷，并且会让升级后的目录出现大量不可见的 ._* 文件。
+chmod -R u+w "$PAYLOAD_ROOT"
 find "$PAYLOAD_ROOT" \( -name '._*' -o -name '.DS_Store' \) -delete
 xattr -cr "$PAYLOAD_ROOT"
 
-ditto "$PKG_ASSETS_DIR/postinstall" "$PACKAGE_SCRIPTS/postinstall"
-chmod 0755 "$PACKAGE_SCRIPTS/postinstall"
+ditto "$PKG_ASSETS_DIR/postinstall" "$PACKAGE_SCRIPTS/finalize-install.sh"
+chmod 0755 "$PACKAGE_SCRIPTS/finalize-install.sh"
 
 plutil -lint \
     "$LAUNCH_AGENTS_DIR/com.gleamoe.kssolv.prewarm.plist"
-codesign --verify --deep --strict --verbose=2 \
-    "$PAYLOAD_ROOT/Applications/KSSOLV_Toolbox/application/KSSOLV_Toolbox.app"
+
+# 固定应用安装位置，避免 Installer 根据相同 bundle ID 将应用升级到
+# 用户曾经移动的副本，而预热脚本仍然启动 /Applications 中的旧版本。
+pkgbuild --analyze --root "$PAYLOAD_ROOT" "$COMPONENTS_PLIST"
+/usr/libexec/PlistBuddy -c 'Set :0:BundleIsRelocatable false' "$COMPONENTS_PLIST"
+# 完整图形预热可能超过顶层安装脚本的 600 秒上限。使用 bundle 的
+# postinstall 和显式超时，给 900 秒预热及正常退出留出余量。
+/usr/libexec/PlistBuddy -c 'Add :0:BundlePostInstallScriptPath string finalize-install.sh' "$COMPONENTS_PLIST"
+/usr/libexec/PlistBuddy -c 'Add :0:BundleInstallScriptTimeout integer 1200' "$COMPONENTS_PLIST"
 
 pkgbuild \
     --root "$PAYLOAD_ROOT" \
+    --component-plist "$COMPONENTS_PLIST" \
     --scripts "$PACKAGE_SCRIPTS" \
     --identifier "$PKG_IDENTIFIER" \
     --version "$VERSION" \
     --install-location / \
     "$UNSIGNED_PKG"
 
-rm -f "$OUTPUT_PKG"
-if [[ "${KSSOLV_SKIP_SIGNING:-0}" == "1" ]]; then
-    mv "$UNSIGNED_PKG" "$OUTPUT_PKG"
-    echo "已生成未签名测试 PKG: $OUTPUT_PKG"
-    exit 0
-fi
-
-security find-identity -v -p basic | grep -Fq "$INSTALLER_IDENTITY" || \
-    fail "钥匙串中找不到 PKG 签名证书: $INSTALLER_IDENTITY"
-productsign --sign "$INSTALLER_IDENTITY" \
-    "$UNSIGNED_PKG" "$OUTPUT_PKG"
-pkgutil --check-signature "$OUTPUT_PKG"
-
-xcrun notarytool submit "$OUTPUT_PKG" \
-    --keychain-profile "$NOTARY_PROFILE" \
-    --wait
-xcrun stapler staple "$OUTPUT_PKG"
-xcrun stapler validate "$OUTPUT_PKG"
-spctl --assess --type install --verbose=2 "$OUTPUT_PKG"
-
-echo "全部完成: $OUTPUT_PKG"
+mv -f "$UNSIGNED_PKG" "$OUTPUT_PKG"
+echo "已生成未签名 PKG: $OUTPUT_PKG"
+echo "下一步: $SCRIPTS_DIR/sign_and_notarize_app.sh --pkg \"$OUTPUT_PKG\""

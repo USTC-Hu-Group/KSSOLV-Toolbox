@@ -77,6 +77,12 @@ frontend/apps/*/dist/
 /tmp/
 /fmt
 
+# Local generated documents and slides
+/.codex_tmp/
+/.docx_qa/
+/slides/
+/scripts/macos/tests/
+
 # Environment variable configurations
 .env
 .env.*

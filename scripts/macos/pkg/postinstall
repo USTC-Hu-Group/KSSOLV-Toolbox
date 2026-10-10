@@ -1,29 +1,50 @@
 #!/bin/bash
-set -u
+set -eu
 
 LABEL="com.gleamoe.kssolv.prewarm"
 PLIST="/Library/LaunchAgents/$LABEL.plist"
+PREWARM_SCRIPT="/Library/Application Support/KSSOLV Toolbox/prewarm.sh"
 
 /usr/sbin/chown root:wheel "$PLIST" \
-    "/Library/Application Support/KSSOLV Toolbox/prewarm.sh"
+    "$PREWARM_SCRIPT"
 /bin/chmod 0644 "$PLIST"
-/bin/chmod 0755 "/Library/Application Support/KSSOLV Toolbox/prewarm.sh"
+/bin/chmod 0755 "$PREWARM_SCRIPT"
 
 # 没有已登录的 Aqua 用户时无需失败；/Library/LaunchAgents 中的任务会在
 # 用户下次登录时由 launchd 自动载入。
 CONSOLE_USER=$(/usr/bin/stat -f '%Su' /dev/console)
 case "$CONSOLE_USER" in
     ""|root|loginwindow|_mbsetupuser)
+        echo "KSSOLV: no logged-in Aqua user; Runtime prewarm deferred until login."
         exit 0
         ;;
 esac
 
-USER_ID=$(/usr/bin/id -u "$CONSOLE_USER") || exit 0
+USER_ID=$(/usr/bin/id -u "$CONSOLE_USER")
+USER_HOME=$(/usr/bin/dscl /Search -read "/Users/$CONSOLE_USER" NFSHomeDirectory)
+USER_HOME="${USER_HOME#NFSHomeDirectory: }"
+[[ -d "$USER_HOME" ]] || { echo "KSSOLV: user home not found." >&2; exit 1; }
 DOMAIN="gui/$USER_ID"
 SERVICE="$DOMAIN/$LABEL"
 
 # 升级安装时撤销上一次预热成功留下的 disabled 状态。
 /bin/launchctl enable "$SERVICE" >/dev/null 2>&1 || true
-/bin/launchctl bootstrap "$DOMAIN" "$PLIST" >/dev/null 2>&1 || true
-/bin/launchctl kickstart -k "$SERVICE" >/dev/null 2>&1 || true
+# 停止旧的后台任务，避免升级时与本次同步预热争用同一用户缓存。
+/bin/launchctl bootout "$SERVICE" >/dev/null 2>&1 || true
+
+echo "KSSOLV: warming MATLAB Runtime for $CONSOLE_USER; waiting for completion."
+# Installer 脚本以 root 执行。asuser 选择用户的 GUI bootstrap 域，sudo
+# 切换实际 UID；清空继承环境，避免把 root 的 HOME/TMPDIR/缓存路径带入。
+if ! /bin/launchctl asuser "$USER_ID" \
+    /usr/bin/sudo -u "$CONSOLE_USER" /usr/bin/env -i \
+    HOME="$USER_HOME" USER="$CONSOLE_USER" LOGNAME="$CONSOLE_USER" \
+    PATH=/usr/bin:/bin:/usr/sbin:/sbin KSSOLV_PREWARM_SKIP_UNLOAD=1 \
+    "$PREWARM_SCRIPT"; then
+    echo "KSSOLV: MATLAB Runtime prewarm failed; installation finalization failed." >&2
+    exit 1
+fi
+
+# 成功后禁用登录时的备用任务；下一次安装会重新 enable。
+/bin/launchctl disable "$SERVICE" >/dev/null 2>&1 || true
+echo "KSSOLV: MATLAB Runtime prewarm completed."
 exit 0

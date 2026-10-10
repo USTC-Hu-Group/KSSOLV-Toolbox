@@ -10,13 +10,17 @@ classdef DeploymentCompatibilityTest < matlab.unittest.TestCase
     end
 
     methods (Test)
-        function prewarmDoesNotConstructApplication(testCase)
+        function prewarmRendersApplicationAndCleansUp(testCase)
             previousApp = ...
                 kssolv.ui.util.DataStorage.getData("KSSOLVToolbox");
             previousContainer = ...
                 kssolv.ui.util.DataStorage.getData("AppContainer");
 
-            kssolvStart("--prewarm", false);
+            output = evalc('kssolvStart("--prewarm", false);');
+            testCase.verifySubstring(output, "KSSOLV_UI_READY");
+            testCase.verifySubstring(output, "KSSOLV_UI_PREWARM_OK");
+            testCase.verifyLessThan(strfind(output, 'KSSOLV_UI_READY'), ...
+                strfind(output, 'KSSOLV_UI_PREWARM_OK'));
 
             testCase.verifyEqual( ...
                 kssolv.ui.util.DataStorage.getData("KSSOLVToolbox"), ...
@@ -24,6 +28,43 @@ classdef DeploymentCompatibilityTest < matlab.unittest.TestCase
             testCase.verifyEqual( ...
                 kssolv.ui.util.DataStorage.getData("AppContainer"), ...
                 previousContainer);
+        end
+
+        function prewarmPreservesExistingUnsavedSession(testCase)
+            testCase.assertEmpty( ...
+                kssolv.ui.util.DataStorage.getData("KSSOLVToolbox"));
+            previousProject = kssolv.ui.util.DataStorage.getData("Project");
+            previousFilename = ...
+                kssolv.ui.util.DataStorage.getData("ProjectFilename");
+            app = kssolv("", false);
+            cleanup = onCleanup(@restoreState);
+            container = app.getAppContainer();
+            project = kssolv.ui.util.DataStorage.getData("Project");
+            project.isDirty = true;
+
+            output = evalc('testCase.verifyError(@() kssolvStart("--prewarm", false), "KSSOLV:Startup:ExistingSession");');
+            testCase.assertTrue(isvalid(app));
+            testCase.verifyTrue(isvalid(container));
+            testCase.verifyTrue(container.Visible);
+            testCase.verifyEqual( ...
+                kssolv.ui.util.DataStorage.getData("KSSOLVToolbox"), app);
+            testCase.verifyEqual( ...
+                kssolv.ui.util.DataStorage.getData("AppContainer"), container);
+            testCase.verifyEqual( ...
+                kssolv.ui.util.DataStorage.getData("Project"), project);
+            testCase.verifyTrue(project.isDirty);
+            testCase.verifyFalse(contains(output, "KSSOLV_UI_READY"));
+            testCase.verifyFalse(contains(output, "KSSOLV_UI_PREWARM_OK"));
+            clear cleanup
+
+            function restoreState()
+                if isvalid(app)
+                    delete(app);
+                end
+                kssolv.ui.util.DataStorage.setData("Project", previousProject);
+                kssolv.ui.util.DataStorage.setData( ...
+                    "ProjectFilename", previousFilename);
+            end
         end
 
         function toolboxRestartRecreatesModelingSessionRegistry(testCase)

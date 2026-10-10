@@ -53,11 +53,6 @@ else
 end
 validateStandalonePayload(buildOptions.OutputDir, toolboxFolder);
 
-% 仅在安装包需要 Runtime 时下载；none 模式不应触发数 GB 下载。
-if runtimeDelivery ~= "none"
-    compiler.runtime.download;
-end
-
 % 设置打包属性
 packageOptions = compiler.package.InstallerOptions(buildResult);
 packageOptions.ApplicationName = KSSOLV_Toolbox.Name;
@@ -75,21 +70,15 @@ packageOptions.InstallerIcon = fullfile(KSSOLV_Toolbox.UIResourcesDirectory, "ic
 packageOptions.InstallerSplash = fullfile(KSSOLV_Toolbox.UIResourcesDirectory, "icons", "companyLOGO.png");
 packageOptions.InstallerName = sprintf('KSSOLV_Toolbox_V%s', KSSOLV_Toolbox.Version);
 
-% 删除旧的安装包
-filesToDelete = dir(fullfile(packageOptions.OutputDir, [packageOptions.InstallerName, '.*']));
-for k = 1:length(filesToDelete)
-    fullFilePath = fullfile(filesToDelete(k).folder, filesToDelete(k).name);
-    try
-        if filesToDelete(k).isdir
-            rmdir(fullFilePath, 's');
-        else
-            delete(fullFilePath);
-        end
-    catch ME
+% 生成独立应用程序安装包
+% MathWorks 在 macOS 上合并已有 .app；切换 Runtime 分发方式前需清除旧载荷。
+if ismac
+    installerApp = fullfile(packageOptions.OutputDir, ...
+        packageOptions.InstallerName + ".app");
+    if isfolder(installerApp)
+        rmdir(installerApp, 's');
     end
 end
-
-% 生成独立应用程序安装包
 compiler.package.installer(buildResult, "Options", packageOptions);
 delete(addOnRuntimeCleanup)
 delete(dialogFrameworkCleanup)
@@ -316,6 +305,9 @@ function matches = hasDeploymentTestFileName(paths)
 baseNames = lower(baseNames);
 matches = startsWith(baseNames, "test_") | ...
     endsWith(baseNames, ["_test", "test", "tests"]);
+normalizedPaths = "/" + normalizeDeploymentPath(paths);
+matches = matches & ~endsWith(normalizedPaths, ...
+    "/+remote/+diagnostics/RemoteLoginTest.m");
 end
 
 function [runtimeFiles, cleanup] = stageAddOnRuntimeFiles( ...

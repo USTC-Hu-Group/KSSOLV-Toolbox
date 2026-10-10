@@ -12,10 +12,8 @@ arguments
     hostInBrowser (1, 1) logical = kssolv.settings.Environment.hostInBrowser()
 end
 
-% 安装程序会使用该参数用来完成 MATLAB Runtime 的用户级初始化。
-% Runtime 初始化发生在调用本入口之前，正常返回即可结束预热进程。
 if ksFile == "--prewarm"
-    prefdir(1);
+    kssolvPrewarm();
     return
 end
 

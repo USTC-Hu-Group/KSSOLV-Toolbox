@@ -468,6 +468,7 @@
     // MATLAB execute this setup function
     function setup(htmlComponent) {
       MATLAB = htmlComponent;
+      let readySent = false;
       htmlComponent.addEventListener("DataChanged", dataFromMATLABToHTML);
       htmlComponent.addEventListener("updateTreeTableData", updateTreeTableData);
       htmlComponent.addEventListener("enableDebugLog", () => { debug = true; });
@@ -482,6 +483,14 @@
         tableData = [JSON.parse(text)];
         buildTable(tableData, table.children[1]);
         addResizableColumns();
+        // A figure-ready notification precedes the embedded HTML render.
+        // Allow a paint opportunity before acknowledging the initial table.
+        if (!readySent) {
+          readySent = true;
+          requestAnimationFrame(() => requestAnimationFrame(() => {
+            htmlComponent.sendEventToMATLAB("ClientReady", {});
+          }));
+        }
       }
 
       function updateTreeTableData(event) {

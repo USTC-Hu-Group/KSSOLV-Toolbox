@@ -12,6 +12,10 @@ classdef ProjectBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser
         currentSelectedItem   % 当前选中的节点
     end
 
+    properties (SetAccess = private)
+        IsClientReady (1, 1) logical = false
+    end
+
     properties (Access = private)
         CurrentProject
         CurrentProjectFilename (1, 1) string = ""
@@ -78,6 +82,7 @@ classdef ProjectBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser
 
     methods (Access = protected)
         function buildUI(this)
+            this.IsClientReady = false;
             fig = this.Figure;
             g = uigridlayout(fig);
             g.BackgroundColor = "white";
@@ -101,6 +106,8 @@ classdef ProjectBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser
     methods (Access = private)
         function eventReceiver(this, src, event)
             switch event.HTMLEventName
+                case 'ClientReady'
+                    this.IsClientReady = true;
                 case 'RowClicked'
                     this.callbackRowClicked(src, event);
                 case 'RowDoubleClicked'

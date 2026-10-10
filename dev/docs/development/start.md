@@ -92,7 +92,7 @@ To compile the standalone desktop application installer:
 buildInstaller
 ```
 
-Warnings may appear during the build process and can typically be ignored unless they indicate missing dependencies.
+Runtime delivery defaults to `web`. Use `buildInstaller("installer")` to bundle a local Runtime installer, or `buildInstaller("none")` to omit Runtime.
 
 Once the process completes, the installer will be generated in:
 
@@ -100,32 +100,25 @@ Once the process completes, the installer will be generated in:
 Release/StandaloneDesktopApp
 ```
 
-### macOS Notarization (Required for Distribution)
+### macOS Packaging and Notarization
 
-On macOS, additional notarization is required to allow installation on other machines.
-
-> \[!IMPORTANT]\
-> Before running the script below, you must first modify the information inside the `sign_and_notarize_app.sh` and `package_dmg.sh` files to match your specific configuration (e.g., your Apple Developer ID and app-specific password).
-
-Once you have updated the scripts, execute them from the project root:
-
-```bash
-./scripts/macos/sign_and_notarize_app.sh
-./scripts/macos/package_dmg.sh
-```
-
-After notarization completes successfully, a signed and notarized `.dmg` archive will be produced. This file can be safely distributed and installed on other macOS systems.
-
-To create a `.pkg` that registers the silent MATLAB Runtime prewarm
-LaunchAgent after installation, run:
+After `buildInstaller`, run these commands from the project root to generate a PKG and sign and notarize it:
 
 ```bash
 ./scripts/macos/package_pkg.sh
+./scripts/macos/sign_and_notarize_app.sh
 ```
 
-This step requires a `Developer ID Installer` certificate. To validate the
-local package structure without signing, set `KSSOLV_SKIP_SIGNING=1` when
-running the script.
+Signing defaults to PKG mode. Configure `APP_SIGN_IDENTITY`, `PKG_SIGN_IDENTITY`, and `NOTARY_PROFILE` if your Developer ID certificates or notary keychain profile differ from the script defaults.
+
+The PKG requires MATLAB Runtime R2026b to be installed beforehand. Its final installation step opens the application as the logged-in user, waits for the interface to initialize, and closes it. With no logged-in user, prewarming runs at the next login.
+
+For DMG distribution, explicitly select `--dmg`:
+
+```bash
+./scripts/macos/sign_and_notarize_app.sh --dmg
+./scripts/macos/package_dmg.sh
+```
 
 ## Notes
 

@@ -357,6 +357,31 @@ classdef BuildMoleculeTaskUI < kssolv.services.workflow.module.AbstractTaskUI
     end
 
     methods
+        function setupForTemplate(this)
+            % Templates supply calculation settings, not project identities.
+            if isempty(fieldnames(this.privateOptions))
+                templateOptions = this.defaultOptions;
+            else
+                templateOptions = this.privateOptions;
+            end
+            if isfield(templateOptions, 'structures')
+                templateOptions = rmfield(templateOptions, 'structures');
+            end
+            project = kssolv.ui.util.DataStorage.getData('Project');
+            if ~isempty(project)
+                folder = project.findChildrenItem('Structure');
+                if ~isempty(folder.children)
+                    model = folder.children{1}.data.MatgenlabObject;
+                    if isa(model, 'kssolv.analysis.matgenlab.core.IMolecule')
+                        templateOptions.type = 'Molecule';
+                    else
+                        templateOptions.type = 'Crystal';
+                    end
+                end
+            end
+            this.setup(templateOptions);
+        end
+
         function attachUIToAccordion(this, accordion)
             arguments
                 this

@@ -188,8 +188,12 @@ classdef Workflow < handle
                 jsonencode(eventData, "PrettyPrint", true));
         end
 
-        function loadWfFile(wfFilePath)
-            workflowItem = kssolv.services.filemanager.Workflow.loadWfFile(wfFilePath);
+        function loadWfFile(wfFilePath, isTemplate)
+            arguments
+                wfFilePath (1, 1) string
+                isTemplate (1, 1) logical = false
+            end
+            workflowItem = kssolv.services.filemanager.Workflow.loadWfFile(wfFilePath, isTemplate);
             project = kssolv.ui.util.DataStorage.getData('Project');
             workflowRoot = project.findChildrenItem('Workflow');
             workflowRoot.addWorkflowItem(workflowItem);

@@ -92,6 +92,11 @@ classdef Workflow < kssolv.services.filemanager.AbstractItem
                 clear warningCleanup
             end
 
+            % Export only this workflow. Saving its parent also serializes the
+            % entire project, including unrelated structures and old parsers.
+            previousParent = this.parent;
+            parentCleanup = onCleanup(@()this.set('parent', previousParent));
+            this.parent = [];
             data = this;
             try
                 save(filename, 'data', "-mat", "-v7.3");
@@ -99,12 +104,17 @@ classdef Workflow < kssolv.services.filemanager.AbstractItem
                 error('KSSOLV:FileManager:Workflow:FileSaveError', ...
                     'Error saving the Workflow file: %s', ME.message);
             end
+            clear parentCleanup
         end
     end
 
     methods (Static)
-        function data = loadWfFile(fileName)
+        function data = loadWfFile(fileName, isTemplate)
             % 从 .wf 文件中加载项目数据结构体
+            arguments
+                fileName (1, 1) string
+                isTemplate (1, 1) logical = false
+            end
             [~, ~, ext] = fileparts(fileName);
             if ~strcmp(ext, '.wf')
                 % 检查文件的扩展名是否为 .wf
@@ -117,6 +127,20 @@ classdef Workflow < kssolv.services.filemanager.AbstractItem
             catch ME
                 error('KSSOLV:FileManager:Workflow:FileLoadError', ...
                     'Error loading the Workflow file: %s', ME.message);
+            end
+
+            data.parent = [];
+            if isTemplate
+                nodeIDs = keys(data.graph.Nodes);
+                for i = 1:numel(nodeIDs)
+                    task = data.graph.Nodes(nodeIDs{i}).task;
+                    if isa(task, ...
+                            'kssolv.services.workflow.module.computation.BuildMoleculeTask')
+                        task.optionsUI.setupForTemplate();
+                        task.options = task.optionsUI.options;
+                        task.taskUICreated = true;
+                    end
+                end
             end
         end
     end

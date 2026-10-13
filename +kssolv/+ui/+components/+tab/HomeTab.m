@@ -1119,7 +1119,7 @@ classdef HomeTab < handle
 
                 % 添加回调函数
                 addlistener(templateItem, ...
-                    'ItemPushed', @(src, data) kssolv.ui.components.figuredocument.Workflow.loadWfFile(currentFilePath));
+                    'ItemPushed', @(src, data) kssolv.ui.components.figuredocument.Workflow.loadWfFile(currentFilePath, true));
             end
 
             importTemplateWorkflowListItem.Popup = popup;

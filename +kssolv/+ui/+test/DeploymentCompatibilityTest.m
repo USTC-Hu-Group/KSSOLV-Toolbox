@@ -37,7 +37,8 @@ classdef DeploymentCompatibilityTest < matlab.unittest.TestCase
             previousFilename = ...
                 kssolv.ui.util.DataStorage.getData("ProjectFilename");
             app = kssolv("", false);
-            cleanup = onCleanup(@restoreState);
+            cleanup = onCleanup(@()restoreState( ...
+                app, previousProject, previousFilename));
             container = app.getAppContainer();
             project = kssolv.ui.util.DataStorage.getData("Project");
             project.isDirty = true;
@@ -57,7 +58,7 @@ classdef DeploymentCompatibilityTest < matlab.unittest.TestCase
             testCase.verifyFalse(contains(output, "KSSOLV_UI_PREWARM_OK"));
             clear cleanup
 
-            function restoreState()
+            function restoreState(app, previousProject, previousFilename)
                 if isvalid(app)
                     delete(app);
                 end

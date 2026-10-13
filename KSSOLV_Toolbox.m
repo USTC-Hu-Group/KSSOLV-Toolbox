@@ -6,8 +6,8 @@ classdef KSSOLV_Toolbox
 
     properties (Constant)
         Name string = 'KSSOLV Toolbox'
-        Version string = '0.4.0'
-        ReleaseDate string = '2026.8.13'
+        Version string = '0.4.1'
+        ReleaseDate string = '2026.10.13'
         License char = 'Business Source License 1.1 (BUSL-1.1)'
         CodeRepository char = 'https://github.com/USTC-Hu-Group/KSSOLV-Toolbox'
 

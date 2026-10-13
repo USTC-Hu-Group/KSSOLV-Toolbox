@@ -1,5 +1,8 @@
 * text=auto
 
+# The production viewer manifest verifies the exact generated file bytes.
++kssolv/+ui/+components/+figuredocument/@MoleculeDisplay/CrystalViewer/index.html -text
+
 *.fig binary
 *.mat binary
 *.mdl binary diff merge=mlAutoMerge

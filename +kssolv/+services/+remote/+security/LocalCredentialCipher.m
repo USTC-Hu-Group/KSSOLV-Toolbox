@@ -24,14 +24,10 @@ classdef LocalCredentialCipher < handle
                     "A stored credential must not be empty.");
             end
             keys = this.loadOrCreateKeys();
-            publicKey = decodePublicKey(keys.PublicKey);
-            cipher = javax.crypto.Cipher.getInstance( ...
-                "RSA/ECB/OAEPWithSHA-256AndMGF1Padding");
-            cipher.init(javax.crypto.Cipher.ENCRYPT_MODE, publicKey);
-            text = javaObject("java.lang.String", char(plaintext));
-            raw = cipher.doFinal(text.getBytes("UTF-8"));
-            encoder = javaMethod("getEncoder", "java.util.Base64");
-            encrypted = string(char(encoder.encodeToString(raw)));
+            publicKey = matlab.net.base64decode(keys.PublicKey);
+            raw = kssolv.util.Crypto.rsaEncrypt(publicKey, ...
+                unicode2native(char(plaintext), "UTF-8"));
+            encrypted = string(matlab.net.base64encode(raw));
         end
 
         function plaintext = decrypt(this, encrypted)
@@ -44,16 +40,11 @@ classdef LocalCredentialCipher < handle
                     "The encrypted credential is missing.");
             end
             keys = this.loadKeys();
-            privateKey = decodePrivateKey(keys.PrivateKey);
-            decoder = javaMethod("getDecoder", "java.util.Base64");
+            privateKey = matlab.net.base64decode(keys.PrivateKey);
             try
-                raw = decoder.decode(char(encrypted));
-                cipher = javax.crypto.Cipher.getInstance( ...
-                    "RSA/ECB/OAEPWithSHA-256AndMGF1Padding");
-                cipher.init(javax.crypto.Cipher.DECRYPT_MODE, privateKey);
-                decoded = cipher.doFinal(raw);
-                plaintext = string(char(javaObject( ...
-                    "java.lang.String", decoded, "UTF-8")));
+                raw = matlab.net.base64decode(encrypted);
+                decoded = kssolv.util.Crypto.rsaDecrypt(privateKey, raw);
+                plaintext = string(native2unicode(decoded, "UTF-8"));
             catch exception
                 error("KSSOLV:Remote:CredentialDecryptFailed", ...
                     "The saved credential cannot be decrypted with this " + ...
@@ -72,17 +63,12 @@ classdef LocalCredentialCipher < handle
                 keys = this.loadKeys();
                 return
             end
-            generator = java.security.KeyPairGenerator.getInstance("RSA");
-            generator.initialize(3072);
-            pair = generator.generateKeyPair();
-            encoder = javaMethod("getEncoder", "java.util.Base64");
+            [privateKey, publicKey] = kssolv.util.Crypto.rsaKeyPair(3072);
             keys = struct( ...
                 "Version", 1, ...
                 "Algorithm", "RSA-OAEP-SHA256", ...
-                "PrivateKey", string(char(encoder.encodeToString( ...
-                    pair.getPrivate().getEncoded()))), ...
-                "PublicKey", string(char(encoder.encodeToString( ...
-                    pair.getPublic().getEncoded()))));
+                "PrivateKey", string(matlab.net.base64encode(privateKey)), ...
+                "PublicKey", string(matlab.net.base64encode(publicKey)));
             kssolv.services.remote.internal.AtomicJsonFile.write( ...
                 this.keyPath(), keys);
         end
@@ -108,20 +94,4 @@ classdef LocalCredentialCipher < handle
             value = fullfile(this.KeyRoot, "local-rsa-key.json");
         end
     end
-end
-
-function key = decodePublicKey(value)
-decoder = javaMethod("getDecoder", "java.util.Base64");
-encoded = decoder.decode(char(value));
-spec = javaObject("java.security.spec.X509EncodedKeySpec", encoded);
-factory = javaMethod("getInstance", "java.security.KeyFactory", "RSA");
-key = factory.generatePublic(spec);
-end
-
-function key = decodePrivateKey(value)
-decoder = javaMethod("getDecoder", "java.util.Base64");
-encoded = decoder.decode(char(value));
-spec = javaObject("java.security.spec.PKCS8EncodedKeySpec", encoded);
-factory = javaMethod("getInstance", "java.security.KeyFactory", "RSA");
-key = factory.generatePrivate(spec);
 end

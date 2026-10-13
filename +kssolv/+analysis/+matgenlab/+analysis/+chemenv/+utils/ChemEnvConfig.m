@@ -113,5 +113,5 @@ classdef ChemEnvConfig
     end
 end
 function value=defaultRoot()
-value=fullfile(string(java.lang.System.getProperty("user.home")),".chemenv");
+value=fullfile(kssolv.util.Platform.home(),".chemenv");
 end

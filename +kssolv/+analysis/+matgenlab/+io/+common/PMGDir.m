@@ -11,7 +11,7 @@ classdef PMGDir < handle
 
     methods
         function obj = PMGDir(dirname)
-            obj.path = string(java.io.File(char(dirname)).getCanonicalPath());
+            obj.path = kssolv.util.Platform.canonicalPath(dirname);
             if ~isfolder(obj.path)
                 error("KSSOLV:Matgenlab:PMGDir:MissingDirectory", ...
                     "Directory '%s' does not exist.", obj.path);

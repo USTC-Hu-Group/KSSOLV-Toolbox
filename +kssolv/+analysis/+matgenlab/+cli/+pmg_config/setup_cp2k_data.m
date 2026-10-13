@@ -165,10 +165,7 @@ bucket.records{end + 1, 1} = record;
 end
 
 function hash = hashText(text)
-digest = java.security.MessageDigest.getInstance("MD5");
-digest.update(uint8(lower(char(string(text)))));
-bytes = typecast(digest.digest(), "uint8");
-hash = lower(string(reshape(dec2hex(bytes, 2).', 1, [])));
+hash = string(kssolv.util.Hash.bytes(uint8(lower(char(string(text)))), "MD5"));
 end
 
 function text = canonicalPotential(item)
@@ -245,7 +242,7 @@ path = string(path);
 if ~isAbsolute(path)
     path = string(fullfile(pwd, path));
 end
-path = string(char(java.io.File(char(path)).getCanonicalPath()));
+path = kssolv.util.Platform.canonicalPath(path);
 end
 
 function value = isAbsolute(path)

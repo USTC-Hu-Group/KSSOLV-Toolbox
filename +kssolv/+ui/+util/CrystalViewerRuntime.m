@@ -69,10 +69,7 @@ classdef CrystalViewerRuntime
             cleanup = onCleanup(@()fclose(file));
             bytes = fread(file, Inf, "*uint8");
             clear cleanup
-            engine = java.security.MessageDigest.getInstance("SHA-256");
-            engine.update(typecast(bytes, "int8"));
-            digest = typecast(engine.digest(), "uint8");
-            value = lower(string(reshape(dec2hex(digest, 2).', 1, [])));
+            value = string(kssolv.util.Hash.bytes(bytes));
         end
     end
 end

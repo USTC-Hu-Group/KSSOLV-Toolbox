@@ -13,22 +13,7 @@ classdef VaspIOUtils
                 text = fileread(files{1});
                 clear cleanup
             elseif endsWith(lowerName, ".bz2")
-                folder = tempname;
-                mkdir(folder);
-                cleanup = onCleanup(@() rmdir(folder, "s"));
-                output = fullfile(folder, "payload");
-                command = "/usr/bin/bzip2 -dc -- " + ...
-                    kssolv.analysis.matgenlab.io.vasp.VaspIOUtils. ...
-                    shellQuote(filename) + " > " + ...
-                    kssolv.analysis.matgenlab.io.vasp.VaspIOUtils. ...
-                    shellQuote(output);
-                [status, message] = system(command);
-                if status ~= 0
-                    error("KSSOLV:Matgenlab:VaspIO:Bzip2Read", ...
-                        "Unable to decompress '%s': %s", filename, message);
-                end
-                text = fileread(output);
-                clear cleanup
+                text = char(kssolv.util.Compression.readBzip2(filename));
             else
                 text = fileread(filename);
             end
@@ -53,16 +38,7 @@ classdef VaspIOUtils
                     generated = gzip(temporary, folder);
                     movefile(generated{1}, filename, "f");
                 else
-                    command = "/usr/bin/bzip2 -c -- " + ...
-                        kssolv.analysis.matgenlab.io.vasp.VaspIOUtils. ...
-                        shellQuote(temporary) + " > " + ...
-                        kssolv.analysis.matgenlab.io.vasp.VaspIOUtils. ...
-                        shellQuote(filename);
-                    [status, message] = system(command);
-                    if status ~= 0
-                        error("KSSOLV:Matgenlab:VaspIO:Bzip2Write", ...
-                            "Unable to compress '%s': %s", filename, message);
-                    end
+                    kssolv.util.Compression.writeBzip2(filename,text);
                 end
                 clear cleanup
             else
@@ -83,8 +59,5 @@ classdef VaspIOUtils
             clear cleanup
         end
 
-        function output = shellQuote(input)
-            output = "'" + replace(string(input), "'", "'\''") + "'";
-        end
     end
 end

@@ -175,31 +175,7 @@ end
 end
 
 function writeBzip2(filename, text)
-fileStream = javaObject("java.io.FileOutputStream", char(filename));
-try
-    stream = javaObject(char( ...
-        "org.apache.commons.compress.compressors.bzip2." + ...
-        "BZip2CompressorOutputStream"), fileStream);
-catch exception
-    fileStream.close();
-    rethrow(exception);
-end
-cleanup = onCleanup(@() closeBzip2(stream, fileStream));
-bytes = unicode2native(char(text), "UTF-8");
-stream.write(typecast(uint8(bytes), "int8"), 0, numel(bytes));
-stream.finish();
-clear cleanup
-end
-
-function closeBzip2(stream, fileStream)
-try
-    stream.close();
-catch
-end
-try
-    fileStream.close();
-catch
-end
+kssolv.util.Compression.writeBzip2(filename, text);
 end
 
 function text = readCompressedText(filename)
@@ -219,7 +195,7 @@ if endsWith(lower(filename), [".gz", ".bz2"])
     if endsWith(lower(filename), ".gz")
         paths = gunzip(filename, temporary);
     else
-        paths = bunzip2(filename, temporary);
+        paths = kssolv.util.Compression.bunzip2(filename, temporary);
     end
     text = string(fileread(paths{1}));
     clear cleanup
@@ -229,19 +205,7 @@ end
 end
 
 function text = readBzip2(filename)
-fileStream = javaObject("java.io.FileInputStream", char(filename));
-try
-    stream = javaObject(char( ...
-        "org.apache.commons.compress.compressors.bzip2." + ...
-        "BZip2CompressorInputStream"), fileStream);
-catch exception
-    fileStream.close();
-    rethrow(exception);
-end
-cleanup = onCleanup(@() closeBzip2(stream, fileStream));
-text = string(javaMethod("toString", ...
-    "org.apache.commons.io.IOUtils", stream, "UTF-8"));
-clear cleanup
+text = kssolv.util.Compression.readBzip2(filename);
 end
 
 function writePlainText(filename, text)

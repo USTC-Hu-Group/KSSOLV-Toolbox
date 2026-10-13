@@ -109,5 +109,5 @@ if ~startsWith(path, filesep) && ...
         ~(ispc && ~isempty(regexp(path, "^[A-Za-z]:[\\/]", "once")))
     path = fullfile(pwd, path);
 end
-path = string(char(java.io.File(char(path)).getCanonicalPath()));
+path = kssolv.util.Platform.canonicalPath(path);
 end

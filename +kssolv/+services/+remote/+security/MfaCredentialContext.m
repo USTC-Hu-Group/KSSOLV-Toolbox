@@ -84,11 +84,5 @@ value = contains(prompt, "password") || contains(prompt, "密码");
 end
 
 function value = securePrompt(promptMessage)
-if usejava("desktop")
-    value = string(matlabshared.internal.sshaccess.solicitPassword( ...
-        "KSSOLV Remote Computing", char(promptMessage)));
-else
-    value = string(matlabshared.internal.readPassword( ...
-        char(promptMessage + " ")));
-end
+value = kssolv.ui.util.SecretPrompt.prompt(promptMessage);
 end

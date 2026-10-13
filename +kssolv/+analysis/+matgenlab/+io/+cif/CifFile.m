@@ -127,7 +127,7 @@ classdef CifFile
             if endsWith(lowered, ".gz")
                 files = gunzip(filename, temporary);
             else
-                files = bunzip2(filename, temporary);
+                files = kssolv.util.Compression.bunzip2(filename, temporary);
             end
             if isempty(files)
                 error("KSSOLV:Matgenlab:CifFile:Decompression", ...

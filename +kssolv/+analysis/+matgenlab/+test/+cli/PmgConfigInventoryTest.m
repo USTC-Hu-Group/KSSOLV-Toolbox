@@ -202,7 +202,7 @@ end
 
 function text = readGzip(path, root)
 folder = fullfile(root, "expanded-" + ...
-    string(char(java.util.UUID.randomUUID())));
+    string(matlab.lang.internal.uuid));
 mkdir(folder);
 cleanup = onCleanup(@() rmdir(folder, "s"));
 files = gunzip(path, folder);

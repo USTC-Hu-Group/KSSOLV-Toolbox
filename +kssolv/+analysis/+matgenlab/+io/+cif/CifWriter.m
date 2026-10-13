@@ -289,7 +289,7 @@ classdef CifWriter
                 if endsWith(lower(filename), ".gz")
                     archives = gzip(payload, temporaryDirectory);
                 else
-                    archives = bzip2(payload, temporaryDirectory);
+                    archives = kssolv.util.Compression.bzip2(payload, temporaryDirectory);
                 end
                 movefile(archives{1}, filename, "f");
                 clear cleanup

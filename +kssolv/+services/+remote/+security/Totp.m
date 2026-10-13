@@ -32,12 +32,7 @@ classdef Totp
                 counter = bitshift(counter, -8);
             end
 
-            mac = javax.crypto.Mac.getInstance("HmacSHA1");
-            keySpec = javax.crypto.spec.SecretKeySpec( ...
-                typecast(uint8(key), "int8"), "HmacSHA1");
-            mac.init(keySpec);
-            digest = typecast(int8(mac.doFinal( ...
-                typecast(message, "int8"))), "uint8");
+            digest = kssolv.util.Hash.hmac(message, key, "SHA1");
             offset = bitand(digest(end), uint8(15));
             first = double(offset) + 1;
             binary = bitshift(uint32(bitand(digest(first), ...

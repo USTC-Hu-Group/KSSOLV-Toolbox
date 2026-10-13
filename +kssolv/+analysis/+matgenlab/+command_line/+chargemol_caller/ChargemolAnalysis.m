@@ -376,7 +376,7 @@ elseif ~startsWith(path, filesep)
     path = string(fullfile(pwd, path));
 end
 try
-    path = string(char(java.io.File(char(path)).getCanonicalPath()));
+    path = kssolv.util.Platform.canonicalPath(path);
 catch
     path = string(path);
 end

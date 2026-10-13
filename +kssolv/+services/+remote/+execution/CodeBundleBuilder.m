@@ -46,7 +46,7 @@ classdef CodeBundleBuilder < handle
                 else
                     packageRoot = fullfile(stagingPath, "+kssolv");
                     mkdir(packageRoot);
-                    folders = ["+core", "+analysis"];
+                    folders = ["+core", "+analysis", "+util"];
                     for folder = folders
                         this.copyTree(fullfile(sourceRoot, "+kssolv", ...
                             folder), fullfile(packageRoot, folder));
@@ -139,20 +139,18 @@ classdef CodeBundleBuilder < handle
         end
 
         function copyProbeRuntime(~, sourceRoot, stagingPath)
-            destination = fullfile(stagingPath, "+kssolv", ...
-                "+services", "+remote");
+            destination = fullfile(stagingPath, "+kssolv");
             mkdir(destination);
             relativePaths = [ ...
-                fullfile("+bridge", ...
+                fullfile("+services", "+remote", "+bridge", ...
                     "RemoteMatlabBridgeEntrypoint"), ...
-                fullfile("+diagnostics", "remoteProbe")];
+                fullfile("+services", "+remote", "+diagnostics", "remoteProbe"), ...
+                fullfile("+util", "Platform")];
             for relativePath = relativePaths
-                source = fullfile(sourceRoot, "+kssolv", "+services", ...
-                    "+remote", relativePath + ".m");
+                source = fullfile(sourceRoot, "+kssolv", relativePath + ".m");
                 extension = ".m";
                 if ~isfile(source)
-                    source = fullfile(sourceRoot, "+kssolv", "+services", ...
-                        "+remote", relativePath + ".p");
+                    source = fullfile(sourceRoot, "+kssolv", relativePath + ".p");
                     extension = ".p";
                 end
                 target = fullfile(destination, relativePath + extension);
@@ -214,13 +212,8 @@ classdef CodeBundleBuilder < handle
             [relativePaths, order] = sort(relativePaths);
             sizes = sizes(order);
             fileHashes = fileHashes(order);
-            digest = javaMethod("getInstance", ...
-                "java.security.MessageDigest", "SHA-256");
             canonical = strjoin(relativePaths + ":" + fileHashes, newline);
-            bytes = unicode2native(char(canonical), "UTF-8");
-            digest.update(typecast(uint8(bytes), "int8"));
-            hash = lower(reshape(dec2hex(typecast( ...
-                digest.digest(), "uint8"), 2).', 1, []));
+            hash = kssolv.util.Hash.text(canonical);
             value = struct( ...
                 "Version", 2, ...
                 "ToolboxVersion", string(KSSOLV_Toolbox.Version), ...
@@ -234,24 +227,12 @@ classdef CodeBundleBuilder < handle
         end
 
         function hash = sha256File(~, path)
-            digest = javaMethod("getInstance", ...
-                "java.security.MessageDigest", "SHA-256");
-            [file, message] = fopen(path, "rb");
-            if file < 0
+            try
+                hash = string(kssolv.util.Hash.file(path));
+            catch exception
                 error("KSSOLV:Remote:BundleReadFailed", ...
-                    "Unable to read bundle source %s: %s", path, message);
+                    "Unable to read bundle source %s: %s", path, exception.message);
             end
-            cleanup = onCleanup(@()fclose(file));
-            while true
-                bytes = fread(file, 1024 * 1024, "*uint8");
-                if isempty(bytes)
-                    break
-                end
-                digest.update(typecast(bytes(:), "int8"));
-            end
-            hash = string(lower(reshape(dec2hex(typecast( ...
-                digest.digest(), "uint8"), 2).', 1, [])));
-            clear cleanup
         end
     end
 end

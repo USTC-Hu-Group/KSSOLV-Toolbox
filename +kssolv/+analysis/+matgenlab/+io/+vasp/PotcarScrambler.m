@@ -134,10 +134,7 @@ classdef PotcarScrambler
 
     methods (Static, Access = private)
         function output = sha256(text)
-            digest = java.security.MessageDigest.getInstance("SHA-256");
-            digest.update(uint8(unicode2native(char(text), "UTF-8")));
-            bytes = typecast(digest.digest(), "uint8");
-            output = lower(join(string(dec2hex(bytes, 2)), ""));
+            output = string(kssolv.util.Hash.text(text));
         end
     end
 end

@@ -112,7 +112,7 @@ if ~isscalar(outputPath) || ismissing(outputPath) || ...
     error("KSSOLV:Matgenlab:PmgPotcar:Output", ...
         "output must be a nonempty scalar path.");
 end
-outputPath = string(char(java.io.File(char(outputPath)).getCanonicalPath()));
+outputPath = kssolv.util.Platform.canonicalPath(outputPath);
 parent = string(fileparts(outputPath));
 if parent == "", parent = string(pwd); end
 if ~isfolder(parent)

@@ -9,10 +9,7 @@ classdef CanonicalHash
             end
             canonical=canonicalize(input);
             bytes=unicode2native(char(jsonencode(canonical)),"UTF-8");
-            digest=javaMethod("getInstance","java.security.MessageDigest","SHA-256");
-            digest.update(uint8(bytes));
-            raw=typecast(digest.digest(),"uint8");
-            value=lower(join(compose("%02x",raw),""));
+            value=string(kssolv.util.Hash.bytes(bytes));
         end
     end
 end

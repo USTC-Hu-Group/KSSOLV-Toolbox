@@ -16,8 +16,7 @@ classdef PWmatIOUtils
                 value = readCommand("gzip --decompress --stdout ", ...
                     filename);
             elseif extension == ".bz2"
-                value = readCommand("bzip2 --decompress --stdout ", ...
-                    filename);
+                value = kssolv.util.Compression.readBzip2(filename);
             elseif any(extension == [".lzma", ".xz"])
                 value = readCommand("xz --decompress --stdout ", ...
                     filename);
@@ -44,12 +43,13 @@ classdef PWmatIOUtils
                 generated = gzip(temporary, folder);
                 movefile(generated{1}, filename, "f");
                 clear cleanup
-            elseif any(extension == [".z", ".bz2"])
+            elseif extension == ".bz2"
+                kssolv.util.Compression.writeBzip2(filename,text);
+            elseif extension == ".z"
                 temporary = string(tempname);
                 cleanup = onCleanup(@() deleteIfPresent(temporary));
                 writePlain(temporary, text);
                 program = "gzip";
-                if extension == ".bz2", program = "bzip2"; end
                 command = program + " --stdout " + ...
                     shellQuote(temporary) + " > " + ...
                     shellQuote(filename);

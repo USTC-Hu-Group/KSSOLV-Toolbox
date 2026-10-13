@@ -15,8 +15,7 @@ classdef VolumeSceneBuilder
                     "float32-le"
             end
             if options.requestId == ""
-                options.requestId = string(char(java.util.UUID. ...
-                    randomUUID()));
+                options.requestId = string(matlab.lang.internal.uuid);
             end
             if options.transportNamespace == ""
                 options.transportNamespace = options.requestId;

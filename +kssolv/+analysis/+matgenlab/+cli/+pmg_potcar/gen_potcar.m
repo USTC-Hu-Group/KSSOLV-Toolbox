@@ -87,7 +87,7 @@ if ~isscalar(directory) || ismissing(directory) || strlength(directory) == 0
     error("KSSOLV:Matgenlab:PmgPotcar:Path", ...
         "dirname must be a nonempty scalar path.");
 end
-directory = string(char(java.io.File(char(directory)).getCanonicalPath()));
+directory = kssolv.util.Platform.canonicalPath(directory);
 if ~isfolder(directory)
     error("KSSOLV:Matgenlab:PmgPotcar:DirectoryMissing", ...
         "Directory does not exist: %s", directory);

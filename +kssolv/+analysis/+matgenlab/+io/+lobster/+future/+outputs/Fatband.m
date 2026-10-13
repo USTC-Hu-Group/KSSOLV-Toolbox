@@ -18,7 +18,8 @@ classdef Fatband < kssolv.analysis.matgenlab.io.lobster.future.LobsterFile
             obj@kssolv.analysis.matgenlab.io.lobster.future.LobsterFile( ...
                 constructorArguments{:});
             if isempty(filename), return; end
-            name = string(java.io.File(char(string(filename))).getName());
+            [~, stem, extension] = fileparts(filename);
+            name = string(stem) + string(extension);
             pieces = split(name, "_");
             rawCenter = char(pieces(2));
             obj.center = string([upper(rawCenter(1)), lower(rawCenter(2:end))]);

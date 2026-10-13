@@ -1443,10 +1443,7 @@ classdef Vasprun < handle
 
         function digest = structureDigest(structure)
             bytes = uint8(char(jsonencode(structure.as_dict())));
-            engine = java.security.MessageDigest.getInstance("MD5");
-            engine.update(bytes);
-            digest = lower(reshape(dec2hex(typecast(engine.digest(), ...
-                "uint8"), 2).', 1, []));
+            digest = kssolv.util.Hash.bytes(bytes, "MD5");
         end
     end
 end

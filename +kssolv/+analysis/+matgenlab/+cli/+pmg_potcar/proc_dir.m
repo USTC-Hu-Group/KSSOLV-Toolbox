@@ -34,5 +34,5 @@ if ~isscalar(path) || ismissing(path) || strlength(path) == 0
     error("KSSOLV:Matgenlab:PmgPotcar:Path", ...
         "%s must be a nonempty scalar path.", name);
 end
-path = string(char(java.io.File(char(path)).getCanonicalPath()));
+path = kssolv.util.Platform.canonicalPath(path);
 end

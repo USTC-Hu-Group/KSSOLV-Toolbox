@@ -106,7 +106,7 @@ end
 
 function writeCompressedPotcar(source, destinationDirectory, species)
 temporaryDirectory = fullfile(destinationDirectory, ...
-    ".matgenlab-" + string(char(java.util.UUID.randomUUID())));
+    ".matgenlab-" + string(matlab.lang.internal.uuid));
 mkdir(temporaryDirectory);
 cleanup = onCleanup(@() removeDirectory(temporaryDirectory));
 lowerSource = lower(source);
@@ -114,7 +114,7 @@ if endsWith(lowerSource, [".gz", ".z"])
     extracted = gunzip(source, temporaryDirectory);
     plainSource = string(extracted{1});
 elseif endsWith(lowerSource, ".bz2")
-    extracted = bunzip2(source, temporaryDirectory);
+    extracted = kssolv.util.Compression.bunzip2(source, temporaryDirectory);
     plainSource = string(extracted{1});
 else
     plainSource = fullfile(temporaryDirectory, "POTCAR");
@@ -142,5 +142,5 @@ if ~startsWith(path, filesep) && ...
         ~(ispc && ~isempty(regexp(path, "^[A-Za-z]:[\\/]", "once")))
     path = fullfile(pwd, path);
 end
-path = string(char(java.io.File(char(path)).getCanonicalPath()));
+path = kssolv.util.Platform.canonicalPath(path);
 end

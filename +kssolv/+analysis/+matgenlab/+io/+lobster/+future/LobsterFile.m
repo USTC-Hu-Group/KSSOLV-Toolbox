@@ -60,7 +60,7 @@ classdef LobsterFile < handle
             if nargin >= 3 && ~isempty(lobster_version)
                 obj.lobster_version = string(lobster_version);
             end
-            obj.filename = string(java.io.File(char(string(filename))).getCanonicalPath());
+            obj.filename = kssolv.util.Platform.canonicalPath(filename);
             version = obj.get_file_version();
             if strlength(version) > 0, obj.lobster_version = version; end
             if process_immediately, obj.process(); end

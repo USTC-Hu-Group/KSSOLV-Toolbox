@@ -77,10 +77,8 @@ classdef Vaspout < kssolv.analysis.matgenlab.io.vasp.Vasprun
                 generated=gzip(uncompressed,folder);
                 movefile(generated{1},filename,"f");
             elseif endsWith(lower(filename),".bz2")
-                command="/usr/bin/bzip2 -c -- '"+uncompressed+ ...
-                    "' > '"+replace(filename,"'","'\\''")+"'";
-                [status,message]=system(command);
-                if status~=0,error("KSSOLV:Matgenlab:Vaspout:Compress","%s",message);end
+                generated=kssolv.util.Compression.bzip2(uncompressed,folder);
+                movefile(generated{1},filename,"f");
             else
                 copyfile(uncompressed,filename,"f");
             end
@@ -97,11 +95,8 @@ classdef Vaspout < kssolv.analysis.matgenlab.io.vasp.Vasprun
                 obj.temporaryFolder_=folder;obj.h5Path_=string(files{1});
             elseif endsWith(lower(source),".bz2")
                 folder=string(tempname);mkdir(folder);
-                target=fullfile(folder,"vaspout.h5");
-                command="/usr/bin/bzip2 -dc -- '"+ ...
-                    replace(source,"'","'\\''")+"' > '"+target+"'";
-                [status,message]=system(command);
-                if status~=0,error("KSSOLV:Matgenlab:Vaspout:Decompress","%s",message);end
+                files=kssolv.util.Compression.bunzip2(source,folder);
+                target=string(files{1});
                 obj.temporaryFolder_=folder;obj.h5Path_=target;
             else,obj.h5Path_=source;
             end

@@ -249,13 +249,8 @@ classdef Vaspwave < kssolv.analysis.matgenlab.io.vasp.Vasprun
                 obj.temporaryFolder_=folder; obj.h5Path_=string(files{1});
             elseif endsWith(lower(source),".bz2")
                 folder=string(tempname); mkdir(folder);
-                target=fullfile(folder,"vaspwave.h5");
-                command="/usr/bin/bzip2 -dc -- '" + ...
-                    replace(source,"'","'\\''") + "' > '" + target + "'";
-                [status,message]=system(command);
-                if status~=0
-                    error("KSSOLV:Matgenlab:Vaspwave:Decompress","%s",message);
-                end
+                files=kssolv.util.Compression.bunzip2(source,folder);
+                target=string(files{1});
                 obj.temporaryFolder_=folder; obj.h5Path_=target;
             else
                 obj.h5Path_=source;

@@ -98,11 +98,7 @@ classdef Pseudo
             if obj.ispaw, value = obj.header.get("r_cut", []); else, value = []; end
         end
         function value = compute_md5(obj)
-            bytes = uint8(fileread(obj.filepath));
-            digest = java.security.MessageDigest.getInstance("MD5");
-            digest.update(bytes);
-            raw = typecast(digest.digest(), "uint8");
-            value = lower(string(reshape(dec2hex(raw, 2).', 1, [])));
+            value = string(kssolv.util.Hash.file(obj.filepath, "MD5"));
         end
         function value = to_str(obj, varargin)
             lines = ["<" + obj.type + ": " + obj.basename + ">", ...

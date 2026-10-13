@@ -1210,7 +1210,7 @@ classdef Poscar
                 if endsWith(lowerName, ".gz")
                     paths = gunzip(filename, temporaryFolder);
                 else
-                    paths = bunzip2(filename, temporaryFolder);
+                    paths = kssolv.util.Compression.bunzip2(filename, temporaryFolder);
                 end
                 text = fileread(paths{1});
                 clear cleanup

@@ -15,7 +15,7 @@ if ~isfile(inputCandidate) && ...
 end
 if isfile(inputCandidate)
     inputPath = inputCandidate;
-    inputPath = string(java.io.File(char(inputPath)).getCanonicalPath());
+    inputPath = kssolv.util.Platform.canonicalPath(inputPath);
     text = string(fileread(inputPath));
 else
     inputPath = "";

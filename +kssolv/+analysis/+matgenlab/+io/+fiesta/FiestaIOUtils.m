@@ -87,13 +87,12 @@ classdef FiestaIOUtils
                 if input < 0, value = "-inf"; else, value = "inf"; end
                 return
             end
-            javaText = string(javaMethod( ...
-                "toString", "java.lang.Double", input));
-            match = regexp(javaText, ...
+            nativeText = kssolv.util.Numbers.pythonFloat(input);
+            match = regexp(nativeText, ...
                 '^([+-]?)(\d(?:\.\d+)?)[Ee]([+-]?\d+)$', ...
                 "tokens", "once");
             if isempty(match)
-                value = javaText;
+                value = nativeText;
                 return
             end
             signText = string(match{1});

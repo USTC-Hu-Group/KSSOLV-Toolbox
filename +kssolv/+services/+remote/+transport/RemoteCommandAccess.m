@@ -255,26 +255,7 @@ classdef RemoteCommandAccess < handle
             end
             message = string(rules(index).CredentialLabel) + ...
                 " for " + string(configuration.DisplayName) + ":";
-            if usejava("desktop")
-                field = javaObjectEDT("javax.swing.JPasswordField");
-                panel = javaObjectEDT("javax.swing.JPanel", ...
-                    java.awt.BorderLayout(8, 8));
-                panel.add(javaObjectEDT("javax.swing.JLabel", char(message)), ...
-                    java.awt.BorderLayout.NORTH);
-                panel.add(field, java.awt.BorderLayout.CENTER);
-                result = javax.swing.JOptionPane.showConfirmDialog([], ...
-                    panel, char(title), ...
-                    javax.swing.JOptionPane.OK_CANCEL_OPTION, ...
-                    javax.swing.JOptionPane.PLAIN_MESSAGE);
-                if result ~= javax.swing.JOptionPane.OK_OPTION
-                    error("KSSOLV:Remote:InteractiveCredentialCancelled", ...
-                        "Remote interactive credential entry was cancelled.");
-                end
-                credential = string(char(field.getPassword().'));
-            else
-                credential = string(matlabshared.internal.readPassword( ...
-                    char(message + " ")));
-            end
+            credential = kssolv.ui.util.SecretPrompt.prompt(message,title);
         end
 
         function [status, output] = runInteractive(delegate, ...
@@ -364,18 +345,9 @@ end
 function encrypted = encryptCredential(publicKey, credential)
 text = regexprep(char(publicKey), ...
     '-----BEGIN PUBLIC KEY-----|-----END PUBLIC KEY-----|\s', '');
-decoder = javaMethod("getMimeDecoder", "java.util.Base64");
-encoded = decoder.decode(text);
-spec = javaObject("java.security.spec.X509EncodedKeySpec", encoded);
-factory = javaMethod("getInstance", "java.security.KeyFactory", "RSA");
-key = factory.generatePublic(spec);
-cipher = javaMethod("getInstance", "javax.crypto.Cipher", ...
-    "RSA/ECB/PKCS1Padding");
-cipher.init(javax.crypto.Cipher.ENCRYPT_MODE, key);
-secretText = javaObject("java.lang.String", char(credential));
-secretBytes = secretText.getBytes("UTF-8");
-raw = cipher.doFinal(secretBytes);
-encrypted = uint8(mod(double(raw), 256));
+encoded = matlab.net.base64decode(text);
+encrypted = kssolv.util.Crypto.rsaEncrypt(encoded, ...
+    unicode2native(char(credential),"UTF-8"),"pkcs1");
 end
 
 function text = expectProgram()

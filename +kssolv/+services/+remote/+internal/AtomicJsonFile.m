@@ -66,15 +66,7 @@ classdef AtomicJsonFile
         end
 
         function restrictPermissions(path, mode)
-            if isunix
-                file = javaObject("java.io.File", char(path));
-                file.setReadable(false, false);
-                file.setWritable(false, false);
-                file.setExecutable(false, false);
-                file.setReadable(contains(mode, "r"), true);
-                file.setWritable(contains(mode, "w"), true);
-                file.setExecutable(contains(mode, "x"), true);
-            end
+            kssolv.util.Platform.restrictPermissions(path, mode);
         end
     end
 end

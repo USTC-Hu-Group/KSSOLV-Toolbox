@@ -159,25 +159,7 @@ classdef Settings
         end
 
         function variables = environmentVariables()
-            variables = containers.Map("KeyType", "char", "ValueType", "char");
-            try
-                environment = java.lang.System.getenv();
-                iterator = environment.entrySet().iterator();
-                while iterator.hasNext()
-                    entry = iterator.next();
-                    variables(char(entry.getKey())) = char(entry.getValue());
-                end
-            catch
-                known = ["PMG_CONFIG_FILE", "PMG_VASP_PSP_DIR", ...
-                    "PMG_MAPI_KEY", "PMG_DEFAULT_FUNCTIONAL", ...
-                    "VASP_PSP_DIR", "MAPI_KEY", "DEFAULT_FUNCTIONAL"];
-                for index = 1:numel(known)
-                    value = getenv(known(index));
-                    if ~isempty(value)
-                        variables(char(known(index))) = value;
-                    end
-                end
-            end
+            variables = kssolv.util.Platform.environment();
         end
 
         function path = expandPath(path)

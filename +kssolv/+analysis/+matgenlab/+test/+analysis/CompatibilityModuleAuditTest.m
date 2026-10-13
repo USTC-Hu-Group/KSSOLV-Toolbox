@@ -230,8 +230,5 @@ function value=fileHash(path)
 file=fopen(path,"rb");
 cleanup=onCleanup(@()fclose(file));
 bytes=fread(file,Inf,"*uint8");
-digest=java.security.MessageDigest.getInstance("SHA-256");
-digest.update(typecast(bytes,"int8"));
-value=lower(string(reshape(dec2hex(typecast(digest.digest(), ...
-    "uint8"),2).',1,[])));
+value=string(kssolv.util.Hash.bytes(bytes));
 end

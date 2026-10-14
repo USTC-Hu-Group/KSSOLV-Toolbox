@@ -101,7 +101,10 @@ classdef BuildMoleculeTaskUI < kssolv.services.workflow.module.AbstractTaskUI
             this.widgets.structureListbox.Value = {};
             importedStructures = kssolv.services.filemanager.Structure.getAllImportedStructures();
             if ~isempty(importedStructures)
-                this.widgets.structureListbox.Items = cellfun(@(cell) cell.node.label, importedStructures, 'UniformOutput', true);
+                % 标签可能是 char 或 string，统一为列表框支持的字符向量元胞数组。
+                this.widgets.structureListbox.Items = cellfun( ...
+                    @(item) char(item.node.label), importedStructures, ...
+                    'UniformOutput', false);
                 this.widgets.structureListbox.ItemsData = cellfun(@(cell) cell.node.name, importedStructures, 'UniformOutput', false);
                 if isfield(options, 'structures')
                     if isstruct(options.structures)

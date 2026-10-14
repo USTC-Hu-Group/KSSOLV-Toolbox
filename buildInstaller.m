@@ -8,7 +8,7 @@ arguments
     runtimeDelivery {mustBeMember(runtimeDelivery, ["web", "installer", "none"])} = "web"
 end
 
-% 编译仅支持使用公开 OpenAI-compatible API 的 4.9.0 及以上版本。
+% 编译支持 OpenAI-compatible API 的 4.9.0 及以上版本
 if ~kssolv.services.llm.isLLMWithMATLABAddonAvailable
     error('KSSOLV:Deployment:UnsupportedLLMAddon', ...
         'Before compiling, install and enable %s version %s or later.', ...
@@ -48,10 +48,11 @@ buildOptions.TreatInputsAsNumeric = false;
 if ispc
     buildOptions.ExecutableSplashScreen = fullfile(KSSOLV_Toolbox.UIResourcesDirectory, "icons", "companyLOGO.png");
     buildResult = compiler.build.standaloneWindowsApplication(buildOptions);
+    validateWindowsStandalonePayload(buildOptions, toolboxFolder);
 else
     buildResult = compiler.build.standaloneApplication(buildOptions);
+    validateStandalonePayload(buildOptions.OutputDir, toolboxFolder);
 end
-validateStandalonePayload(buildOptions.OutputDir, toolboxFolder);
 
 % 设置打包属性
 packageOptions = compiler.package.InstallerOptions(buildResult);
@@ -71,8 +72,8 @@ packageOptions.InstallerSplash = fullfile(KSSOLV_Toolbox.UIResourcesDirectory, "
 packageOptions.InstallerName = sprintf('KSSOLV_Toolbox_V%s', KSSOLV_Toolbox.Version);
 
 % 生成独立应用程序安装包
-% MathWorks 在 macOS 上合并已有 .app；切换 Runtime 分发方式前需清除旧载荷。
 if ismac
+    % 在 macOS 上切换 Runtime 分发方式前需清除旧载荷。
     installerApp = fullfile(packageOptions.OutputDir, ...
         packageOptions.InstallerName + ".app");
     if isfolder(installerApp)
@@ -86,7 +87,7 @@ delete(buildPathCleanup)
 end
 
 function [runtimeFiles, cleanup] = ...
-        stageRequiredLLMAddonRuntimeFiles(toolboxFolder)
+    stageRequiredLLMAddonRuntimeFiles(toolboxFolder)
 installedAddOns = matlab.internal.addons.registry.getInstalledAddOnsMetadata;
 addOnIndex = strcmp(string({installedAddOns.name}), ...
     kssolv.services.llm.Addon.Name);
@@ -146,14 +147,14 @@ cleanup = onCleanup(@() removeStagingDirectory(stagingRoot));
 end
 
 function removeStagingDirectory(stagingRoot)
-% 删除编译期间创建的对话框框架暂存目录。
+% 删除编译期间创建的对话框框架暂存目录
 if isfolder(stagingRoot)
     rmdir(stagingRoot, 's');
 end
 end
 
 function runtimeFiles = getKssolvRuntimeFiles(toolboxFolder)
-% KSSOLV-3o 的非测试运行时载荷，包括示例与全部赝势数据。
+% KSSOLV-3o 的非测试运行时载荷，包括示例与全部赝势数据
 runtimeRoot = string(fullfile(toolboxFolder, ...
     "+kssolv", "+core", "kssolv-3o"));
 if ~isfolder(runtimeRoot)
@@ -178,7 +179,7 @@ runtimeFiles = reshape(runtimeFiles, 1, []);
 end
 
 function runtimeFiles = getMatgenlabRuntimeData()
-% 递归包含生产代码动态加载的数据，同时排除所有测试目录和文档。
+% 递归包含生产代码动态加载的数据，同时排除所有测试目录和文档
 toolboxFolder = fileparts(mfilename('fullpath'));
 matgenlabHome = string(fullfile(toolboxFolder, ...
     "+kssolv", "+analysis", "+matgenlab"));
@@ -236,7 +237,7 @@ runtimeFiles = unique([runtimeFiles(:); requiredFiles(:)], "stable").';
 end
 
 function runtimeFiles = getAddOnRuntimeFiles(addOnPath)
-% 收集 Add-On 运行文件，排除测试、示例、文档和仓库开发内容。
+% 收集 Add-On 运行文件，排除测试、示例、文档和仓库开发内容
 entries = dir(fullfile(addOnPath, "**", "*"));
 entries = entries(~[entries.isdir]);
 allFiles = string(fullfile({entries.folder}, {entries.name}));
@@ -270,7 +271,7 @@ end
 end
 
 function runtimeFiles = getApplicationRuntimeFiles(toolboxFolder)
-% 动态 UI 与服务代码按文件加入，避免递归带入普通测试目录。
+% 动态 UI 与服务代码按文件加入，避免递归带入普通测试目录
 runtimeRoots = fullfile(toolboxFolder, "+kssolv", ...
     ["+ui", "+settings", "+services"]);
 runtimeFiles = strings(1, 0);
@@ -311,8 +312,8 @@ matches = matches & ~endsWith(normalizedPaths, ...
 end
 
 function [runtimeFiles, cleanup] = stageAddOnRuntimeFiles( ...
-        addOnPath, toolboxFolder)
-% 复制 Add-On 运行文件并去掉只服务于测试的友元依赖。
+    addOnPath, toolboxFolder)
+% 复制 Add-On 运行文件并去掉只服务于测试的友元依赖
 sourceFiles = getAddOnRuntimeFiles(addOnPath);
 stagingParent = fullfile(toolboxFolder, ".buildtool", "standalone");
 [created, detail] = mkdir(stagingParent);
@@ -381,16 +382,28 @@ if updated == content
 end
 try
     permissions = filePermissions(file);
+    % Windows 的只读属性独立于写权限；copyfile 会保留 Add-On 的只读属性
+    if ispc
+        setPermissions(permissions, "ReadOnly", false);
+    end
     setPermissions(permissions, "Writable", true);
 catch ME
     error('KSSOLV:Deployment:LLMAddonStageFailed', ...
         'Unable to make staged Add-On file writable: %s (%s)', ...
         file, ME.message);
 end
-fileId = fopen(file, 'w', 'n', 'UTF-8');
-if fileId < 0
-    error('KSSOLV:Deployment:LLMAddonStageFailed', ...
-        'Unable to update staged Add-On file: %s', file);
+if ispc
+    [fileId, detail] = fopen(file, 'w', 'n', 'UTF-8');
+    if fileId < 0
+        error('KSSOLV:Deployment:LLMAddonStageFailed', ...
+            'Unable to update staged Add-On file: %s (%s)', file, detail);
+    end
+else
+    fileId = fopen(file, 'w', 'n', 'UTF-8');
+    if fileId < 0
+        error('KSSOLV:Deployment:LLMAddonStageFailed', ...
+            'Unable to update staged Add-On file: %s', file);
+    end
 end
 fileCleanup = onCleanup(@() fclose(fileId));
 fwrite(fileId, char(updated), 'char');
@@ -404,7 +417,7 @@ removeStagingDirectory(stagingRoot);
 end
 
 function cleanup = isolateKssolvBuildPath(toolboxFolder)
-% 防止本机已安装的旧 KSSOLV Add-On 污染编译依赖闭包。
+% 防止本机已安装的旧 KSSOLV Add-On 污染编译依赖闭包
 originalPath = path;
 definitions = string(which('KSSOLV_Toolbox', '-all'));
 normalizedToolboxRoot = normalizeDeploymentPath(toolboxFolder);
@@ -447,8 +460,32 @@ function normalized = normalizeDeploymentPath(paths)
 normalized = strip(replace(string(paths), "\", "/"), 'right', '/');
 end
 
+function validateWindowsStandalonePayload(buildOptions, toolboxFolder)
+% Windows 的 EmbedArchive 将资源写入 EXE，解出实际 CTF 载荷后再校验
+outputDirectory = buildOptions.OutputDir;
+archiveFile = fullfile(outputDirectory, buildOptions.ExecutableName);
+extractor = fullfile(matlabroot, "bin", computer('arch'), "extractCTF.exe");
+if ~buildOptions.EmbedArchive
+    archiveFile = archiveFile + ".ctf";
+else
+    archiveFile = archiveFile + ".exe";
+end
+payloadDirectory = string(tempname(fullfile(toolboxFolder, ...
+    ".buildtool", "standalone")));
+payloadCleanup = onCleanup(@() removeStagingDirectory(payloadDirectory));
+[status, detail] = system(sprintf('"%s" "%s" "%s"', ...
+    extractor, archiveFile, payloadDirectory));
+if status ~= 0 || ~isfolder(payloadDirectory)
+    error('KSSOLV:Deployment:PayloadExtractionFailed', ...
+        'Unable to extract standalone payload from %s: %s', ...
+        archiveFile, detail);
+end
+validateStandalonePayload(payloadDirectory, toolboxFolder);
+clear payloadCleanup
+end
+
 function validateStandalonePayload(outputDirectory, toolboxFolder)
-% 验证最终独立应用的文件集合与必需运行数据。
+% 验证最终独立应用的文件集合与必需运行数据
 entries = dir(fullfile(outputDirectory, "**", "*"));
 entries = entries(~[entries.isdir]);
 files = string(fullfile({entries.folder}, {entries.name}));
@@ -479,6 +516,9 @@ requiredSuffixes = [ ...
     "/+kssolv/+analysis/+matgenlab/+io/+lobster/lobster_basis/BASIS_PBE_54_standard.yaml"
     "/+kssolv/+analysis/+matgenlab/+symmetry/+maggroups/magnetic_space_groups.mat"
     ];
+if ispc
+    requiredSuffixes = requiredSuffixes.';
+end
 for suffix = requiredSuffixes
     if ~any(endsWith(normalizedFiles, suffix))
         error('KSSOLV:Deployment:RequiredPayloadMissing', ...

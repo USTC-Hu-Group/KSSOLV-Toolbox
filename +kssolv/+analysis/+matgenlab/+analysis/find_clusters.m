@@ -1,5 +1,5 @@
 function [maxCluster,minCluster,clusters]=find_clusters( ...
-        structure,connectedMatrix)
+    structure,connectedMatrix)
 %FIND_CLUSTERS Return sizes and memberships of bonded components.
 count=structure.num_sites;
 if count==0

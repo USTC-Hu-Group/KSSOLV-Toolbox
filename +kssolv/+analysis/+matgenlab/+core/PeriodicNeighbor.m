@@ -55,12 +55,12 @@ classdef PeriodicNeighbor < kssolv.analysis.matgenlab.core.PeriodicSite
             if nargin < 2 || isempty(lattice)
                 lattice = ...
                     kssolv.analysis.matgenlab.core.Lattice.from_dict( ...
-                        value.lattice);
+                    value.lattice);
             end
             if isfield(value, "coords")
                 species = ...
                     kssolv.analysis.matgenlab.core.Site.speciesFromDict( ...
-                        value.species);
+                    value.species);
                 coords = value.coords;
                 cartesian = true;
                 properties = value.properties;
@@ -68,7 +68,7 @@ classdef PeriodicNeighbor < kssolv.analysis.matgenlab.core.PeriodicSite
             else
                 site = ...
                     kssolv.analysis.matgenlab.core.PeriodicSite.from_dict( ...
-                        value, lattice);
+                    value, lattice);
                 species = site.species;
                 coords = site.frac_coords;
                 cartesian = false;
@@ -86,7 +86,7 @@ classdef PeriodicNeighbor < kssolv.analysis.matgenlab.core.PeriodicSite
         function obj = fromDict(value, varargin)
             obj = ...
                 kssolv.analysis.matgenlab.core.PeriodicNeighbor.from_dict( ...
-                    value, varargin{:});
+                value, varargin{:});
         end
     end
 end

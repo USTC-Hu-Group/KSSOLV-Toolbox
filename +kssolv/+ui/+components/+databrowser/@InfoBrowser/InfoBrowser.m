@@ -1,19 +1,19 @@
 classdef InfoBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser
     %INFOBROWSER 自定义的 Data Browser 组件，显示 Project Browser 里对应项的具体信息
-    
+
     %   开发者：杨柳
     %   版权 2024 合肥瀚海量子科技有限公司
-    
+
     properties
         Widgets
     end
-    
+
     methods
         function this = InfoBrowser()
             %INFOBROWSER 构造此类的实例
             title = kssolv.ui.util.Localizer.message('KSSOLV:toolbox:InfoBrowserTitle');
             % 调用超类构造函数
-            this = this@matlab.ui.internal.databrowser.AbstractDataBrowser('InfoBrowser', title);          
+            this = this@matlab.ui.internal.databrowser.AbstractDataBrowser('InfoBrowser', title);
             % 自定义 widget 和 layout
             buildUI(this);
             % 设定 FigurePanel 的 Tag
@@ -23,7 +23,7 @@ classdef InfoBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser
             % 添加 ProjectBrowser 的监听器
             projectBrowser = kssolv.ui.util.DataStorage.getData('ProjectBrowser');
             addlistener(projectBrowser, 'currentSelectedItem', 'PostSet', ...
-                    @this.handleCurrentSelectedItem);
+                @this.handleCurrentSelectedItem);
             % 保存至 DataStorage
             kssolv.ui.util.DataStorage.setData('InfoBrowser', this);
         end
@@ -43,7 +43,7 @@ classdef InfoBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser
             g.Padding = [0 0 0 0];
             g.RowHeight = {'1x'};
             g.ColumnWidth = {'1x'};
-            
+
             htmlFile = fullfile(fileparts(mfilename('fullpath')), 'html', 'index.html');
             h = uihtml(g, "HTMLSource", htmlFile);
             this.Widgets.html = h;
@@ -68,11 +68,11 @@ classdef InfoBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser
         function callbackValueChanged(~, ~, event)
             newValueJSON = event.HTMLEventData;
             newValueStruct = jsondecode(newValueJSON);
-        
+
             name = newValueStruct.name;
             key = newValueStruct.key;
             value = newValueStruct.value;
-        
+
             % 更新 Project 中相应 item 的属性
             project = kssolv.ui.util.DataStorage.getData('Project');
             if ~isa(project, 'kssolv.services.filemanager.Project') || ...
@@ -122,7 +122,7 @@ classdef InfoBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser
             % b = kssolv.ui.components.databrowser.InfoBrowser();
             % b.qeShow()
 
-            % 创建 AppContainer          
+            % 创建 AppContainer
             appOptions.Tag = sprintf('kssolv(%s)',char(matlab.lang.internal.uuid));
             appOptions.Title = kssolv.ui.util.Localizer.message('KSSOLV:toolbox:UnitTestTitle');
             appOptions.ToolstripEnabled = true;

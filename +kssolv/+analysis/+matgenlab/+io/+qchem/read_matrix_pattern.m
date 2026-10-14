@@ -1,5 +1,5 @@
 function values = read_matrix_pattern(headerPattern, footerPattern, ...
-        elementsPattern, text, postprocess)
+    elementsPattern, text, postprocess)
 %READ_MATRIX_PATTERN Parse values between a matrix header and footer.
 if nargin < 5 || isempty(postprocess), postprocess = @(value) value; end
 source = char(text);

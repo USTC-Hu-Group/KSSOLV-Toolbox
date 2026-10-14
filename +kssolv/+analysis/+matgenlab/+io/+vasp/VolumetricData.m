@@ -238,7 +238,7 @@ classdef VolumetricData < kssolv.analysis.matgenlab.util.MSONable
             h5writeatt(filename, "/", "name", char(obj.name));
             h5writeatt(filename, "/", "structure_json", ...
                 char(kssolv.analysis.matgenlab.util.encode( ...
-                    obj.structure)));
+                obj.structure)));
         end
 
         function to_cube(obj, filename, comment)
@@ -378,7 +378,7 @@ classdef VolumetricData < kssolv.analysis.matgenlab.util.MSONable
                 end
                 structure = ...
                     kssolv.analysis.matgenlab.core.Structure( ...
-                        lattice, species, fractional);
+                    lattice, species, fractional);
             end
             obj = kssolv.analysis.matgenlab.io.vasp.VolumetricData( ...
                 structure, data, data_aug = dataAug);
@@ -451,7 +451,7 @@ classdef VolumetricData < kssolv.analysis.matgenlab.util.MSONable
                 end
                 species{index} = ...
                     kssolv.analysis.matgenlab.core.Element.from_Z( ...
-                        round(row(1)));
+                    round(row(1)));
                 coordinates(index, :) = row(3:5) * conversion;
             end
             lattice = voxels .* dimensions.';

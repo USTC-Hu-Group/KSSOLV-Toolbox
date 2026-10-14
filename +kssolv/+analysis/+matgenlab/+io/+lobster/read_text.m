@@ -1,5 +1,5 @@
 function text = read_text(filename)
-    %#ok<*MCSCT,*ALIGN,*AGROW,*ISCL,*MCNPN,*STOUT,*UNRCH,*MCCBU,*MSNU>
+%#ok<*MCSCT,*ALIGN,*AGROW,*ISCL,*MCNPN,*STOUT,*UNRCH,*MCCBU,*MSNU>
 %READ_TEXT Read plain or gzip-compressed LOBSTER text.
 path = char(string(filename));
 if ~isfile(path)

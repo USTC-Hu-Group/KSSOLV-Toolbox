@@ -299,7 +299,7 @@ end
 end
 
 function [symbol, charge, aromatic, stereo, hydrogens, consumed] = ...
-        readAtom(text, start)
+    readAtom(text, start)
 charge = 0;
 stereo = "";
 hydrogens = 0;

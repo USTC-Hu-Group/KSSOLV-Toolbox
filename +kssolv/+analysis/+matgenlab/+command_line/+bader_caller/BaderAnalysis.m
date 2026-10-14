@@ -278,7 +278,7 @@ end
 end
 
 function [stdout, stderr, status, acfText, densities] = ...
-        normalizeResult(result)
+    normalizeResult(result)
 stdout = ""; stderr = ""; status = 0; densities = [];
 if ~isstruct(result)
     error("KSSOLV:Matgenlab:Bader:ExecutorResult", ...

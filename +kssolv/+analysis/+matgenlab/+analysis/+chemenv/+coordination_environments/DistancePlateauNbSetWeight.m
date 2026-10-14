@@ -41,7 +41,7 @@ while pos<=numel(varargin)&&~(ischar(varargin{pos})||isstring(varargin{pos}))
     if ~isempty(varargin{pos}),opts.(names{pos})=varargin{pos};end;pos=pos+1;
 end
 for ii=pos:2:numel(varargin),if ~isempty(varargin{ii+1}), ...
-        opts.(char(string(varargin{ii})))=varargin{ii+1};end,end
+            opts.(char(string(varargin{ii})))=varargin{ii+1};end,end
 end
 function value=makeDict(name,distance,weight)
 value=struct(x_module="pymatgen.analysis.chemenv."+ ...

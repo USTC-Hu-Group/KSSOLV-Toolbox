@@ -113,7 +113,7 @@ classdef PeriodicTableData
                 string(number)
                 compose("%g", number)
                 compose("%.1f", number)
-            ];
+                ];
             value = default;
             for idx = 1:numel(candidates)
                 field = kssolv.analysis.matgenlab.core. ...

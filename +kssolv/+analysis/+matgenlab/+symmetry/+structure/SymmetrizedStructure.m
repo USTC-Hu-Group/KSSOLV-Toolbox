@@ -88,11 +88,11 @@ classdef SymmetrizedStructure < kssolv.analysis.matgenlab.core.Structure
                 "Full Formula (" + obj.formula + ")"
                 "Reduced Formula: " + obj.reduced_formula
                 sprintf("Spacegroup: %s (%d)", ...
-                    obj.spacegroup.int_symbol, obj.spacegroup.int_number)
+                obj.spacegroup.int_symbol, obj.spacegroup.int_number)
                 "abc   : " + strjoin(compose("%10.6f", ...
-                    obj.lattice.abc), " ")
+                obj.lattice.abc), " ")
                 "angles: " + strjoin(compose("%10.6f", ...
-                    obj.lattice.angles), " ")
+                obj.lattice.angles), " ")
                 sprintf("Sites (%d)", obj.num_sites)
                 ];
             for group = 1:numel(obj.equivalent_sites)

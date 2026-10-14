@@ -1,5 +1,5 @@
 function axesHandle=plot_slab(slab,axesHandle,scale,repeat,window, ...
-        drawUnitCell,decay,adsorptionSites,inverse)
+    drawUnitCell,decay,adsorptionSites,inverse)
 %PLOT_SLAB Render a deterministic top-down slab view using MATLAB graphics.
 if nargin<2||isempty(axesHandle)
     figureHandle=figure("Visible","off","Color","white");

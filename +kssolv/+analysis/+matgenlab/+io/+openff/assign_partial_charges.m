@@ -1,5 +1,5 @@
 function openffMol = assign_partial_charges( ...
-        openffMol, atomMap, chargeMethod, partialCharges, backend)
+    openffMol, atomMap, chargeMethod, partialCharges, backend)
 %ASSIGN_PARTIAL_CHARGES Assign explicit or method-derived atom charges.
 if nargin < 2 || isempty(atomMap), atomMap = 1:openffMol.n_atoms; end
 if nargin < 3 || strlength(string(chargeMethod)) == 0

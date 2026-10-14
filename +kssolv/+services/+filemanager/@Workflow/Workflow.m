@@ -51,7 +51,7 @@ classdef Workflow < kssolv.services.filemanager.AbstractItem
         function addWorkflowItem(this, workflowItem)
             % 添加从 .wf 文件中读取的工作流节点
             arguments
-                this 
+                this
                 workflowItem (1, 1) kssolv.services.filemanager.Workflow {mustBeNonempty}
             end
 

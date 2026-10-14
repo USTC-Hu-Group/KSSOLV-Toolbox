@@ -61,7 +61,7 @@ classdef Deformation < kssolv.analysis.matgenlab.core.SquareTensor
         function obj = from_voigt(voigtInput)
             square = ...
                 kssolv.analysis.matgenlab.core.SquareTensor.from_voigt( ...
-                    voigtInput);
+                voigtInput);
             obj = kssolv.analysis.matgenlab.core.Deformation(double(square));
         end
 

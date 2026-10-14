@@ -1,5 +1,5 @@
 function moleculeGraph=zero_d_graph_to_molecule_graph( ...
-        bondedStructure,graph)
+    bondedStructure,graph)
 %ZERO_D_GRAPH_TO_MOLECULE_GRAPH Convert a finite periodic component.
 if isa(graph,"kssolv.analysis.matgenlab.core.GraphStore")
     nodes=1:graph.number_of_nodes();

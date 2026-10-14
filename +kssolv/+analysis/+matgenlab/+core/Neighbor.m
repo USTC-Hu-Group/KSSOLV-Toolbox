@@ -44,7 +44,7 @@ classdef Neighbor < kssolv.analysis.matgenlab.core.Site
             if isfield(value, "coords")
                 species = ...
                     kssolv.analysis.matgenlab.core.Site.speciesFromDict( ...
-                        value.species);
+                    value.species);
                 coords = value.coords;
                 properties = value.properties;
                 label = value.label;

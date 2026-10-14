@@ -1,5 +1,5 @@
 function output = read_table_pattern(text, headerPattern, rowPattern, ...
-        footerPattern, postprocess, attributeName, lastOneOnly)
+    footerPattern, postprocess, attributeName, lastOneOnly)
 %READ_TABLE_PATTERN Parse one or more regular table blocks.
 if nargin < 5 || isempty(postprocess), postprocess = @(value) value; end
 if nargin < 6, attributeName = ""; end

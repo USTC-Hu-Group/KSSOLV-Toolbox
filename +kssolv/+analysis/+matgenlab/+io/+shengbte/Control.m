@@ -314,13 +314,13 @@ else
         "Unsupported namelist value for '%s'.", name);
 end
 
-function text = formatIntegerLike(number)
-if number == fix(number)
-    text = string(sprintf("%d", number));
-else
-    text = formatFloat(number);
-end
-end
+    function text = formatIntegerLike(number)
+        if number == fix(number)
+            text = string(sprintf("%d", number));
+        else
+            text = formatFloat(number);
+        end
+    end
 end
 
 function text = formatFloat(number)

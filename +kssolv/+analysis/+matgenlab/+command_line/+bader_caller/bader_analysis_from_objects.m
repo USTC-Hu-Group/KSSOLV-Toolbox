@@ -1,5 +1,5 @@
 function summary = bader_analysis_from_objects( ...
-        chgcar, potcar, aeccar0, aeccar2, varargin)
+    chgcar, potcar, aeccar0, aeccar2, varargin)
 %BADER_ANALYSIS_FROM_OBJECTS Analyze in-memory VASP volumetric objects.
 if nargin < 2, potcar = []; end
 if nargin < 3, aeccar0 = []; end

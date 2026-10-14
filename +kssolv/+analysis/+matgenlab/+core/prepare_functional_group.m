@@ -1,5 +1,5 @@
 function [species, coordinates, properties, labels] = ...
-        prepare_functional_group(collection, index, functionalGroup, bondOrder)
+    prepare_functional_group(collection, index, functionalGroup, bondOrder)
 %PREPARE_FUNCTIONAL_GROUP Align a substituent to a selected atom.
 if nargin < 4, bondOrder = 1; end
 if ~isscalar(index) || index ~= fix(index) || ...

@@ -244,7 +244,7 @@ classdef ConfigBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser & ..
     methods (Access = private)
         function nodeLabelChanged(this, ~, event)
             this.nodeData.label = event.Value;
-            eventDataStruct = struct('nodeID', this.nodeID, 'newLabel', event.Value); 
+            eventDataStruct = struct('nodeID', this.nodeID, 'newLabel', event.Value);
             kssolv.ui.components.figuredocument.Workflow.sendEventToWorkflowUI('workflowRenameNodeLabel', eventDataStruct);
         end
 

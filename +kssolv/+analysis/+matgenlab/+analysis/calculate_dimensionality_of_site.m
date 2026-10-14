@@ -1,5 +1,5 @@
 function [dimensionality,vertices]=calculate_dimensionality_of_site( ...
-        bondedStructure,siteIndex,incVertices)
+    bondedStructure,siteIndex,incVertices)
 %CALCULATE_DIMENSIONALITY_OF_SITE Rank periodic images reached from a site.
 % Implements Algorithm 1 of Larsen et al., Phys. Rev. Materials 3, 034003.
 if nargin<3,incVertices=false;end

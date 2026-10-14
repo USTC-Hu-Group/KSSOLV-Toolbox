@@ -1,5 +1,5 @@
 function [allWyckoffs,elementAmounts]=element_wyckoffs_from_orbits( ...
-        multiplicities,elements,letters,spgNum)
+    multiplicities,elements,letters,spgNum)
 %ELEMENT_WYCKOFFS_FROM_ORBITS Build canonical per-element Wyckoff strings.
 multiplicities=reshape(double(multiplicities),[],1);
 elements=reshape(string(elements),[],1);

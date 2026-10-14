@@ -1,5 +1,5 @@
 function groups = get_strain_state_dict( ...
-        strains, stresses, equilibriumStress, tol, addEquilibrium, sortValues)
+    strains, stresses, equilibriumStress, tol, addEquilibrium, sortValues)
 %GET_STRAIN_STATE_DICT Group Voigt stress-strain data by strain direction.
 if nargin < 3, equilibriumStress = []; end
 if nargin < 4, tol = 1e-10; end

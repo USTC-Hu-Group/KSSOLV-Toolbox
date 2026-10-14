@@ -697,7 +697,7 @@ end
 end
 
 function [plain, doped] = combineTensors(first, firstDoped, ...
-        second, secondDoped, operation)
+    second, secondDoped, operation)
 plain = binaryMap(first, second, operation);
 doped = struct("p", binaryMap(firstDoped.p, secondDoped.p, operation), ...
     "n", binaryMap(firstDoped.n, secondDoped.n, operation));
@@ -736,7 +736,7 @@ end
 end
 
 function value = thermalTensor(kappa, conductivity, seebeck, ...
-        temperature, electronic)
+    temperature, electronic)
 value = kappa;
 if electronic, value = value - conductivity * seebeck * seebeck * ...
         temperature; end
@@ -762,7 +762,7 @@ output = struct("p", rawThermal(kappa.p, cond.p, seebeck.p, electronic), ...
 end
 
 function output = massFromSeebeck(values, concentrations, ...
-        temperature, lambda, format)
+    temperature, lambda, format)
 if string(format) == "average"
     output = zeros(size(concentrations));
     for index = 1:numel(output)

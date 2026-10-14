@@ -26,11 +26,11 @@ classdef BuildMoleculeTask < kssolv.services.workflow.module.AbstractTask
 
         function context = executeTask(this, context, ~)
             arguments
-                this 
+                this
                 context containers.Map
-                ~ 
+                ~
             end
-            
+
             context = kssolv.services.workflow.module.computation. ...
                 BuildMoleculeTask.executeWithOptions( ...
                 context, this.getExecutionOptions());

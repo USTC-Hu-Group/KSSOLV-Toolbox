@@ -1,5 +1,5 @@
 function neighbors = get_points_in_spheres(all_coords, center_coords, ...
-        radius, pbc, numerical_tol, lattice, return_fcoords)
+    radius, pbc, numerical_tol, lattice, return_fcoords)
 %GET_POINTS_IN_SPHERES Find Cartesian points and periodic images in spheres.
 if nargin < 4 || isempty(pbc), pbc = true; end
 if nargin < 5 || isempty(numerical_tol), numerical_tol = 1e-8; end

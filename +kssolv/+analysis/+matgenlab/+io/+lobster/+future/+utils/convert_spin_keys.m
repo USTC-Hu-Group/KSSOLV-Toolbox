@@ -1,5 +1,5 @@
 function output = convert_spin_keys(value)
-    %#ok<*MCSCT,*ALIGN,*AGROW,*ISCL,*MCNPN,*STOUT,*UNRCH,*MCCBU,*MSNU>
+%#ok<*MCSCT,*ALIGN,*AGROW,*ISCL,*MCNPN,*STOUT,*UNRCH,*MCCBU,*MSNU>
 %CONVERT_SPIN_KEYS Recursively convert spin-keyed structs for JSON.
 output = value;
 if iscell(value)

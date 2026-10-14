@@ -1,5 +1,5 @@
 function [status, result] = get_energies(rootdir, reanalyze, verbose, ...
-        quick, sortBy, format)
+    quick, sortBy, format)
 %GET_ENERGIES Recursively assimilate and print VASP run energies.
 %
 % This is the native MATLAB counterpart of pymatgen.cli.pmg_analyze.

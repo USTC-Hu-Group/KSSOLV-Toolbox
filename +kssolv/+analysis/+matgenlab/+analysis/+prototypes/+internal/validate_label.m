@@ -1,5 +1,5 @@
 function value=validate_label(prototypeFormula,pearsonSymbol,spgNum, ...
-        allWyckoffs,chemicalSystem,elementAmounts,composition,raiseErrors)
+    allWyckoffs,chemicalSystem,elementAmounts,composition,raiseErrors)
 %VALIDATE_LABEL Construct a label and validate Wyckoff multiplicities.
 value=string(prototypeFormula)+"_"+string(pearsonSymbol)+"_"+ ...
     string(spgNum)+"_"+string(allWyckoffs)+":"+string(chemicalSystem);

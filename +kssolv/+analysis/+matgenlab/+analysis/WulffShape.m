@@ -262,7 +262,7 @@ classdef WulffShape
     end
 end
 function [planes,families,millerPlanes]= ...
-        allPlanes(lattice,millers,energies,symprec)
+    allPlanes(lattice,millers,energies,symprec)
 operations=lattice.get_recp_symmetry_operation(symprec);
 reciprocal=lattice.reciprocal_lattice_crystallographic;
 planes=zeros(0,4);families=zeros(0,1);indices=zeros(0,3);

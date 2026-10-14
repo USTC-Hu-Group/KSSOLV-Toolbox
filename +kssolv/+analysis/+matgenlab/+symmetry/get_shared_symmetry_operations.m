@@ -1,5 +1,5 @@
 function sharedOperations=get_shared_symmetry_operations( ...
-        structure,pointOperations,tolerance)
+    structure,pointOperations,tolerance)
 %GET_SHARED_SYMMETRY_OPERATIONS Point rotations common to each site pair.
 if nargin<3,tolerance=0.1;end
 count=structure.num_sites;

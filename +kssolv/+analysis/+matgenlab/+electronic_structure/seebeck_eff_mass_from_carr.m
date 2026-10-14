@@ -1,5 +1,5 @@
 function value = seebeck_eff_mass_from_carr(eta, concentration, ...
-        temperature, lambda)
+    temperature, lambda)
 %SEEBECK_EFF_MASS_FROM_CARR SPB effective mass in free-electron masses.
 if nargin < 4 || isempty(lambda), lambda = 0.5; end %#ok<NASGU>
 integralValue = arrayfun(@(e) integral(@(x) sqrt(x) .* ...

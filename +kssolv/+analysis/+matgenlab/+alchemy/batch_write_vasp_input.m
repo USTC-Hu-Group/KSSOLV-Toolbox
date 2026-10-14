@@ -1,5 +1,5 @@
 function batch_write_vasp_input(transformedStructures, vaspInputSet, ...
-        outputDir, createDirectory, subfolder, includeCif, varargin)
+    outputDir, createDirectory, subfolder, includeCif, varargin)
 %BATCH_WRITE_VASP_INPUT Write one VASP input directory per structure.
 
 if nargin < 2 || isempty(vaspInputSet)

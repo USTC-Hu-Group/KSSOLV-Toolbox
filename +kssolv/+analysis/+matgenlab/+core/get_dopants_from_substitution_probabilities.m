@@ -1,5 +1,5 @@
 function dopants = get_dopants_from_substitution_probabilities( ...
-        structure, numDopants, threshold, matchOxiSign)
+    structure, numDopants, threshold, matchOxiSign)
 %GET_DOPANTS_FROM_SUBSTITUTION_PROBABILITIES Suggest aliovalent dopants.
 
 if nargin < 2 || isempty(numDopants), numDopants = 5; end

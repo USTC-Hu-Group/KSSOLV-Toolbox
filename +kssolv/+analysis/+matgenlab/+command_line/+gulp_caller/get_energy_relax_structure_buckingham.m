@@ -1,5 +1,5 @@
 function [energy, structure] = get_energy_relax_structure_buckingham( ...
-        input_structure, gulp_cmd, options)
+    input_structure, gulp_cmd, options)
 arguments
     input_structure
     gulp_cmd = "gulp"

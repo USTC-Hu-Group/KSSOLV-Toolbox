@@ -9,7 +9,7 @@ classdef QABUndoButton < matlab.ui.internal.toolstrip.impl.QABPushButton
     properties (Access = private)
         ClassAnchor = '<a href="matlab:doc matlab.ui.internal.toolstrip.qab.QABUndoButton">QABUndoButton</a>';
     end
-    
+
     methods
         %% Constructor
         function this = QABUndoButton(varargin)
@@ -17,7 +17,7 @@ classdef QABUndoButton < matlab.ui.internal.toolstrip.impl.QABPushButton
             this.setPropertyDefaults();
         end
     end
-    
+
     methods (Access = protected)
         function set_Icon(this, ~)
             throw(MException(message('MATLAB:class:SetProhibited', 'Icon', this.ClassAnchor)));
@@ -69,7 +69,7 @@ classdef QABUndoButton < matlab.ui.internal.toolstrip.impl.QABPushButton
             this.Tag = 'QABUndoButton';
         end
     end
-    
+
     methods (Hidden)
         function qePushed(this)
             % qePushed(this) simulates a user pressing a button in the UI.

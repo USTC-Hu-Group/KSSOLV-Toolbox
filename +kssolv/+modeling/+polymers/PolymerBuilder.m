@@ -554,7 +554,7 @@ for index=2:count
 end
 end
 function direction=dendrimerDirection(generation,parentPosition, ...
-        childPosition,childCount,outward,seed)
+    childPosition,childCount,outward,seed)
 % Spread children on a reproducible cone about the parent's radial vector.
 reference=[0,0,1];
 if abs(dot(outward,reference))>.9, reference=[0,1,0]; end

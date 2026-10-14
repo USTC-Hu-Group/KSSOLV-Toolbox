@@ -1,5 +1,5 @@
 function value=is_same_vectors(vectors1,vectors2,bidirectional, ...
-        maxLengthTolerance,maxAngleTolerance)
+    maxLengthTolerance,maxAngleTolerance)
 %IS_SAME_VECTORS Test length and angle agreement of two reduced bases.
 if nargin<3||isempty(bidirectional),bidirectional=false;end
 if nargin<4||isempty(maxLengthTolerance),maxLengthTolerance=0.03;end

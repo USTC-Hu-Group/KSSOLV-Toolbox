@@ -563,7 +563,7 @@ classdef SpacegroupAnalyzer
 end
 
 function value=primitiveFromConventional( ...
-        conventional,primitiveLattice,keepSiteProperties)
+    conventional,primitiveLattice,keepSiteProperties)
 fractional=primitiveLattice.get_fractional_coords( ...
     conventional.cart_coords);
 keep=false(1,conventional.num_sites);
@@ -617,7 +617,7 @@ transform=eye(3);
 end
 
 function [lattice,transform]= ...
-        conventionalMonoclinic(oldLattice,symbol,international)
+    conventionalMonoclinic(oldLattice,symbol,international)
 matrix=oldLattice.matrix;
 lengths=oldLattice.lengths;
 transform=zeros(3);

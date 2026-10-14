@@ -1,5 +1,5 @@
 function nodes = get_high_accuracy_voronoi_nodes( ...
-        structure, radDict, probeRadius, backend)
+    structure, radDict, probeRadius, backend)
 %GET_HIGH_ACCURACY_VORONOI_NODES Run injected high-accuracy Zeo++ analysis.
 %
 % The backend operation receives CSSR text, radius dictionary, and probe

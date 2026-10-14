@@ -1,5 +1,5 @@
 function [fig,ax]=plot_ellipsoid(hessian,center,lattice,rescale,ax, ...
-        coordsAreCartesian,arrows,varargin)
+    coordsAreCartesian,arrows,varargin)
 %PLOT_ELLIPSOID Draw the inverse-square-root Hessian ellipsoid.
 if nargin<3,lattice=[];end
 if nargin<4||isempty(rescale),rescale=1;end

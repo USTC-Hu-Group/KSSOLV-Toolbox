@@ -1,5 +1,5 @@
 function bands=get_phonon_band_structure_from_fc( ...
-        structure,supercellMatrix,forceConstants,meshDensity,varargin)
+    structure,supercellMatrix,forceConstants,meshDensity,varargin)
 %GET_PHONON_BAND_STRUCTURE_FROM_FC Uniform mesh bands from force constants.
 if nargin<4||isempty(meshDensity),meshDensity=100;end
 qpoints=kssolv.analysis.matgenlab.io.phonopy. ...

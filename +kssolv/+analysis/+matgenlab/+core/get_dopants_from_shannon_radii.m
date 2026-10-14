@@ -1,5 +1,5 @@
 function dopants = get_dopants_from_shannon_radii( ...
-        bondedStructure, numDopants, matchOxiSign)
+    bondedStructure, numDopants, matchOxiSign)
 %GET_DOPANTS_FROM_SHANNON_RADII Suggest aliovalent dopants by ionic radius.
 
 if nargin < 2 || isempty(numDopants), numDopants = 5; end

@@ -1,5 +1,5 @@
 function structures=get_randomly_manipulated_structures( ...
-        structure,manipulations,seed,nReturn)
+    structure,manipulations,seed,nReturn)
 %GET_RANDOMLY_MANIPULATED_STRUCTURES Apply unique random site manipulations.
 if nargin<3||isempty(seed),seed=randi(2^31-1);end
 if nargin<4,nReturn=1;end

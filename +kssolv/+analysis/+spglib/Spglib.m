@@ -37,7 +37,7 @@ classdef Spglib
 
             error_message = kssolv.analysis.spglib.symspg('spg_get_error_message', double(error_code));
         end
-        
+
         function dataset = getDataset(lattice, position, types, num_atom, symprec, angle_tolerance)
             arguments
                 lattice (3, 3) double
@@ -241,7 +241,7 @@ classdef Spglib
             end
             lattice = lattice';
         end
-    
+
         function [lattice, position, types, num_primitive_atom] = findPrimitive(lattice, position, types, num_atom, symprec, angle_tolerance)
             arguments
                 lattice (3, 3) double
@@ -259,7 +259,7 @@ classdef Spglib
             end
             lattice = lattice';
         end
-    
+
         function [lattice, position, types, num_atom_bravais] = refineCell(lattice, position, types, num_atom, symprec, angle_tolerance)
             arguments
                 lattice (3, 3) double
@@ -277,7 +277,7 @@ classdef Spglib
             end
             lattice = lattice';
         end
-    
+
         function [lattice, result] = delaunayReduce(lattice, symprec)
             arguments
                 lattice (3, 3) double
@@ -287,7 +287,7 @@ classdef Spglib
             [lattice, result] = kssolv.analysis.spglib.symspg('spg_delaunay_reduce', lattice', symprec);
             lattice = lattice';
         end
-    
+
         function grid_point_index = getGridPointFromAddress(grid_address, mesh)
             arguments
                 grid_address (1, 3) int32
@@ -296,7 +296,7 @@ classdef Spglib
 
             grid_point_index = kssolv.analysis.spglib.symspg('spg_get_grid_point_from_address', grid_address, mesh);
         end
-    
+
         function dense_grid_point_index = getDenseGridPointFromAddress(grid_address, mesh)
             arguments
                 grid_address (1, 3) int32
@@ -305,7 +305,7 @@ classdef Spglib
 
             dense_grid_point_index = kssolv.analysis.spglib.symspg('spg_get_dense_grid_point_from_address', grid_address, mesh);
         end
-    
+
         function [grid_address, ir_mapping_table, num_ir_kpoints] = getIrReciprocalMesh(mesh, is_shift, is_time_reversal, lattice, position, types, num_atom, symprec)
             arguments
                 mesh (1, 3) int32 {mustBePositive}
@@ -335,7 +335,7 @@ classdef Spglib
 
             [grid_address, ir_mapping_table, num_ir_kpoints] = kssolv.analysis.spglib.symspg('spg_get_dense_ir_reciprocal_mesh', mesh, is_shift, is_time_reversal, lattice', position, types, num_atom, symprec);
         end
-    
+
         function [grid_address, ir_mapping_table, num_ir_kpoints] = getStabilizedReciprocalMesh(mesh, is_shift, is_time_reversal, num_rotations, rotations, num_qpoints, qpoints)
             arguments
                 mesh (1, 3) int32 {mustBePositive}
@@ -369,7 +369,7 @@ classdef Spglib
 
             [grid_address, ir_mapping_table, num_ir_kpoints] = kssolv.analysis.spglib.symspg('spg_get_dense_stabilized_reciprocal_mesh', mesh, is_shift, is_time_reversal, num_rotations, rotations, num_qpoints, qpoints);
         end
-    
+
         function grid_points = getDenseGridPointsByRotations(address_orig, num_rot, rot_reciprocal, mesh, is_shift)
             arguments
                 address_orig (1, 3) int32
@@ -399,7 +399,7 @@ classdef Spglib
 
             rot_grid_points = kssolv.analysis.spglib.symspg('spg_get_dense_BZ_grid_points_by_rotations', address_orig, num_rot, rot_reciprocal, mesh, is_shift, bz_map);
         end
-    
+
         function [bz_grid_address, bz_map, num_ir_grid_points] = relocateBZGridAddress(grid_address, mesh, rec_lattice, is_shift)
             arguments
                 grid_address (:, 3) int32

@@ -91,11 +91,11 @@ classdef FragmentBrowser < handle
             this.Widgets.Details.Value = {
                 char(string(entry.name) + " — " + string(entry.description))
                 char(message("FragmentFormula") + ": " + ...
-                    join(string(entry.species), " "))
+                join(string(entry.species), " "))
                 char(message("FragmentTags") + ": " + ...
-                    join(string(entry.tags), ", "))
+                join(string(entry.tags), ", "))
                 char(message("FragmentPorts") + ": " + ...
-                    join(string({entry.ports.label}), ", "))
+                join(string({entry.ports.label}), ", "))
                 };
             this.Widgets.Port.Items = string({entry.ports.label});
             this.Widgets.Port.ItemsData = string({entry.ports.id});

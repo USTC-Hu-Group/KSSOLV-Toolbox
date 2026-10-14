@@ -48,10 +48,10 @@ classdef FooterBar < handle
         function setLabelText(this, text)
             % 设置标签组件的文本
             arguments
-                this 
+                this
                 text {mustBeTextScalar}
             end
-            
+
             this.statusLabel.Text = text;
         end
     end

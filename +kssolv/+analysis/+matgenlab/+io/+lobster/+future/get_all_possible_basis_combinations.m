@@ -1,5 +1,5 @@
 function output = get_all_possible_basis_combinations(min_basis, max_basis)
-    %#ok<*MCSCT,*ALIGN,*AGROW,*ISCL,*MCNPN,*STOUT,*UNRCH,*MCCBU,*MSNU>
+%#ok<*MCSCT,*ALIGN,*AGROW,*ISCL,*MCNPN,*STOUT,*UNRCH,*MCCBU,*MSNU>
 %GET_ALL_POSSIBLE_BASIS_COMBINATIONS Enumerate valid basis supersets.
 perElement = cell(1, numel(max_basis));
 for index = 1:numel(max_basis)

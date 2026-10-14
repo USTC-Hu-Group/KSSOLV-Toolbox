@@ -9,9 +9,9 @@ header=regexp(char(lines(2)),'Occupation\s+(.+)$','tokens','once');if isempty(he
 entry=struct("energies",energies,"efermi",ef);
 total=zeros(size(energies));
 for i=1:min(numel(labels),size(data,2)-3)
- label=orbitalLabel(labels(i));density=data(:,i+3);densities=struct();densities.(char(spin))=density;
- entry.(char(label))=struct("efermi",ef,"energies",energies,"densities",densities,"density",density);
- total=total+density;
+    label=orbitalLabel(labels(i));density=data(:,i+3);densities=struct();densities.(char(spin))=density;
+    entry.(char(label))=struct("efermi",ef,"energies",energies,"densities",densities,"density",density);
+    total=total+density;
 end
 value.(matlab.lang.makeValidName(name))=entry;densities=struct();densities.(char(spin))=total;
 totalDos=kssolv.analysis.matgenlab.electronic_structure.Dos(ef,energies,densities);

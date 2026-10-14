@@ -6,7 +6,7 @@ if ~isequal(size(matrix), [3, 3]) || abs(det(matrix)) < eps
         "supercell_matrix must be a nonsingular 3-by-3 matrix.");
 end
 diagonals = [0 0 0; 0 0 1; 0 1 0; 0 1 1; ...
-             1 0 0; 1 0 1; 1 1 0; 1 1 1];
+    1 0 0; 1 0 1; 1 1 0; 1 1 1];
 corners = diagonals * matrix;
 mins = min(corners, [], 1);
 maxes = max(corners, [], 1) + 1;

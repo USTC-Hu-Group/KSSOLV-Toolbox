@@ -196,7 +196,7 @@ for i = 1:size(result.path, 1)
 
     % Plot a 3D line segment between the two points.
     line([coord1(1), coord2(1)], [coord1(2), coord2(2)], [coord1(3), coord2(3)], ...
-         'Color', 'r', 'LineWidth', 2);
+        'Color', 'r', 'LineWidth', 2);
 
     % Plot and label the first point (p1) if it hasn't been plotted yet.
     if ~isKey(plottedPoints, p1)
@@ -209,7 +209,7 @@ for i = 1:size(result.path, 1)
             label_p1 = p1;
         end
         text(coord1(1), coord1(2), coord1(3), ['  ', label_p1], ...
-             'FontSize', 12, 'FontWeight', 'bold', 'Color', 'k', 'Interpreter', 'tex');
+            'FontSize', 12, 'FontWeight', 'bold', 'Color', 'k', 'Interpreter', 'tex');
 
         % Mark this point as plotted by adding its key to the map.
         plottedPoints(p1) = true;
@@ -226,7 +226,7 @@ for i = 1:size(result.path, 1)
             label_p2 = p2;
         end
         text(coord2(1), coord2(2), coord2(3), ['  ', label_p2], ...
-             'FontSize', 12, 'FontWeight', 'bold', 'Color', 'k', 'Interpreter', 'tex');
+            'FontSize', 12, 'FontWeight', 'bold', 'Color', 'k', 'Interpreter', 'tex');
 
         % Mark this point as plotted by adding its key to the map.
         plottedPoints(p2) = true;

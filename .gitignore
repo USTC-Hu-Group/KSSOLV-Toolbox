@@ -28,6 +28,9 @@
 # Debug scipts
 /examples/
 dev/*
+!dev/deployment/
+dev/deployment/*
+!dev/deployment/*.m
 !dev/docs/
 dev/docs/*
 !dev/docs/development/

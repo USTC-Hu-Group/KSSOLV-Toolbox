@@ -732,7 +732,7 @@ end
 end
 
 function [storedOrigin, storedLattice] = mergeGeometry( ...
-        storedOrigin, storedLattice, origin, lattice, kind)
+    storedOrigin, storedLattice, origin, lattice, kind)
 if isempty(storedOrigin), storedOrigin = origin;
 elseif any(abs(storedOrigin - origin) > 1e-8, "all")
     error("KSSOLV:Matgenlab:XSF:InconsistentOrigin", ...

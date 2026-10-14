@@ -1286,7 +1286,7 @@ classdef RemoteClusterManagerDialog < handle
 end
 
 function [field, helpButton, label] = addText( ...
-        parent, row, key, helpKey, qualifierKey)
+    parent, row, key, helpKey, qualifierKey)
 if nargin < 4
     helpKey = "";
 end
@@ -1328,7 +1328,7 @@ field.Data = data;
 end
 
 function [field, button, helpButton] = addTextWithButton( ...
-        parent, row, key, buttonKey, callback, helpKey)
+    parent, row, key, buttonKey, callback, helpKey)
 if nargin < 6
     helpKey = "";
 end
@@ -1343,7 +1343,7 @@ button = uibutton(container, "Text", remoteMessage(buttonKey), ...
 end
 
 function [testButton, cancelButton] = addConnectionTestActions( ...
-        parent, row, testCallback, cancelCallback)
+    parent, row, testCallback, cancelCallback)
 addLabel(parent, row, "RemoteConnectionDiscovery");
 container = uigridlayout(parent, [1, 2], ...
     "ColumnWidth", {"1x", "1x"}, "Padding", 0);
@@ -1358,7 +1358,7 @@ cancelButton = uibutton(container, ...
 end
 
 function [probeButton, cancelButton] = addResourceProbeActions( ...
-        parent, row, probeCallback, cancelCallback)
+    parent, row, probeCallback, cancelCallback)
 addLabel(parent, row, "RemoteResourceDiscovery");
 container = uigridlayout(parent, [1, 2], ...
     "ColumnWidth", {"1x", "1x"}, "Padding", 0);
@@ -1373,7 +1373,7 @@ cancelButton = uibutton(container, ...
 end
 
 function [field, helpButton, label] = addNumber( ...
-        parent, row, key, lower, upper, helpKey, qualifierKey)
+    parent, row, key, lower, upper, helpKey, qualifierKey)
 if nargin < 6
     helpKey = "";
 end
@@ -1388,7 +1388,7 @@ field.Layout.Column = 2;
 end
 
 function [field, helpButton] = addDropDown( ...
-        parent, row, key, items, helpKey)
+    parent, row, key, items, helpKey)
 if nargin < 5
     helpKey = "";
 end
@@ -1400,7 +1400,7 @@ field.Layout.Column = 2;
 end
 
 function [field, helpButton] = addLocalizedDropDown( ...
-        parent, row, key, itemsData, itemKeys, helpKey)
+    parent, row, key, itemsData, itemKeys, helpKey)
 if nargin < 6
     helpKey = "";
 end
@@ -1413,7 +1413,7 @@ field.Layout.Column = 2;
 end
 
 function [field, helpButton, label] = addTextArea( ...
-        parent, row, key, helpKey, qualifierKey)
+    parent, row, key, helpKey, qualifierKey)
 if nargin < 5
     qualifierKey = "";
 end
@@ -1425,7 +1425,7 @@ field.Layout.Column = 2;
 end
 
 function [field, addButton, removeButton, helpButton, label] = ...
-        addPromptRules(parent, row, qualifierKey)
+    addPromptRules(parent, row, qualifierKey)
 if nargin < 3
     qualifierKey = "";
 end
@@ -1495,7 +1495,7 @@ field.Layout.Column = 2;
 end
 
 function [label, helpButton] = addLabel( ...
-        parent, row, key, helpKey, qualifierKey)
+    parent, row, key, helpKey, qualifierKey)
 if nargin < 4 || strlength(string(helpKey)) == 0
     if nargin < 5
         qualifierKey = "";

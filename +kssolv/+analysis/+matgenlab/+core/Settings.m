@@ -61,7 +61,7 @@ classdef Settings
                 if isfile(candidates(index))
                     settings = ...
                         kssolv.analysis.matgenlab.core.Settings.readSimpleYaml( ...
-                            candidates(index));
+                        candidates(index));
                     break
                 end
             end
@@ -85,7 +85,7 @@ classdef Settings
                 if endsWith(key, "_DIR")
                     settings(char(key)) = ...
                         kssolv.analysis.matgenlab.core.Settings.expandPath( ...
-                            string(settings(char(key))));
+                        string(settings(char(key))));
                 end
             end
         end

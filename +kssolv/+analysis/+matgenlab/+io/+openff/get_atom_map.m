@@ -1,5 +1,5 @@
 function [isomorphic, atomMap] = get_atom_map( ...
-        inferredMol, openffMol, optionsOrBackend)
+    inferredMol, openffMol, optionsOrBackend)
 %GET_ATOM_MAP Compute an OpenFF-to-inferred-molecule atom mapping.
 %
 % The returned vector uses MATLAB indices: atomMap(i) is the inferred
@@ -66,8 +66,8 @@ used = false(1, nAtoms);
 end
 
 function [found, mapping] = search(position, order, mapping, used, ...
-        candidateLists, reference, candidate, referenceAdjacency, ...
-        candidateAdjacency, options)
+    candidateLists, reference, candidate, referenceAdjacency, ...
+    candidateAdjacency, options)
 if position > numel(order)
     found = true;
     return

@@ -1,5 +1,5 @@
 function result=get_gs_ph_bs_symm_line_from_dict( ...
-        data,structure,structurePath,labelsDict,fit)
+    data,structure,structurePath,labelsDict,fit)
 %GET_GS_PH_BS_SYMM_LINE_FROM_DICT Decode phonopy Gruneisen path YAML.
 if nargin<2,structure=[];end
 if nargin<3,structurePath=[];end

@@ -49,7 +49,7 @@ for instanceIndex = 1:numel(system.instances)
         if system.config.settings.using_pbc
             value = value + kssolv.analysis.packmol.constraint_function( ...
                 3, [system.config.settings.pbc_min, ...
-                    system.config.settings.pbc_max], coordinates);
+                system.config.settings.pbc_max], coordinates);
         end
         overlapValue = 0;
         if system.config.settings.avoid_overlap && any(system.fixed)

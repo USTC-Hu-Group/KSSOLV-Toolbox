@@ -1,5 +1,5 @@
 function [mapping, missingAtoms] = map_atoms_cps( ...
-        molecule, atomCpDict, maxDistance)
+    molecule, atomCpDict, maxDistance)
 %MAP_ATOMS_CPS Map all molecule sites to nuclear critical points.
 if nargin < 3, maxDistance = 0.5; end
 mapping = containers.Map( ...

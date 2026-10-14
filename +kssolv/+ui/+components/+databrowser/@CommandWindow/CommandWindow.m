@@ -286,7 +286,7 @@ classdef CommandWindow < matlab.ui.internal.databrowser.AbstractDataBrowser
             if strcmp(command, "demo")
                 % 若命令行窗口发送了 "demo"，则直接关闭当前项目，并打开 ks.ks 文件
                 appContainer = kssolv.ui.util.DataStorage.getData('AppContainer');
-                
+
                 % 关闭所有已打开的 document
                 documents = appContainer.getDocuments();
                 for i = 1:numel(documents)

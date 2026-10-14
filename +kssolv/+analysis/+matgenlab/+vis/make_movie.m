@@ -1,5 +1,5 @@
 function make_movie(structures,outputFilename,zoomFactor,fps, ...
-        bitrate,quality,varargin)
+    bitrate,quality,varargin)
 %MAKE_MOVIE Render a structure sequence with MATLAB VideoWriter.
 if nargin<2,outputFilename="movie.mp4";end
 if nargin<3,zoomFactor=1;end

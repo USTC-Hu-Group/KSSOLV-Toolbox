@@ -294,7 +294,7 @@ end
 end
 
 function [branches,xPieces,indices,ticks,labels]=selectedBranchData( ...
-        band,data,selected)
+    band,data,selected)
 if isempty(selected)
     branches=1:numel(data.distances);
 else

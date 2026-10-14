@@ -1,5 +1,5 @@
 function amounts=element_amounts_from_wyckoffs( ...
-        elements,elementWyckoffs,spgNum)
+    elements,elementWyckoffs,spgNum)
 %ELEMENT_AMOUNTS_FROM_WYCKOFFS Expand AFLOW Wyckoff sections to site counts.
 elements=reshape(string(elements),1,[]);
 elementWyckoffs=reshape(string(elementWyckoffs),1,[]);

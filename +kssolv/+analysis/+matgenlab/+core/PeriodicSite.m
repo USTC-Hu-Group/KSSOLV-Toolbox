@@ -126,7 +126,7 @@ classdef PeriodicSite < kssolv.analysis.matgenlab.core.Site
             else
                 [distance, image] = ...
                     obj.distance_and_image_from_frac_coords( ...
-                        other.frac_coords, image);
+                    other.frac_coords, image);
             end
         end
 
@@ -143,7 +143,7 @@ classdef PeriodicSite < kssolv.analysis.matgenlab.core.Site
                 obj.lattice == other.lattice && ...
                 all(abs(obj.coords - other.coords) <= obj.position_atol) && ...
                 kssolv.analysis.matgenlab.util.is_np_dict_equal( ...
-                    obj.site_properties, other.site_properties);
+                obj.site_properties, other.site_properties);
         end
 
         function value = as_dict(obj, verbosity)
@@ -207,7 +207,7 @@ classdef PeriodicSite < kssolv.analysis.matgenlab.core.Site
         function obj = fromDict(value, varargin)
             obj = ...
                 kssolv.analysis.matgenlab.core.PeriodicSite.from_dict( ...
-                    value, varargin{:});
+                value, varargin{:});
         end
     end
 

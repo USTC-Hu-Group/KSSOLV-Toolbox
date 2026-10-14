@@ -110,7 +110,7 @@ classdef ChemicalPotential < kssolv.analysis.matgenlab.util.MSONable
         function obj = fromDict(value)
             obj = ...
                 kssolv.analysis.matgenlab.core.ChemicalPotential.from_dict( ...
-                    value);
+                value);
         end
     end
 

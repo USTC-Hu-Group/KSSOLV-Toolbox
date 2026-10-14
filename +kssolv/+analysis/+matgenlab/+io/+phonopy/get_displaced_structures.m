@@ -1,5 +1,5 @@
 function structures=get_displaced_structures( ...
-        structure,atomDisp,supercellMatrix,yamlFilename,varargin)
+    structure,atomDisp,supercellMatrix,yamlFilename,varargin)
 %GET_DISPLACED_STRUCTURES Generate symmetry-inequivalent displacements.
 if nargin<2||isempty(atomDisp),atomDisp=0.01;end
 if nargin<3||isempty(supercellMatrix),supercellMatrix=eye(3);end

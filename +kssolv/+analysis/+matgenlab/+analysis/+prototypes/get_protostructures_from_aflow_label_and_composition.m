@@ -1,5 +1,5 @@
 function values=get_protostructures_from_aflow_label_and_composition( ...
-        aflow_label,composition)
+    aflow_label,composition)
 %GET_PROTOSTRUCTURES_FROM_AFLOW_LABEL_AND_COMPOSITION Assign elements to sites.
 if ~isa(composition,"kssolv.analysis.matgenlab.core.Composition")
     composition=kssolv.analysis.matgenlab.core.Composition(composition);

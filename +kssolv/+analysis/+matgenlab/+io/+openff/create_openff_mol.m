@@ -1,5 +1,5 @@
 function openffMol = create_openff_mol(smile, geometry, chargeScaling, ...
-        partialCharges, backupChargeMethod, backend)
+    partialCharges, backupChargeMethod, backend)
 %CREATE_OPENFF_MOL Create an OpenFF molecule from SMILES and optional geometry.
 if nargin < 2, geometry = []; end
 if nargin < 3 || isempty(chargeScaling), chargeScaling = 1; end

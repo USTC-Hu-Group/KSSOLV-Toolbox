@@ -1,5 +1,5 @@
 function value=get_integrated_cohp_in_energy_range(cohp,label,orbital, ...
-        energyRange,relativeEFermi,summedSpinChannels)
+    energyRange,relativeEFermi,summedSpinChannels)
 %GET_INTEGRATED_COHP_IN_ENERGY_RANGE Difference of interpolated ICOHP values.
 if nargin<3,orbital=[];end
 if nargin<4,energyRange=[];end

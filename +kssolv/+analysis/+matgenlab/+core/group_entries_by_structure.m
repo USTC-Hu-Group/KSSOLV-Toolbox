@@ -26,18 +26,18 @@ while ~isempty(remaining)
     remaining=setdiff(remaining,matches,"stable");
 end
 
-function value=host(structure,toRemove,opt)
-    value=structure;
-    if ~isempty(toRemove),value=value.remove_species(toRemove);end
-    if opt.primitive_cell
-        try
-            analyzer=kssolv.analysis.matgenlab.symmetry.analyzer. ...
-                SpacegroupAnalyzer(value,.01,5);
-            value=analyzer.find_primitive(true);
-        catch
-            % Match pymatgen's tolerant grouping behavior: if symmetry
-            % reduction is unavailable, compare the supplied cell.
+    function value=host(structure,toRemove,opt)
+        value=structure;
+        if ~isempty(toRemove),value=value.remove_species(toRemove);end
+        if opt.primitive_cell
+            try
+                analyzer=kssolv.analysis.matgenlab.symmetry.analyzer. ...
+                    SpacegroupAnalyzer(value,.01,5);
+                value=analyzer.find_primitive(true);
+            catch
+                % Match pymatgen's tolerant grouping behavior: if symmetry
+                % reduction is unavailable, compare the supplied cell.
+            end
         end
     end
-end
 end

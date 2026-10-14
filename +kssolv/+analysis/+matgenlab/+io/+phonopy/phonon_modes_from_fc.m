@@ -1,5 +1,5 @@
 function [frequencies,eigenvectors]=phonon_modes_from_fc( ...
-        structure,supercellMatrix,forceConstants,qpoints)
+    structure,supercellMatrix,forceConstants,qpoints)
 %PHONON_MODES_FROM_FC Solve mass-weighted dynamical matrices natively.
 [~,translations]=kssolv.analysis.matgenlab.io.phonopy. ...
     phonopy_supercell(structure,supercellMatrix);

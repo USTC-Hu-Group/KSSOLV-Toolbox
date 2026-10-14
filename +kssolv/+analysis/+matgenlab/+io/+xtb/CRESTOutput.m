@@ -69,7 +69,7 @@ classdef CRESTOutput
             if isfile(obj.coord_file)
                 obj.input_structure = ...
                     kssolv.analysis.matgenlab.core.Molecule.from_file( ...
-                        obj.coord_file);
+                    obj.coord_file);
             end
             charge = obj.commandCharge();
             nonblank = lines(strlength(strtrim(lines)) > 0);
@@ -81,7 +81,7 @@ classdef CRESTOutput
                 if strlength(rotamerPath) > 0 && isfile(rotamerPath)
                     xyz = ...
                         kssolv.analysis.matgenlab.io.xyz.XYZ.from_file( ...
-                            rotamerPath);
+                        rotamerPath);
                     structures = xyz.all_molecules;
                     expected = sum(degeneracies);
                     if numel(structures) < expected || numel(energies) < expected
@@ -113,7 +113,7 @@ classdef CRESTOutput
             if isfile(bestPath)
                 best = ...
                     kssolv.analysis.matgenlab.core.Molecule.from_file( ...
-                        bestPath);
+                    bestPath);
                 obj.lowest_energy_structure = ...
                     best.set_charge_and_spin(charge);
             end

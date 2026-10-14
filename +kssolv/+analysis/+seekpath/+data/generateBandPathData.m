@@ -1,10 +1,10 @@
 function generateBandPathData()
 %GENERATEBANDPATHDATA Clone and parse band path data from the seekpath repository.
 %
-% This function retrieves and processes band path data from the 'seekpath' GitHub repository. 
+% This function retrieves and processes band path data from the 'seekpath' GitHub repository.
 % Specifically, it:
 %   1. Checks if the 'seekpath' repository is present in a parent directory; if not, it clones the repository.
-%   2. Navigates to the 'band_path_data' directory within 'seekpath', where various subfolders contain 
+%   2. Navigates to the 'band_path_data' directory within 'seekpath', where various subfolders contain
 %      reference data files (e.g., 'points', 'path', 'k_vector_parameters').
 %   3. Reads and structures these data files into a MATLAB struct, organizing the information by subfolder.
 %   4. Saves the resulting struct to 'BandPathData.mat' in the '+data' directory.

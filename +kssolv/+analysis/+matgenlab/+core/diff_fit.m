@@ -1,5 +1,5 @@
 function tensors = diff_fit( ...
-        strains, stresses, equilibriumStress, order, tol)
+    strains, stresses, equilibriumStress, order, tol)
 %DIFF_FIT Fit elastic constants using arbitrary-stencil derivatives.
 if nargin < 3, equilibriumStress = []; end
 if nargin < 4, order = 2; end

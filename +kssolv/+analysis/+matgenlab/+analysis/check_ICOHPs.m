@@ -1,5 +1,5 @@
 function check_ICOHPs(lengthsFromIcohps, selectedIcohps, translations, ...
-        lengthThreshold, energyThreshold)
+    lengthThreshold, energyThreshold)
 %CHECK_ICOHPS Warn about ambiguous opposite-image LOBSTER interactions.
 if nargin < 4 || isempty(lengthThreshold), lengthThreshold = 0.01; end
 if nargin < 5 || isempty(energyThreshold), energyThreshold = 0.1; end

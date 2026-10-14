@@ -1,5 +1,5 @@
 function uniqueMillers=get_symmetrically_distinct_miller_indices( ...
-        structure,maxIndex,varargin)
+    structure,maxIndex,varargin)
 %GET_SYMMETRICALLY_DISTINCT_MILLER_INDICES Unique hkl representatives.
 returnHkil=false;
 if ~isempty(varargin)

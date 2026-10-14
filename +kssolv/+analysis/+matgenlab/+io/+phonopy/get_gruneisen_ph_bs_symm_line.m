@@ -1,5 +1,5 @@
 function result=get_gruneisen_ph_bs_symm_line( ...
-        path,structure,structurePath,labelsDict,fit)
+    path,structure,structurePath,labelsDict,fit)
 %GET_GRUNEISEN_PH_BS_SYMM_LINE Read a Gruneisen band YAML.
 if nargin<2,structure=[];end
 if nargin<3,structurePath=[];end

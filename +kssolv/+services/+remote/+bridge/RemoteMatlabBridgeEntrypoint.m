@@ -277,7 +277,7 @@ status.State = "Cancelled";
 end
 
 function [alive, control] = waitForStandaloneProcess( ...
-        control, workspace, timeout)
+    control, workspace, timeout)
 started = tic;
 alive = standaloneProcessAlive(control, workspace);
 while ~alive && toc(started) < timeout

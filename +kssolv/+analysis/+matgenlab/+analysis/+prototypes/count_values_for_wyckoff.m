@@ -1,5 +1,5 @@
 function value=count_values_for_wyckoff( ...
-        element_wyckoffs,counts,spg_num,lookup_dict)
+    element_wyckoffs,counts,spg_num,lookup_dict)
 %COUNT_VALUES_FOR_WYCKOFF Scale table values by Wyckoff-position counts.
 element_wyckoffs=reshape(string(element_wyckoffs),1,[]);
 counts=reshape(string(counts),1,[]);

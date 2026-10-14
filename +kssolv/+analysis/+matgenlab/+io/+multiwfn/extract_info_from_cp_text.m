@@ -1,5 +1,5 @@
 function [cpName, descriptor] = extract_info_from_cp_text( ...
-        linesSplit, cpType, conditionals)
+    linesSplit, cpType, conditionals)
 %EXTRACT_INFO_FROM_CP_TEXT Extract descriptors from one Multiwfn CP block.
 if nargin < 3
     conditionals = ...

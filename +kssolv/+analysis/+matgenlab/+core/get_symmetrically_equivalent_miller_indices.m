@@ -1,5 +1,5 @@
 function equivalent=get_symmetrically_equivalent_miller_indices( ...
-        structure,millerIndex,varargin)
+    structure,millerIndex,varargin)
 %GET_SYMMETRICALLY_EQUIVALENT_MILLER_INDICES Reciprocal-space hkl family.
 options=struct("return_hkil",true,"system","");
 for index=1:2:numel(varargin)

@@ -125,7 +125,7 @@ classdef XYZ
                 end
                 frames{end + 1} = ...
                     kssolv.analysis.matgenlab.core.Molecule( ...
-                        species, coordinates); %#ok<AGROW>
+                    species, coordinates); %#ok<AGROW>
                 lineIndex = lineIndex + number + 2;
             end
             obj = kssolv.analysis.matgenlab.io.xyz.XYZ(frames);
@@ -138,7 +138,7 @@ classdef XYZ
             end
             obj = ...
                 kssolv.analysis.matgenlab.io.xyz.XYZ.from_str( ...
-                    fileread(filename));
+                fileread(filename));
         end
     end
 end

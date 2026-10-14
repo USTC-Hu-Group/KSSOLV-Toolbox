@@ -1,5 +1,5 @@
 function parameters = get_free_sphere_params( ...
-        structure, radDict, probeRadius, backend)
+    structure, radDict, probeRadius, backend)
 %GET_FREE_SPHERE_PARAMS Run explicitly injected Zeo++ sphere analysis.
 %
 % The backend may return the three-field parameter struct directly or the

@@ -1,5 +1,5 @@
 function [vectors, distancesSquared] = pbc_shortest_vectors( ...
-        lattice, frac_coords1, frac_coords2, mask, return_d2)
+    lattice, frac_coords1, frac_coords2, mask, return_d2)
 %PBC_SHORTEST_VECTORS Shortest Cartesian displacement for every point pair.
 % The result has size N1-by-N2-by-3 and points from frac_coords1 to
 % frac_coords2, matching pymatgen.util.coord.pbc_shortest_vectors.

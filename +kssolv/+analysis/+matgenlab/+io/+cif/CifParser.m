@@ -327,7 +327,7 @@ classdef CifParser < handle
                 "author", ["_publ_author_name", "_citation_author_name"]
                 "title", ["_publ_section_title", "_citation_title"]
                 "journal", ["_journal_name_full", "_journal_name_abbrev", ...
-                    "_citation_journal_full", "_citation_journal_abbrev"]
+                "_citation_journal_full", "_citation_journal_abbrev"]
                 "volume", ["_journal_volume", "_citation_volume"]
                 "year", ["_journal_year", "_citation_year"]
                 "number", ["_journal_number", "_citation_number"]

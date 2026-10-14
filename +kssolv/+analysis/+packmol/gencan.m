@@ -41,7 +41,7 @@ for iteration = 1:options.MaxIterations
     end
     direction = -twoLoop(projected, sMemory, yMemory, rhoMemory);
     direction((x <= lower & direction < 0) | ...
-              (x >= upper & direction > 0)) = 0;
+        (x >= upper & direction > 0)) = 0;
     if dot(direction, g) >= -1e-14 * norm(direction) * max(norm(g), 1)
         direction = -projected;
     end

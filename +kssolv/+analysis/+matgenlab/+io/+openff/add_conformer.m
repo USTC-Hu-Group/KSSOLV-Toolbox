@@ -1,5 +1,5 @@
 function [openffMol, atomMap] = add_conformer( ...
-        openffMol, geometry, backend)
+    openffMol, geometry, backend)
 %ADD_CONFORMER Add geometry coordinates or generate one conformer.
 if nargin < 2, geometry = []; end
 if nargin < 3, backend = []; end

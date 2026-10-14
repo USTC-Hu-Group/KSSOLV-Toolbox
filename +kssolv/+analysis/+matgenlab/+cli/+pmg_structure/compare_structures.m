@@ -87,7 +87,7 @@ clear cleanup
 end
 
 function [structures, filenames] = sortByComposition( ...
-        structures, filenames, useElements)
+    structures, filenames, useElements)
 % Python's StructureMatcher pre-sorts by comparator composition hash.
 for outer = 1:numel(structures) - 1
     for inner = outer + 1:numel(structures)

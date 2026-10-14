@@ -25,6 +25,9 @@ classdef KSSOLVToolbox < handle
 
             import kssolv.ui.util.Localizer.*
 
+            % Configure Runtime docking before any embedded figures exist.
+            kssolv.ui.util.configureFigureDocumentDocking();
+
             % 根据统一设置服务返回的配置设置本地化。
             settings = kssolv.settings.Settings.load();
             setLocale(settings.Locale);

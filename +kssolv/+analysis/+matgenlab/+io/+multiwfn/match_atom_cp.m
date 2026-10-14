@@ -1,5 +1,5 @@
 function [cpName, descriptor] = match_atom_cp( ...
-        molecule, index, atomCpDict, maxDistance)
+    molecule, index, atomCpDict, maxDistance)
 %MATCH_ATOM_CP Match a molecule site to a nuclear critical point.
 if nargin < 4, maxDistance = 0.5; end
 if index < 1 || index > molecule.num_sites || index ~= fix(index)

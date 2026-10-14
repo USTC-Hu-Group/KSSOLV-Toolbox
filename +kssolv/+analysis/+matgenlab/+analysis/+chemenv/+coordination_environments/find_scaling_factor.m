@@ -1,5 +1,5 @@
 function [factor,rotated,perfect]=find_scaling_factor( ...
-        points_distorted,points_perfect,rotation)
+    points_distorted,points_perfect,rotation)
 %FIND_SCALING_FACTOR Least-squares scale after rotation.
 distorted=double(points_distorted);
 perfect=double(points_perfect);

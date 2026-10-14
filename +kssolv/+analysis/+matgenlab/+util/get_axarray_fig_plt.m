@@ -1,5 +1,5 @@
 function [axesArray,figureHandle,plotModule]=get_axarray_fig_plt( ...
-        axesArray,nrows,ncols,sharex,sharey,squeeze,varargin)
+    axesArray,nrows,ncols,sharex,sharey,squeeze,varargin)
 %GET_AXARRAY_FIG_PLT Return or construct an array of subplot axes.
 if nargin<2||isempty(nrows),nrows=1;end
 if nargin<3||isempty(ncols),ncols=1;end

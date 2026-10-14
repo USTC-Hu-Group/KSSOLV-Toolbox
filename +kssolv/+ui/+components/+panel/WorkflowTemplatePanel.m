@@ -4,7 +4,7 @@ classdef WorkflowTemplatePanel < controllib.ui.internal.dialog.AbstractContainer
 
     %   开发者：杨柳
     %   版权 2024 合肥瀚海量子科技有限公司
-    
+
     properties
         parent   % 保存父 GridLayout 对象
         industryDropDown
@@ -12,7 +12,7 @@ classdef WorkflowTemplatePanel < controllib.ui.internal.dialog.AbstractContainer
         workflowDemoImage
         industryWorkflows
     end
-    
+
     methods (Access = public)
         function this = WorkflowTemplatePanel(parent)
             %WORKFLOWTEMPLATEPANEL 构造函数
@@ -41,7 +41,7 @@ classdef WorkflowTemplatePanel < controllib.ui.internal.dialog.AbstractContainer
 
             if this.industryDropDown.Value == "新能源"
                 this.workflowDemoImage.ImageSource = fullfile(fileparts(fileparts(fileparts(mfilename('fullpath')))), ...
-                'resources/images/workflowDemo.png');
+                    'resources/images/workflowDemo.png');
             end
         end
     end
@@ -51,7 +51,7 @@ classdef WorkflowTemplatePanel < controllib.ui.internal.dialog.AbstractContainer
             c = cells{:};
             array = cellfun(@string, c, 'UniformOutput', false);
             array = vertcat(array{:});
-            
+
             % 转换数组的维度
             array = array(:);
         end

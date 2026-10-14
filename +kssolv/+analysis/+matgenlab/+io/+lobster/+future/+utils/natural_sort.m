@@ -1,5 +1,5 @@
 function key = natural_sort(value)
-    %#ok<*MCSCT,*ALIGN,*AGROW,*ISCL,*MCNPN,*STOUT,*UNRCH,*MCCBU,*MSNU>
+%#ok<*MCSCT,*ALIGN,*AGROW,*ISCL,*MCNPN,*STOUT,*UNRCH,*MCCBU,*MSNU>
 %NATURAL_SORT Produce a natural-sort key for a string.
 parts = regexp(char(string(value)), "(\d+)", "split");
 numbers = regexp(char(string(value)), "(\d+)", "tokens");

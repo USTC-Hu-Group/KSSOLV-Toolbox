@@ -1,5 +1,5 @@
 function [randomBec,randomIst,randomFcm,piezo]=rand_piezo( ...
-        structure,pointops,sharedops,bec,ist,fcm,acousticIterations)
+    structure,pointops,sharedops,bec,ist,fcm,acousticIterations)
 %RAND_PIEZO Generate symmetry-constrained random microscopic tensors.
 if nargin<7,acousticIterations=10;end
 becObject=kssolv.analysis.matgenlab.analysis. ...

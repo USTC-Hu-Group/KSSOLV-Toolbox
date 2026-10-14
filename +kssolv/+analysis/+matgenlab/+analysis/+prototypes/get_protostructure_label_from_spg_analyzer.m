@@ -1,5 +1,5 @@
 function value=get_protostructure_label_from_spg_analyzer( ...
-        spg_analyzer,varargin)
+    spg_analyzer,varargin)
 %GET_PROTOSTRUCTURE_LABEL_FROM_SPG_ANALYZER Label an analyzer result.
 options=struct("raise_errors",false);
 options=kssolv.analysis.matgenlab.analysis.prototypes.internal. ...

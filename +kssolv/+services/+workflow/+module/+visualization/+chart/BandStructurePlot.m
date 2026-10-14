@@ -9,7 +9,7 @@ classdef BandStructurePlot < kssolv.services.workflow.module.visualization.chart
         % It is a matrix with each row consisting of 3 coordinates, the number
         % of points between each pair of k-points, and the k-point label.
         kPoints (:, 5) = {0.0000000000, 0.0000000000, 0.0000000000, 21, 'Γ'}
-        
+
         % A matrix where each row corresponds to the energy levels
         % at the respective k-points.
         energyBands
@@ -18,7 +18,7 @@ classdef BandStructurePlot < kssolv.services.workflow.module.visualization.chart
     properties (Dependent)
         % A property for setting and getting the y-axis limits of the plot.
         YLimits (1, 2) double
-        
+
         % A property for setting and getting the mode of y-axis limits.
         % It can be either 'auto' or 'manual'.
         YLimitsMode {mustBeMember(YLimitsMode, {'auto', 'manual'})}
@@ -31,13 +31,13 @@ classdef BandStructurePlot < kssolv.services.workflow.module.visualization.chart
 
         % Stores the labels for the k-points, e.g., 'Γ', 'X', 'M'.
         kPointLabels (:, 1)
-        
+
         % Stores the interpolated k-points along the path in reciprocal space.
         kPointPath (:, 3)
-        
+
         % Stores the cumulative distance along the k-point path.
         kPointDistance (:, 1)
-        
+
         % Stores the positions of k-point labels on the x-axis.
         kPointTicks (:, 1)
     end
@@ -154,22 +154,22 @@ classdef BandStructurePlot < kssolv.services.workflow.module.visualization.chart
             % Calculate the total number of points along the path.
             totalNumberOfPoints = 1 + sum(numberOfPoints(1:end-1) - 1);
             kPointPath = zeros(totalNumberOfPoints, 3);
-            
+
             % Initialize the first k-point.
             kPointPath(1, :) = symmetricKPoints(1, :);
-            
+
             % Interpolate k-points between the specified symmetric points.
             currentIndex = 2;
             for i = 1:size(symmetricKPoints, 1) - 1
                 % Number of points to interpolate (excluding the end point).
                 numDeltaPoints = numberOfPoints(i) - 1;
-                
+
                 % Calculate the interpolated points.
                 deltaKPoints = (symmetricKPoints(i + 1, :) - symmetricKPoints(i, :)) .* (1:numDeltaPoints)' / numDeltaPoints;
-                
+
                 % Add the interpolated points to the k-point path.
                 kPointPath(currentIndex:currentIndex + numDeltaPoints - 1, :) = symmetricKPoints(i, :) + deltaKPoints;
-                
+
                 % Update the current index.
                 currentIndex = currentIndex + numDeltaPoints;
             end

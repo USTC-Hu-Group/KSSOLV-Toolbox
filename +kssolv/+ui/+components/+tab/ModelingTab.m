@@ -332,10 +332,10 @@ classdef ModelingTab < handle
                 "AtomicEditor", "AtomicEditorTooltip", "atomic_editor");
             atomicButton.Popup = this.createGroupedPopup([
                 this.popupGroup("SitesSpeciesGroup", [ ...
-                    "add_atom", "delete_atoms", "merge_atoms", ...
-                    "substitute_atoms"])
+                "add_atom", "delete_atoms", "merge_atoms", ...
+                "substitute_atoms"])
                 this.popupGroup("ConstraintsOrderingGroup", [ ...
-                    "fix_atoms", "sort_atoms"])
+                "fix_atoms", "sort_atoms"])
                 ]);
             atomicColumn.add(atomicButton);
 
@@ -357,10 +357,10 @@ classdef ModelingTab < handle
                 "AtomicEditor", "AtomicEditorTooltip", "atomic_editor");
             atomicButton.Popup = this.createGroupedPopup([
                 this.popupGroup("SitesSpeciesGroup", [ ...
-                    "add_atom", "delete_atoms", "substitute_atoms"])
+                "add_atom", "delete_atoms", "substitute_atoms"])
                 this.popupGroup("PositionTransformGroup", [ ...
-                    "center_atoms", "move_atoms", "mirror_atoms", ...
-                    "rotate_atoms", "translate_atoms", "perturb_atoms"])
+                "center_atoms", "move_atoms", "mirror_atoms", ...
+                "rotate_atoms", "translate_atoms", "perturb_atoms"])
                 ]);
             atomicColumn.add(atomicButton);
 
@@ -370,10 +370,10 @@ classdef ModelingTab < handle
                 "molecule_builder");
             geometryButton.Popup = this.createGroupedPopup([
                 this.popupGroup("MoleculeGeometryGroup", [ ...
-                    "measure_geometry", "set_distance", "set_angle", ...
-                    "set_dihedral", "align_geometry"])
+                "measure_geometry", "set_distance", "set_angle", ...
+                "set_dihedral", "align_geometry"])
                 this.popupGroup("CleanupGroup", [ ...
-                    "clean_geometry", "optimize_geometry"])
+                "clean_geometry", "optimize_geometry"])
                 ]);
             geometryColumn.add(geometryButton);
 
@@ -411,9 +411,9 @@ classdef ModelingTab < handle
                 "LatticeEditor", "LatticeEditorTooltip", "lattice_editor");
             latticeButton.Popup = this.createGroupedPopup([
                 this.popupGroup("EditGroup", [ ...
-                    "edit_lattice", "apply_strain"])
+                "edit_lattice", "apply_strain"])
                 this.popupGroup("TransformGroup", [ ...
-                    "mirror_lattice", "rotate_lattice", "swap_axes"])
+                "mirror_lattice", "rotate_lattice", "swap_axes"])
                 ]);
             latticeColumn.add(latticeButton);
 
@@ -423,10 +423,10 @@ classdef ModelingTab < handle
                 "supercell_lattice");
             supercellButton.Popup = this.createGroupedPopup([
                 this.popupGroup("CellConstructionGroup", [ ...
-                    "build_supercell", "redefine_lattice", ...
-                    "orthogonalize_cell"])
+                "build_supercell", "redefine_lattice", ...
+                "orthogonalize_cell"])
                 this.popupGroup("StructureDeformationGroup", [ ...
-                    "strain_structure", "perturb_structure"])
+                "strain_structure", "perturb_structure"])
                 ]);
             supercellColumn.add(supercellButton);
 
@@ -435,10 +435,10 @@ classdef ModelingTab < handle
                 "SymmetryTools", "SymmetryToolsTooltip", "symmetry_tools");
             symmetryButton.Popup = this.createGroupedPopup([
                 this.popupGroup("CrystalConstructionGroup", [ ...
-                    "build_from_spacegroup", "make_p1"])
+                "build_from_spacegroup", "make_p1"])
                 this.popupGroup("SymmetryAnalysisGroup", [ ...
-                    "find_symmetry", "primitive_cell", ...
-                    "conventional_cell", "wigner_seitz_cell"])
+                "find_symmetry", "primitive_cell", ...
+                "conventional_cell", "wigner_seitz_cell"])
                 ]);
             symmetryColumn.add(symmetryButton);
 
@@ -522,13 +522,13 @@ classdef ModelingTab < handle
                 "molecule_builder");
             sketchButton.Popup = this.createGroupedPopup([
                 this.popupGroup("MoleculeSketchGroup", [ ...
-                    "sketch_atom", "add_bond", "delete_bond", ...
-                    "set_bond_order", "sketch_ring"])
+                "sketch_atom", "add_bond", "delete_bond", ...
+                "set_bond_order", "sketch_ring"])
                 this.popupGroup("MoleculeChemistryGroup", [ ...
-                    "set_atom_chemistry", "add_hydrogens", ...
-                    "remove_hydrogens", "diagnose_molecule"])
+                "set_atom_chemistry", "add_hydrogens", ...
+                "remove_hydrogens", "diagnose_molecule"])
                 this.popupGroup("MoleculeFragmentGroup", [ ...
-                    "attach_fragment", "save_user_fragment"])
+                "attach_fragment", "save_user_fragment"])
                 ]);
             sketchColumn.add(sketchButton);
             section.add(sketchColumn);
@@ -575,12 +575,12 @@ classdef ModelingTab < handle
                 "surface_modeling");
             surfaceButton.Popup = this.createGroupedPopup([
                 this.popupGroup("SurfaceConstructionGroup", [
-                    "build_slab", "add_vacuum"])
+                "build_slab", "add_vacuum"])
                 this.popupGroup("SurfaceChemistryGroup", [
-                    "find_adsorption_sites", "locate_adsorbate", ...
-                    "place_adsorbate", ...
-                    "passivate_surface", ...
-                    "add_solvent_layer"])
+                "find_adsorption_sites", "locate_adsorbate", ...
+                "place_adsorbate", ...
+                "passivate_surface", ...
+                "add_solvent_layer"])
                 ]);
             surfaceColumn.add(surfaceButton);
 
@@ -590,10 +590,10 @@ classdef ModelingTab < handle
                 "interface_modeling");
             interfaceButton.Popup = this.createGroupedPopup([
                 this.popupGroup("InterfaceAssemblyGroup", [
-                    "insert_structure", "stack_heterostructure", ...
-                    "twist_moire"])
+                "insert_structure", "stack_heterostructure", ...
+                "twist_moire"])
                 this.popupGroup("TransitionPathGroup", ...
-                    "interpolate_neb")
+                "interpolate_neb")
                 ]);
             interfaceColumn.add(interfaceButton);
 
@@ -777,7 +777,7 @@ classdef ModelingTab < handle
             item = ListItemWithPopup( ...
                 kssolv.ui.util.Localizer.message(commandInfo.labelKey), ...
                 kssolv.ui.features.modeling.CommandPresentationCatalog. ...
-                    icon(commandId, 24));
+                icon(commandId, 24));
             item.Tag = "ModelingCommand_" + string(commandId);
             item.Description = ...
                 kssolv.ui.util.Localizer.message(commandInfo.tooltipKey);
@@ -1267,7 +1267,7 @@ classdef ModelingTab < handle
                 else
                     entry.item.Enabled = ...
                         kssolv.modeling.CommandExecutor.supportsForModel( ...
-                            entry.commandId, display.getModel());
+                        entry.commandId, display.getModel());
                 end
             end
             if ~isempty(this.FragmentBrowserButton) && ...

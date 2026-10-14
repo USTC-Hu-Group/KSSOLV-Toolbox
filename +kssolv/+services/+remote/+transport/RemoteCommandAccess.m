@@ -239,7 +239,7 @@ classdef RemoteCommandAccess < handle
             end
             clear cleanup
         end
-        end
+    end
 
     methods (Static)
         function credential = promptCredential(configuration)

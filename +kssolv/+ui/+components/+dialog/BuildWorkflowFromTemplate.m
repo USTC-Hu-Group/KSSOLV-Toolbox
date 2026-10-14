@@ -3,11 +3,11 @@ classdef BuildWorkflowFromTemplate < controllib.ui.internal.dialog.AbstractDialo
 
     %   开发者：杨柳
     %   版权 2024 合肥瀚海量子科技有限公司
-    
+
     properties
         workflowTemplatePanel
     end
-    
+
     methods (Access = public)
         function this = BuildWorkflowFromTemplate()
             % 构造函数
@@ -61,14 +61,14 @@ classdef BuildWorkflowFromTemplate < controllib.ui.internal.dialog.AbstractDialo
     methods (Hidden)
         function this = qeShow(this, openInspect)
             arguments
-                this 
+                this
                 openInspect logical = false
             end
             % 用于在单元测试中测试当前对话框，可通过下面的命令使用：
             % d = kssolv.ui.components.dialog.BuildWorkflowFromTemplate();
             % d.qeShow()
 
-            % 创建 AppContainer          
+            % 创建 AppContainer
             appOptions.Tag = sprintf('kssolv(%s)',char(matlab.lang.internal.uuid));
             appOptions.Title = kssolv.ui.util.Localizer.message('KSSOLV:toolbox:UnitTestTitle');
             appOptions.ToolstripEnabled = true;

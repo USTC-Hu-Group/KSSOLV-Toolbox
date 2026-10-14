@@ -1,5 +1,5 @@
 function text = transformation_to_string( ...
-        matrix, translation_vec, components, c, delim)
+    matrix, translation_vec, components, c, delim)
 %TRANSFORMATION_TO_STRING Render an affine transformation as xyz notation.
 if nargin < 2, translation_vec = [0, 0, 0]; end
 if nargin < 3, components = ["x", "y", "z"]; end

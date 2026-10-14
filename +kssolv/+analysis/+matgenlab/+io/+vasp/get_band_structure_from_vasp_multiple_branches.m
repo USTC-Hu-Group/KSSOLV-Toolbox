@@ -1,5 +1,5 @@
 function bandStructure = get_band_structure_from_vasp_multiple_branches( ...
-        directory,efermi,projections)
+    directory,efermi,projections)
 %GET_BAND_STRUCTURE_FROM_VASP_MULTIPLE_BRANCHES Read and reconstruct branches.
 if nargin < 2, efermi = []; end
 if nargin < 3, projections = false; end

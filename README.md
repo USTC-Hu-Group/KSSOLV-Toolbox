@@ -52,7 +52,7 @@ For installation, usage, and feature guides, see the
 > By submitting code, documentation, or any other contribution to this project,
 > the contributor represents that they have the right to submit it and, to the
 > fullest extent permitted by law, automatically and unconditionally assigns to
-> the **KSSOLV Development Team** (the Rights Holder), on a perpetual,
+> the **KSSOLV Toolbox Development Team** (the Rights Holder), on a perpetual,
 > irrevocable, worldwide, and royalty-free basis, all transferable economic
 > copyrights and related rights in the contribution. To the extent that any such
 > right cannot legally be assigned, or the assignment is ineffective, the

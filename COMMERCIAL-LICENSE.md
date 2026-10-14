@@ -1,7 +1,7 @@
 # Commercial Licensing
 
 Commercial licenses are available for the original portions of **KSSOLV
-Toolbox** owned and offered by the KSSOLV Development Team.
+Toolbox** owned and offered by the KSSOLV Toolbox Development Team.
 
 A commercial license is required for production use that is not covered by the
 Additional Use Grant in the [Business Source License 1.1](LICENSE), including
@@ -28,7 +28,7 @@ subject to their respective license terms; see
 
 ## 商业授权
 
-**KSSOLV Toolbox** 中由 KSSOLV Development Team 拥有并提供的原创部分可以申请商业授权。
+**KSSOLV Toolbox** 中由 KSSOLV Toolbox Development Team 拥有并提供的原创部分可以申请商业授权。
 
 凡生产性使用不属于 [Business Source License 1.1](LICENSE) 中的
 `Additional Use Grant`，包括商业研发、商业服务，以及其他以商业利益或经济报酬为目的的生产性使用，均需另行取得商业许可证。

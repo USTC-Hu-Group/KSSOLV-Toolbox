@@ -22,4 +22,19 @@ clear cleanup
 
 drawnow;
 fprintf('KSSOLV_UI_PREWARM_OK\n');
+if ispc
+    % WinMain 不可靠地转发标准输出，使用启动器提供的独立结果文件。
+    resultFile = string(getenv('KSSOLV_PREWARM_RESULT'));
+    if strlength(resultFile) > 0
+        result = struct('status', 'ready', ...
+            'nonce', getenv('KSSOLV_PREWARM_NONCE'), ...
+            'elapsedSeconds', toc(startupTimer));
+        temporaryFile = resultFile + ".tmp";
+        writelines(jsonencode(result), temporaryFile, Encoding="UTF-8");
+        [moved, detail] = movefile(temporaryFile, resultFile, 'f');
+        if ~moved
+            error('KSSOLV:Startup:PrewarmResultFailed', '%s', detail);
+        end
+    end
+end
 end

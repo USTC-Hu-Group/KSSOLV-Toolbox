@@ -6,6 +6,10 @@ override licenses and notices that apply to third-party components.
 
 Known third-party or separately licensed components include:
 
+- The Windows deployment launcher redistributes Microsoft.Web.WebView2 SDK
+  (BSD 3-Clause). Its complete notice is installed in
+  `licenses/WebView2-SDK-LICENSE.txt`. It reuses the separately installed
+  Microsoft Edge WebView2 Runtime, when available.
 - `+kssolv/+core/kssolv-3o/`: BSD 3-Clause License, except for files or
   subdirectories carrying a different license.
 - `+kssolv/+core/kssolv-3o/src/+geometryoptimization/external/hanso2_2/` and
@@ -41,6 +45,9 @@ KSSOLV Toolbox 原创部分，不替代或覆盖任何第三方组件自身的�
 
 已知的第三方组件或采用独立许可证的组件包括：
 
+- Windows 部署启动器随附 Microsoft.Web.WebView2 SDK（BSD 3-Clause），完整声明
+  安装在 `licenses/WebView2-SDK-LICENSE.txt`；可用时复用系统已安装的
+  Microsoft Edge WebView2 Runtime。
 - `+kssolv/+core/kssolv-3o/`：采用 BSD 3-Clause 许可证，但带有其他许可证的文件或子目录除外。
 - `+kssolv/+core/kssolv-3o/src/+geometryoptimization/external/hanso2_2/` 和
   `+kssolv/+core/kssolv-3o/src/+geometryoptimization/external/nlcg1_0/`：

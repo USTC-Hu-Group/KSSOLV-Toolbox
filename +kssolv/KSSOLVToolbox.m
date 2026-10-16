@@ -146,6 +146,9 @@ classdef KSSOLVToolbox < handle
 
         function show(this)
             % 绘制并展示 App 界面
+            if kssolv.ui.util.StartupSplash.tryShow(this)
+                return
+            end
             this.AppContainer.WindowBounds = [100 100 1200 800];
             this.AppContainer.HostInBrowser = this.HostInBrowser;
             this.AppContainer.Busy = true;

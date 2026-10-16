@@ -49,16 +49,18 @@ if ispc
     buildOptions.ExecutableSplashScreen = fullfile(KSSOLV_Toolbox.UIResourcesDirectory, "icons", "companyLOGO.png");
     buildResult = compiler.build.standaloneWindowsApplication(buildOptions);
     validateWindowsStandalonePayload(buildOptions, toolboxFolder);
-    % 保存基础构建的运行环境信息，供后续 Windows 平台打包脚本读取。
-    runtimeMetadata = struct('RuntimeRelease', "R" + version('-release'), ...
-        'RuntimeVersion', strjoin(string(sscanf(version, '%d.%d').'), '.'), ...
-        'ApplicationVersion', KSSOLV_Toolbox.Version);
-    writelines(jsonencode(runtimeMetadata), ...
-        fullfile(buildOptions.OutputDir, 'runtime-metadata.json'), Encoding="UTF-8");
 else
     buildResult = compiler.build.standaloneApplication(buildOptions);
     validateStandalonePayload(buildOptions.OutputDir, toolboxFolder);
 end
+
+% Both platform packagers require a payload that implements the startup handshake.
+runtimeMetadata = struct('RuntimeRelease', "R" + version('-release'), ...
+    'RuntimeVersion', strjoin(string(sscanf(version, '%d.%d').'), '.'), ...
+    'ApplicationVersion', KSSOLV_Toolbox.Version, ...
+    'Architecture', computer('arch'), 'StartupProtocolVersion', 1);
+writelines(jsonencode(runtimeMetadata), ...
+    fullfile(buildOptions.OutputDir, 'runtime-metadata.json'), Encoding="UTF-8");
 
 % 设置打包属性
 packageOptions = compiler.package.InstallerOptions(buildResult);

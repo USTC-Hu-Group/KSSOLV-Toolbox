@@ -93,6 +93,9 @@ classdef Settings
                 settings.OpenAIModels = cachedOpenAIModels;
             end
             settings = kssolv.settings.Settings.normalize(settings);
+            if isdeployed
+                kssolv.settings.StartupLocale.write(settings.Locale);
+            end
         end
 
         function url = openAIChatCompletionsURL()
@@ -118,6 +121,9 @@ classdef Settings
             end
 
             kssolv.settings.Environment.apply(settings);
+            if isdeployed
+                kssolv.settings.StartupLocale.write(settings.Locale);
+            end
         end
 
         function cacheModels(provider, endpoint, models)

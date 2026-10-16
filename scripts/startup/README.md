@@ -1,0 +1,128 @@
+# Desktop startup card
+
+The deployment hosts display this shared local HTML at 800 × 494 logical pixels
+(aspect ratio 1.6194, approximately the golden ratio).
+The left 384 pixels contain the official Hanhai Quantum emblem, product typography,
+project version, live startup phase and substate, and copyright. The right 416 pixels
+contain the materials-science illustration. Keep the layout and JavaScript
+compatible with Windows WebView2, the legacy system HTML fallback (ES5), and
+macOS WKWebView.
+
+The version is never embedded in the HTML. Windows reads `launcher.ini`'s
+`Version`, supplied by the packager from `KSSOLV_Toolbox.Version`, and injects
+it at document creation (the legacy fallback uses `StartupCardBridge.GetVersion()`).
+macOS uses the same project version passed
+by `package_pkg.sh` to `build_startup_app.sh`, stored in `startup-host.json` and
+injected at document start as `window.kssolvStartup.version`. The copyright
+year follows the current calendar year. Startup time is not displayed.
+The copyright displays the full company name: 合肥瀚海量子科技有限公司 in
+Chinese and Hefei Hanhai Quantum Technology Co., Ltd. in English. The company
+name stays together and wraps below the year when necessary.
+
+The 32-pixel margins and 8-pixel spacing grid align the issuer, product, status and
+footer. KSSOLV Toolbox is one title group; the issuer uses a smaller horizontal
+lockup. CSS clips the emblem, Chinese lettering and English lettering from the
+unchanged official logo bitmap into three viewports; no brand text is typeset.
+Copyright and the right-hand caption share a baseline-aligned bottom row, 16 CSS
+pixels from the lower edge, including the legacy MSHTML flexbox prefixes.
+The original right-hand artwork is unchanged, with only
+its display framing adjusted and a single caption. There are no decorative badges.
+
+Typography uses Segoe UI on Windows, with Microsoft YaHei UI first for Chinese;
+macOS falls back to its system UI font and PingFang SC. Loading status is 14 px
+semibold, substate and copyright are 12 px. The left panel uses only three type
+sizes: 36 px for the complete product title, 14 px for primary information, and
+12 px for supporting information. Secondary text uses dark slate on white.
+The main phase, indeterminate progress bar and gray technical substate have fixed
+positions. The headline stays "Starting KSSOLV Toolbox". The single-line substate
+uses the approved ordered set of 25 Chinese/English messages. As requested, these
+are estimated presentation stages, separate from the window handoff signals.
+Stages 1–23 get fresh, weighted random durations per launch, normalized to a
+24–27 second budget. After them, stage 24 holds without looping until the real
+window is ready. Fast startup skips the remaining estimated stages. There is no
+percentage or elapsed-time display and no fixed dwell that delays a ready window.
+Before acknowledgement, both hosts call `prepareStartupHandoff()`: stage 24 and
+then stage 25 each get two animation frames to paint. The native host acknowledges
+only after this short paint sequence, then hands off immediately. Diagnostic
+`presentation` records include the generated plan, monotonic displayed history,
+and final paint flag. Native liveness polls do not change the visible substate.
+The close button has a 44 × 36 hit target and hover/pressed states, with no focus
+outline. Its native preview overlay is excluded from tab order and suppresses focus cues.
+Escape does not cancel startup, in either the preview or HTML host; deliberate
+cancellation uses the close button. The artwork is completely static: no drift, scaling animation
+or breathing overlay. The activity segment uses one `translate3d` update per
+`requestAnimationFrame`, based on its high-resolution timestamp. No 40 ms throttle
+or application frame-rate cap remains, and no layout property changes each frame.
+It follows the renderer/display cadence, including 120 Hz and faster when supported;
+this is not a guarantee of 120 displayed frames on every device.
+See [`requestAnimationFrame`](https://developer.mozilla.org/en-US/docs/Web/API/Window/requestAnimationFrame).
+Progress animation stops when reduced motion is requested; MSHTML also reads the native Windows client-area
+animation preference through the bridge using read-only
+[`SPI_GETCLIENTAREAANIMATION`](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-systemparametersinfow).
+Windows contrast styles are included.
+
+The Windows launcher prefers the system WebView2 Runtime for GPU rendering and
+high-refresh displays, using the same shared HTML. The build downloads the pinned
+Microsoft.Web.WebView2 SDK 1.0.3912.50 and verifies its SHA-256 before extracting;
+Inno packages its two managed assemblies, x64 loader and complete SDK license.
+It does not install/download a browser on application startup. If the system lacks
+WebView2 Runtime, the legacy MSHTML host still works offline, with a lower possible
+frame rate. Installation prewarm bypasses both renderers.
+
+The Windows launcher embeds a system-DPI-aware manifest. Its single HTML view
+is sized in physical pixels at load. WebView2 handles display density; the legacy
+fallback calibrates optical zoom against its CSS viewport. Both render the
+800 × 494 layout directly at display density.
+The host tests record both dimensions and DPI awareness in `.layout` sidecars.
+At the tested 150% system scale, these are 1200 × 741 physical pixels, 800 × 494
+CSS pixels, and `devicePixelRatio=1.5`. This does not change Windows display settings.
+The native-host test records `.animation` cadence samples separately from layout.
+These measure rAF callbacks and actual style updates, not GPU scanout/presentation.
+On the local 165 Hz screen, WebView2 sampled approximately 165 updates/s with
+6.2 ms p95 intervals; the legacy control sampled around 40–62 updates/s. The
+`-MinimumAnimationFps 120` test option checks the modern renderer against that
+target on suitable hardware without imposing it on the compatibility fallback.
+See Microsoft's [process DPI awareness documentation](https://learn.microsoft.com/en-us/windows/win32/hidpi/setting-the-default-dpi-awareness-for-a-process)
+and [embedded WebBrowser DPI guidance](https://learn.microsoft.com/en-us/visualstudio/extensibility/addressing-dpi-issues2?view=visualstudio#enabling-hdpi-support-to-the-weboc).
+
+The installer copies `companyLOGO.png` from the existing UI resources as
+`company-logo.png`. The original logo is not regenerated or modified.
+Both platform packagers copy `quantum-materials.png` alongside `index.html`.
+The artwork is illustrative, rather than output from a particular simulation.
+
+`quantum-materials.png` was generated with the built-in imagegen tool on
+2026-10-15. The generated original is retained, and the production copy lives
+in this directory. No network access or additional rendering runtime is needed.
+
+Final generation prompt:
+
+> Use case: stylized-concept. Asset type: final production hero artwork for a premium desktop materials-science simulation software splash screen, art only, not a UI mockup. Primary request: a visually exceptional, precise scientific 3D composition with the understated polish of high-end engineering software. Portrait 11:12 composition, full bleed. A single sculptural crystalline slab with an orderly hexagonal atomic lattice receding diagonally from lower left to upper right, fine satin silver bonds and small polished blue-silver atom nodes, intersected by a flowing translucent cobalt-blue electron-density isosurface. One small complementary amber-gold isosurface lobe, no red. The surfaces feel like sophisticated scientific volume visualization, with finely detailed contour mesh visible selectively on edges, smooth translucent glass interiors, realistic physical materials and beautiful depth. Strong coherent central sculptural silhouette, asymmetric composition, visually legible at 440 by 480 pixels. Deep midnight navy background #071b32 fading to desaturated petrol blue near the sculpture, controlled cyan rim light and soft studio illumination, crisp detail, restrained luminous highlights, dark calm margins especially at the top and bottom for separate HTML captions. Refined, credible, cinematic but sober. Illustration inspired by electronic structure and quantum materials, not a specific real simulation dataset. No text, no letters, no digits, no logos, no watermark, no UI, no border. Avoid generic sci-fi, orbit rings, random particles, stars, electric lightning, rainbow coloring, overly neon glow, plastic toy atoms, chaotic wires, dashboards, charts, decorative concentric circles.
+
+MATLAB initialization contains no fine-grained splash progress calls. The entry
+point and Toolbox constructor retain their original initialization logic; one
+`StartupSplash.tryShow(this)` call at the window-display boundary encapsulates
+deployment detection, early window handoff, and completion diagnostics. It
+returns false immediately in ordinary MATLAB operation. The host protocol only
+needs shell-ready, visible, and failure notifications; displayed substates are
+scheduled entirely by the shared HTML.
+Ordinary MATLAB operation and installer prewarm do not display this card.
+
+Window handoff uses the existing internal AppContainer/CEF Window interfaces:
+`Visible=true` starts the front end offscreen, then `Window.hide()` keeps the
+native shell hidden while the host prepares the final two messages. MATLAB
+publishes `shell-ready` through `KSSOLV_STARTUP_SIGNAL`; the host writes a
+nonce-qualified `.reveal` acknowledgement, MATLAB calls `Window.show()` and
+publishes `visible`, and the host closes the card. Remaining panels load in
+the busy Toolbox window; a separate `startup-loaded.json` records completion.
+Keep constructor initialization before creating the native window, because
+AppContainer contexts cannot be added after its children are attached.
+The host owns only its launch's process tree and terminates it on cancellation,
+failure, or timeout. Successful handoff leaves Toolbox running.
+
+Windows regression entry points are `scripts/windows/tests/Test-StartupSplash.ps1`
+for the native/HTML hosts and `scripts/windows/tests/Test-InstalledStartup.ps1`
+for the installed MATLAB payload, Locale, handoff, and full interface loading.
+The latter also supports `-Capture` and `-ManualCancel`. Source-mode and Locale
+contracts live in `kssolv.ui.test.StartupSplashTest` and `StartupLocaleTest`.
+On macOS, run `bash scripts/macos/test_startup_app.sh` to check the Swift host's
+handoff, retained Runtime process, and prewarm bypass. This test requires a Mac.

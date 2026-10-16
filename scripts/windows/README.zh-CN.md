@@ -2,13 +2,15 @@
 
 Windows 与 macOS 都采用两阶段流程：先运行 `buildInstaller()` 生成 MathWorks
 基础安装包，再运行平台脚本生成最终分发包。Windows 使用 Inno Setup 7，安装
-最后一步执行完整桌面预热；macOS 的基础打包及 `scripts/macos` PKG 流程不变。
+最后一步执行完整桌面预热；macOS 使用 `scripts/macos` 的 PKG 流程分发 Swift
+启动宿主及同一份 HTML 卡片，并沿用安装后的预热。
 
 ## 构建
 
 需要 MATLAB Compiler、项目所需 Add-On、Inno Setup 7 和 Windows 自带的
 .NET Framework 4.x 编译器。可用 `winget install --id JRSoftware.InnoSetup.7 -e`
 安装 Inno Setup，或设置环境变量 `KSSOLV_ISCC` 指向 `ISCC.exe`。
+构建机还需 WebView2 Runtime，用于将共用 HTML 渲染成中英文首屏 PNG。
 
 第一阶段，在 MATLAB 的项目根目录运行，生成基础安装包：
 
@@ -52,6 +54,52 @@ ZIP 解压会检查路径边界。每次使用独立暂存目录，不修改基�
 `-RuntimeDelivery none`。
 版本统一从 `KSSOLV_Toolbox.Version` 自动获取，无需在脚本或界面填写。
 打包前核对已编译 EXE 的版本；不一致时拒绝打包，需要重新运行 `buildInstaller()`。
+
+## 日常启动卡片
+
+快捷方式仍指向 `KssolvLauncher.exe`。打包时直接渲染共用的
+`scripts/startup/index.html`，生成带项目版本的中英文首屏 PNG。启动器先用原生窗口
+绘制匹配语言及版本的 PNG，同时提供可用的关闭按钮；首屏绘制后立即启动
+Runtime，并行初始化 WebView2。HTML 画面就绪后替换首屏，继续显示动态进度和子状态。
+没有匹配版本的首屏资源时兼容使用原有 HTML 路径，不显示其他版本的图像。
+HTML、logo 和材料科学主视觉会随 Inno Setup 安装到应用的 `startup` 目录，无需联网加载内容。
+卡片使用两端共用的 800 × 494 布局，长宽比约 1.6194，接近黄金比例：左侧为品牌、产品标题和启动信息，右侧为深蓝
+晶格与电子密度曲面插画。图像来源和提示词见 `scripts/startup/README.md`。
+按 Toolbox 保存的 Locale 显示中英文，配置缺失时才回退到环境及系统语言。
+上方固定显示启动主提示，下方灰色子状态按确认的 25 条文案顺序更新，始终单行显示；
+不显示启动耗时或估算百分比。艺术图完全固定，进度段按每个渲染帧更新 transform。
+左侧显示从 `KSSOLV_Toolbox.Version` 生成的配置版本号及完整中英文公司名的版权信息。
+版本由宿主读取 `launcher.ini` 后传给页面，HTML 不写死版本号。
+文字使用 Segoe UI，中文优先微软雅黑 UI；标题 36 px、主信息 14 px、辅助信息 12 px。
+启动器嵌入系统 DPI 感知清单，按实际像素创建窗口，避免高 DPI 下整窗位图拉伸。
+构建会下载校验固定版本的 WebView2 SDK，Inno 随附两份托管程序集、x64 loader 和
+完整 SDK 许可。启动时只复用系统已有的 WebView2 Runtime，不在线安装组件；缺少该
+运行时的旧系统使用 MSHTML 兼容路径，该路径无法保证 120fps。高刷显示器上优先路径
+没有 25/60/120fps 人为上限，实际频率取决于渲染器、刷新率和系统负载。
+文案采用确认的 25 条中英文提示，上方固定显示“正在启动 KSSOLV Toolbox”。
+按用户要求，前 23 条以加权随机时长顺序推进，每次启动重新生成约 24–27 秒的
+展示计划，随后停留第 24 条，不循环。文案是预计展示阶段，与实际窗口交接信号分开。
+主窗口提前就绪时跳过剩余预计阶段，交接前依次绘制第 24、25 条，各经过两个动画帧；
+确认已绘制后立即交接，不为播完计划而等待，不设置额外固定停留。
+`presentation` 日志记录计划、实际展示顺序和末两条绘制确认，宿主存活检查不改写文字。
+关闭按钮在原生预览和 HTML 两层均不显示聚焦高亮，保留悬停、点击取消。
+原生首屏及共享 HTML 均不绑定 Escape 取消，避免误触中断启动。
+MATLAB 端仅在 deploy 且存在本次启动的握手参数时控制窗口交接。工具条及面板
+配置仍在创建原生窗口前完成；原生窗口创建后即发布 `shell-ready`，收到确认后显示
+主窗口并关闭卡片，不等 Project Browser 完全加载。主窗口保留忙碌状态，后续渲染
+完成后解除。`startup-loaded.json` 以本次 nonce 记录完整加载，独立于卡片交接，供验收
+检查提前显示后仍能正常完成启动。该文件位于本次用户及构建的 RuntimeCache 目录。
+用户取消、应用失败或超时会清理本次启动的 Runtime 子进程。
+
+第一阶段必须使用包含 `StartupProtocolVersion=1` 的新构建元数据，避免新启动器
+等待旧 EXE 不会发送的信号。普通 MATLAB 运行和安装阶段的 `--prewarm` 不显示卡片。
+协议测试运行 `scripts/windows/tests/Test-StartupSplash.ps1`；安装后的真实应用统一验证：
+
+```powershell
+.\scripts\windows\tests\Test-InstalledStartup.ps1 -ApplicationRoot '<实际应用安装目录>' -Runs 3
+```
+
+该验证在测试专用进程组内启动 Toolbox，确认提前交接及完整加载后关闭本次测试的应用进程。
 安装包文件名、中英文版本标签、Windows 版本信息和启动器配置均使用该版本。
 Runtime 版本与应用 SHA-256 从当前构建产生，不能混用不同构建的启动器配置。
 
@@ -127,13 +175,38 @@ $installer = Get-ChildItem .\Release\StandaloneDesktopApp\KSSOLV_Toolbox_V*_Wind
 
 ```powershell
 scripts/windows/tests/Test-Launcher.ps1
+scripts/windows/tests/Test-StartupSplash.ps1
+# 在至少 120Hz 的显示器上验证高刷新目标：
+scripts/windows/tests/Test-StartupSplash.ps1 -MinimumAnimationFps 120
+# 安装后的真实 Runtime 验收（测试退出后只清理本次启动的进程）：
+scripts/windows/tests/Test-InstalledStartup.ps1 -ApplicationRoot 'E:\Apps\KSSOLV Toolbox' -Runs 3
+# 截取实际 WebView2 渲染像素；临时 Locale 夹具在测试结束后恢复：
+scripts/windows/tests/Test-InstalledStartup.ps1 -ApplicationRoot 'E:\Apps\KSSOLV Toolbox' -Locale zh_CN -Capture -Runs 1
+# 等待人工点击卡片右上角关闭按钮，核对后台进程树退出：
+scripts/windows/tests/Test-InstalledStartup.ps1 -ApplicationRoot 'E:\Apps\KSSOLV Toolbox' -ManualCancel -Runs 1
 scripts/windows/tests/Test-RuntimePayload.ps1
 python scripts/windows/tests/Test-PlatformScope.py <本次变更之前的提交>
 ```
 
 启动器测试覆盖正常预热、进程失败、缺少就绪信号、旧 nonce、子进程回收与父进程
-环境变量不变。平台测试比较非 Windows 实际执行语句，并检查 Mac 脚本及共享启动
-入口未修改。仍需真实安装包测试完整 MATLAB Runtime 和界面。
+环境变量不变。平台测试比较非 deploy 实际执行语句，覆盖共享启动入口、Toolbox
+构造和显示。HTML 宿主测试另检查阶段补齐、中英文、版权完整及排版、原 logo、
+动态进度段的逐帧更新、艺术图静止、握手顺序和旧 nonce 拒绝，并覆盖旧系统
+兼容宿主。`.animation` 文件记录回调/样式更新频率和帧间隔，不等同于 GPU 实际扫描输出。
+安装后验收另输出逐次 JSON、timings.csv 和可选的原生 PNG；截图用例在同一安装目录中
+临时编译诊断入口，调用实际启动器入口和已安装的完整 Toolbox，其他用例使用原始启动器。
+正常用例检查主窗口可见后才关闭卡片；取消用例检查后台父子进程均退出。
+
+MATLAB 入口和 Toolbox 构造函数不包含逐阶段的卡片进度埋点，保持原有初始化逻辑。
+窗口显示边界只调用一次 `StartupSplash.tryShow(this)`，组件内部集中处理 deploy
+判断、主窗口尽早交接及完成诊断；非 deploy 立即返回，不操作窗口。中英文子状态由
+共享 HTML 独立调度。宿主仅处理 `shell-ready`、`visible` 和 `failed` 三种信号，
+不再转发细粒度进度或向页面发送心跳。
+
+卡片语言使用 Toolbox 当前 Locale。部署程序加载或保存设置时，将解析后的语言同步到
+`%APPDATA%\KSSOLV Toolbox\startup.json`；原 MATLAB 首选项仍是设置来源，安装预热会
+生成此文件，文件只包含协议版本和语言。启动器优先读取它，其次为 `KSSOLV_LOCALE`
+和系统语言，安装器界面语言不覆盖用户的 Toolbox 语言。非 deploy 不写这份文件。
 
 Runtime 载荷测试使用实际联网基础包，以及离线 EXE / ZIP 格式夹具，检查组件
 清单不变、离线 agent 字节不变、原始基础包不变、应用 SHA-256 匹配、分发模式

@@ -31,7 +31,9 @@ class FakeApplication {
 [IO.File]::WriteAllText("$testRoot\FakeApplication.cs", $fakeSource)
 & $csc /nologo /target:winexe /reference:System.Web.Extensions.dll "/out:$testRoot\application\KSSOLV_Toolbox.exe" "$testRoot\FakeApplication.cs"
 if ($LASTEXITCODE -ne 0) { throw 'Fake app compilation failed.' }
-& $csc /nologo /target:winexe /platform:x64 /reference:System.Web.Extensions.dll /reference:System.Windows.Forms.dll "/out:$testRoot\KssolvLauncher.exe" "$PSScriptRoot\..\launcher\KssolvLauncher.cs"
+. "$PSScriptRoot\..\launcher\StartupDependencies.ps1"
+$webViewReferences = Initialize-StartupHostDependencies $testRoot
+& $csc /nologo /target:winexe /platform:x64 /reference:System.Drawing.dll /reference:System.Web.Extensions.dll /reference:System.Windows.Forms.dll @webViewReferences "/win32manifest:$PSScriptRoot\..\launcher\KssolvLauncher.manifest" "/out:$testRoot\KssolvLauncher.exe" "$PSScriptRoot\..\launcher\KssolvLauncher.cs" "$PSScriptRoot\..\launcher\SplashWindow.cs" "$PSScriptRoot\..\launcher\StartupCard.cs"
 if ($LASTEXITCODE -ne 0) { throw 'Launcher compilation failed.' }
 New-Item -ItemType File -Path "$testRoot\runtime\runtime\win64\mclmcrrt26_2.dll" | Out-Null
 $hash = (Get-FileHash "$testRoot\application\KSSOLV_Toolbox.exe").Hash.ToLowerInvariant()

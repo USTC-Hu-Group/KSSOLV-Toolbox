@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' file:; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+  <title>KSSOLV Toolbox</title>
+  <style>
+    html, body { width:100%; height:100%; margin:0; overflow:hidden; background:#fff; color:#152a40; font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,"Microsoft YaHei UI","Microsoft YaHei","PingFang SC",sans-serif; font-weight:400; }
+    html[lang="zh-CN"] body { font-family:"Microsoft YaHei UI","Microsoft YaHei","PingFang SC",-apple-system,BlinkMacSystemFont,sans-serif; }
+    h1, .art, .art-caption { font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,sans-serif; }
+    body { box-shadow:inset 0 0 0 1px #e1e6eb; }
+    .art { position:absolute; left:384px; top:0; right:0; bottom:0; overflow:hidden; background:#071b32; }
+    .crystal { display:block; width:453px; height:494px; position:absolute; left:-18.5px; top:0; }
+    .art-shade { position:absolute; left:0; right:0; bottom:0; height:112px; background:linear-gradient(transparent,rgba(4,18,35,0.88)); }
+    .art-caption { margin-left:48px; -ms-flex:1; flex:1; color:#f3f8fc; font-size:14px; line-height:20px; font-weight:600; white-space:nowrap; }
+    main { position:absolute; left:0; top:0; width:320px; bottom:0; padding:0 32px; }
+    .brand { position:absolute; left:32px; top:32px; height:40px; }
+    /* Three viewports crop the original bitmap; all brand lettering stays original. */
+    .brand-fragment { position:absolute; overflow:hidden; }
+    .brand-fragment img { position:absolute; display:block; max-width:none; }
+    .brand-mark { left:0; top:0; width:45px; height:40px; }
+    .brand-mark img { left:-36px; top:-16px; width:116.8px; height:116.8px; }
+    .brand-chinese { left:61px; top:0; width:104px; height:20px; }
+    .brand-chinese img { left:-1.47px; top:-60.27px; width:107.31px; height:107.31px; }
+    .brand-english { left:61px; top:28px; width:128px; height:11px; }
+    .brand-english img { left:-1.82px; top:-104.13px; width:132.77px; height:132.77px; }
+    .product { position:absolute; left:32px; right:32px; top:120px; }
+    h1 { margin:0; font-size:36px; line-height:44px; font-weight:600; letter-spacing:-1px; white-space:nowrap; }
+    h1 span { margin-left:8px; font-weight:400; letter-spacing:-0.8px; }
+    .subtitle { margin:8px 0 0; color:#344b60; font-size:14px; line-height:22px; }
+    .version { margin-top:12px; color:#526579; font-size:12px; line-height:20px; }
+    .version-label { margin-right:6px; }
+    .version-value { font-variant-numeric:tabular-nums; }
+    .loading { position:absolute; left:32px; right:32px; top:282px; }
+    .current { height:22px; font-size:14px; line-height:22px; font-weight:600; white-space:nowrap; }
+    .track { position:relative; height:4px; margin-top:12px; background:#e1e8f0; overflow:hidden; border-radius:2px; }
+    .track span { position:absolute; left:0; top:0; display:block; width:32%; height:100%; background:#286fb0; transform:translate3d(0,0,0); will-change:transform; backface-visibility:hidden; }
+    .substatus { height:20px; margin-top:12px; color:#526579; font-size:12px; line-height:20px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .bottom-row { position:absolute; left:32px; right:24px; bottom:16px; display:-ms-flexbox; display:flex; -ms-flex-align:baseline; align-items:baseline; }
+    .footer { -ms-flex:0 0 328px; flex:0 0 328px; color:#526579; font-size:12px; line-height:16px; }
+    .copyright-owner { display:inline-block; white-space:nowrap; }
+    .cancel { position:absolute; z-index:2; right:0; top:0; width:44px; height:36px; padding:0; background:transparent; border:0; color:#e2edf6; font-size:22px; line-height:36px; cursor:pointer; }
+    .cancel:hover { color:#fff; background:#b52b38; }
+    .cancel:active { background:#8f202b; }
+    .cancel:focus { outline:0; box-shadow:none; }
+    @media (-ms-high-contrast:active) { body { background:Window; color:WindowText; } .subtitle,.version,.footer,.substatus { color:WindowText; } .track { border:1px solid WindowText; } .track span { background:Highlight; } }
+  </style>
+</head>
+<body>
+  <div class="art" aria-hidden="true">
+    <img class="crystal" id="crystal" src="quantum-materials.png" alt="">
+    <div class="art-shade"></div>
+  </div>
+  <button type="button" class="cancel" id="cancel" aria-label="Cancel startup" title="Cancel startup">&#215;</button>
+  <main>
+    <div class="brand" role="img" aria-label="瀚海量子 Hanhai Quantum">
+      <div class="brand-fragment brand-mark"><img id="logo" src="company-logo.png" alt=""></div>
+      <div class="brand-fragment brand-chinese"><img src="company-logo.png" alt=""></div>
+      <div class="brand-fragment brand-english"><img src="company-logo.png" alt=""></div>
+    </div>
+    <div class="product">
+    <h1>KSSOLV<span>Toolbox</span></h1>
+    <p class="subtitle" id="subtitle">Electronic structure &amp; quantum materials</p>
+    <div class="version"><span class="version-label" id="version-label">Version</span><span class="version-value" id="version-value"></span></div>
+    </div>
+    <div class="loading">
+      <div class="current" id="phase">Starting KSSOLV Toolbox</div>
+      <div class="track" id="progress" role="progressbar" aria-label="Starting KSSOLV Toolbox" aria-describedby="status"><span></span></div>
+      <div class="substatus" id="status" role="status" aria-live="polite" aria-atomic="true">Initializing the runtime environment…</div>
+    </div>
+  </main>
+  <footer class="bottom-row" title="Hefei Hanhai Quantum Technology Co., Ltd. All rights reserved.">
+    <div class="footer">&copy; <span id="copyright-years"></span> <span class="copyright-owner" id="copyright-owner">Hefei Hanhai Quantum Technology Co., Ltd.</span></div>
+    <div class="art-caption" aria-hidden="true">Electronic Structure Simulation</div>
+  </footer>
+  <script>
+    // ES5 and classic layout also support the Windows system HTML viewer.
+    (function () {
+      function send(name) {
+        if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers[name]) {
+          window.webkit.messageHandlers[name].postMessage(true);
+        } else if (window.chrome && window.chrome.webview) {
+          window.chrome.webview.postMessage(name);
+        } else if (window.external) {
+          if (name === 'cardReady') { window.external.CardReady(); }
+          else if (name === 'cancel') { window.external.Cancel(); }
+        }
+      }
+      function text(element, value) { element.textContent = value; element.innerText = value; }
+      var metadata = window.kssolvStartup || {};
+      var language = metadata.language || navigator.language || navigator.userLanguage || 'en';
+      var version = metadata.version || '';
+      try { if (window.external) { language = window.external.GetLanguage(); version = window.external.GetVersion(); } } catch (ignored) {}
+      var chinese = language.indexOf('zh') === 0;
+      text(document.getElementById('version-value'), version || '\u2014');
+      text(document.getElementById('copyright-years'), '2024\u2013' + new Date().getFullYear());
+      var labels = [
+        ['正在初始化运行环境…', 'Initializing the runtime environment…'],
+        ['正在加载应用设置…', 'Loading application settings…'],
+        ['正在加载语言资源…', 'Loading language resources…'],
+        ['正在加载计算资源…', 'Loading calculation resources…'],
+        ['正在初始化计算引擎…', 'Initializing the calculation engine…'],
+        ['正在准备项目数据…', 'Preparing project data…'],
+        ['正在准备结构数据…', 'Preparing structure data…'],
+        ['正在准备变量数据…', 'Preparing variable data…'],
+        ['正在准备工作流数据…', 'Preparing workflow data…'],
+        ['正在准备图形界面…', 'Preparing the graphical interface…'],
+        ['正在加载项目浏览器…', 'Loading the project browser…'],
+        ['正在加载项目信息面板…', 'Loading the project information panel…'],
+        ['正在加载计算参数编辑器…', 'Loading the calculation parameter editor…'],
+        ['正在加载模拟任务面板…', 'Loading the simulation task panel…'],
+        ['正在准备结果视图…', 'Preparing the results view…'],
+        ['正在加载项目管理工具…', 'Loading project management tools…'],
+        ['正在加载结构建模工具…', 'Loading structure modeling tools…'],
+        ['正在加载工作流编辑器…', 'Loading the workflow editor…'],
+        ['正在加载计算控制工具…', 'Loading calculation controls…'],
+        ['正在加载并行计算设置…', 'Loading parallel computing settings…'],
+        ['正在加载命令行工具…', 'Loading command-line tools…'],
+        ['正在配置工作区布局…', 'Configuring the workspace layout…'],
+        ['正在准备工作区…', 'Preparing the workspace…'],
+        ['正在渲染应用界面…', 'Rendering the application interface…'],
+        ['正在打开主窗口…', 'Opening the main window…']
+      ];
+      var current = document.getElementById('status'), phaseText = document.getElementById('phase');
+      var displayed = 0, timer = null, handoffStarted = false, handoffPainted = false;
+      var history = [], durations = [], startedAt = null;
+      // Presentation pacing only: heavier initialization gets more time, with
+      // fresh bounded jitter per launch. These are not backend completion claims.
+      var weights = [4.6,0.65,0.7,1.4,1.8,0.8,0.9,0.7,0.9,1.4,1.6,0.8,1.6,1.3,0.8,1.1,1.7,1.2,0.9,0.6,1.2,0.7,1.4];
+      for (var d = 0; d < weights.length; d += 1) { durations.push(Math.round(weights[d] * 1000 * (0.75 + Math.random() * 0.5))); }
+      var total = 0, budget = 24000 + Math.random() * 3000;
+      for (d = 0; d < durations.length; d += 1) { total += durations[d]; }
+      for (d = 0; d < durations.length; d += 1) { durations[d] = Math.round(durations[d] * budget / total); }
+      var motionPreference = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
+      var reduced = false;
+      function updateMotionPreference() {
+        reduced = !!(motionPreference && motionPreference.matches);
+        try { if (window.external && window.external.GetReducedMotion()) { reduced = true; } } catch (ignored) {}
+      }
+      updateMotionPreference();
+      if (motionPreference && motionPreference.addListener) {
+        motionPreference.addListener(updateMotionPreference);
+      }
+      function animate() {
+        // One transform per display frame, with no 25/60/120 fps application cap.
+        // Elapsed high-resolution time keeps speed identical on different displays.
+        // The activity segment never estimates completion; the artwork stays static.
+        var bar = document.getElementById('progress').firstChild;
+        var start = null, preferenceCheck = -1000;
+        function clockNow() { return window.performance && window.performance.now ? window.performance.now() : new Date().getTime(); }
+        var frame = window.requestAnimationFrame ? function (callback) { window.requestAnimationFrame(callback); } :
+          function (callback) { window.setTimeout(function () { callback(clockNow()); }, 1000 / 120); };
+        function tick(timestamp) {
+          var time, phase, shift, transform;
+          var now = typeof timestamp === 'number' ? timestamp : clockNow();
+          if (start === null) { start = now; }
+          if (now - preferenceCheck >= 1000) { updateMotionPreference(); preferenceCheck = now; }
+          time = (now - start) / 1000;
+          phase = (time % 2.8) / 2.8;
+          // Percentages refer to the segment width: 68 / 32 * 100 = 212.5.
+          shift = reduced ? 106.25 : 212.5 * (0.5 - 0.5 * Math.cos(phase * Math.PI * 2));
+          transform = 'translate3d(' + shift.toFixed(5) + '%,0,0)';
+          bar.style.transform = transform; bar.style.msTransform = transform;
+          if (reduced) { window.setTimeout(function () { frame(tick); }, 1000); return; }
+          frame(tick);
+        }
+        frame(tick);
+      }
+      function showStage(number) {
+        if (number <= displayed) { return; }
+        displayed = number;
+        text(current, labels[number - 1][chinese ? 0 : 1]);
+        current.setAttribute('data-stage', number);
+        history.push({stage:number, elapsedMs:startedAt === null ? 0 : new Date().getTime() - startedAt});
+      }
+      function scheduleNext() {
+        if (handoffStarted || displayed >= 24) { return; }
+        timer = window.setTimeout(function () { showStage(displayed + 1); scheduleNext(); }, durations[displayed - 1]);
+      }
+      function afterPaint(callback) {
+        var frame = window.requestAnimationFrame || function (next) { window.setTimeout(next, 16); };
+        frame(function () { frame(callback); });
+      }
+      window.getStartupPresentation = function () {
+        var messages = [];
+        for (var i = 0; i < labels.length; i += 1) { messages.push(labels[i][chinese ? 0 : 1]); }
+        return {stage:displayed, history:history.slice(), durationsMs:durations.slice(), messages:messages, handoffPainted:handoffPainted};
+      };
+      window.prepareStartupHandoff = function () {
+        if (!handoffStarted) {
+          handoffStarted = true;
+          window.clearTimeout(timer);
+          showStage(24);
+          afterPaint(function () { showStage(25); afterPaint(function () { handoffPainted = true; }); });
+        }
+        return handoffPainted;
+      };
+      showStage(1);
+      text(phaseText, chinese ? '正在启动 KSSOLV Toolbox' : 'Starting KSSOLV Toolbox');
+      if (chinese) {
+        text(document.getElementById('subtitle'), '电子结构计算与量子材料模拟');
+        text(document.getElementById('version-label'), '版本');
+        text(document.getElementById('copyright-owner'), '合肥瀚海量子科技有限公司');
+        document.getElementById('progress').setAttribute('aria-label', '正在启动 KSSOLV Toolbox');
+        document.getElementsByTagName('footer')[0].setAttribute('title', '合肥瀚海量子科技有限公司。保留所有权利。');
+        document.getElementById('cancel').setAttribute('aria-label', '取消启动');
+        document.getElementById('cancel').setAttribute('title', '取消启动');
+        document.documentElement.lang = 'zh-CN';
+      }
+      document.getElementById('cancel').onclick = function () { send('cancel'); };
+      window.onload = function () {
+        // Let the host replace its optional native preview only after both images paint.
+        var frame = window.requestAnimationFrame || function (callback) { window.setTimeout(callback, 30); };
+        frame(function () { frame(function () {
+          var logo = document.getElementById('logo'), crystal = document.getElementById('crystal');
+          function loaded(image) { return image.complete && (typeof image.naturalWidth === 'undefined' || image.naturalWidth > 0); }
+          if (loaded(logo) && loaded(crystal)) { startedAt = new Date().getTime(); scheduleNext(); animate(); send('cardReady'); }
+        }); });
+      };
+    }());
+  </script>
+</body>
+</html>

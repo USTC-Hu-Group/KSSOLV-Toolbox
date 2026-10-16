@@ -52,6 +52,7 @@ $runtimeMetadata = Get-Content -LiteralPath $runtimeMetadataPath -Raw -Encoding 
 $RuntimeRelease = [string]$runtimeMetadata.RuntimeRelease
 $RuntimeVersion = [string]$runtimeMetadata.RuntimeVersion
 if ($RuntimeRelease -notmatch '^R\d{4}[ab]$' -or $RuntimeVersion -notmatch '^\d+\.\d+$' -or
+    $runtimeMetadata.StartupProtocolVersion -ne 1 -or
     [string]$runtimeMetadata.ApplicationVersion -ne $Version -or
     (Get-Item -LiteralPath $runtimeMetadataPath).LastWriteTimeUtc -lt (Get-Item -LiteralPath $application).LastWriteTimeUtc) {
     throw 'Invalid or stale Runtime build metadata. Run buildInstaller() again.'
@@ -76,8 +77,18 @@ if (!(Test-Path -LiteralPath $csc)) { throw '.NET Framework 4.x compiler is requ
 if ($LASTEXITCODE -ne 0) { throw 'Installer artwork compilation failed.' }
 & "$stage\BrandAssets.exe" $stage "$repository\+kssolv\+ui\resources\icons\companyLOGO.png" "$PSScriptRoot\installer\assets\crystal.png"
 if ($LASTEXITCODE -ne 0) { throw 'Installer artwork generation failed.' }
-& $csc /nologo /target:winexe /platform:x64 /reference:System.Web.Extensions.dll /reference:System.Windows.Forms.dll "/win32icon:$stage\kssolv.ico" "/out:$stage\KssolvLauncher.exe" "$PSScriptRoot\launcher\KssolvLauncher.cs"
+. "$PSScriptRoot\launcher\StartupDependencies.ps1"
+$webViewReferences = Initialize-StartupHostDependencies $stage
+& $csc /nologo /target:winexe /platform:x64 /reference:System.Drawing.dll /reference:System.Web.Extensions.dll /reference:System.Windows.Forms.dll @webViewReferences "/win32manifest:$PSScriptRoot\launcher\KssolvLauncher.manifest" "/win32icon:$stage\kssolv.ico" "/out:$stage\KssolvLauncher.exe" "$PSScriptRoot\launcher\KssolvLauncher.cs" "$PSScriptRoot\launcher\SplashWindow.cs" "$PSScriptRoot\launcher\StartupCard.cs"
 if ($LASTEXITCODE -ne 0) { throw 'Windows launcher compilation failed.' }
+New-Item -ItemType Directory -Path "$stage\startup" -Force | Out-Null
+Copy-Item -LiteralPath "$repository\scripts\startup\index.html" -Destination "$stage\startup\index.html"
+Copy-Item -LiteralPath "$repository\+kssolv\+ui\resources\icons\companyLOGO.png" -Destination "$stage\startup\company-logo.png"
+Copy-Item -LiteralPath "$repository\scripts\startup\quantum-materials.png" -Destination "$stage\startup\quantum-materials.png"
+& $csc /nologo /target:exe /platform:x64 /main:StartupPreviewBuilder /reference:System.Drawing.dll /reference:System.Web.Extensions.dll /reference:System.Windows.Forms.dll @webViewReferences "/win32manifest:$PSScriptRoot\launcher\KssolvLauncher.manifest" "/out:$stage\StartupPreviewBuilder.exe" "$PSScriptRoot\launcher\StartupPreviewBuilder.cs" "$PSScriptRoot\launcher\StartupCard.cs"
+if ($LASTEXITCODE -ne 0) { throw 'Startup preview builder compilation failed.' }
+& "$stage\StartupPreviewBuilder.exe" "$stage\startup" $Version
+if ($LASTEXITCODE -ne 0) { throw 'Shared HTML startup preview generation failed.' }
 $buildHash = (Get-FileHash -LiteralPath $application -Algorithm SHA256).Hash.ToLowerInvariant()
 # Reuse the base bootstrap and its exact Runtime components. No MATLAB process.
 $runtimeDirectory = Join-Path $stage ('runtime-' + [Guid]::NewGuid().ToString('N'))

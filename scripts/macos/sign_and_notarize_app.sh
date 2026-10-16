@@ -48,6 +48,15 @@ sign_macho_files() {
 
 sign_matlab_app() {
     local app_path="$1"
+    local runtime_app="$app_path/Contents/Helpers/KSSOLV_Toolbox.app"
+    if [[ -d "$runtime_app" ]]; then
+        # Sign nested MATLAB code first; never rewrite it after sealing its bundle.
+        sign_matlab_app "$runtime_app"
+        codesign --force --options runtime --timestamp --sign "$DEV_ID" \
+            "$app_path/Contents/MacOS/KSSOLV_Toolbox"
+        codesign --force --options runtime --timestamp --sign "$DEV_ID" "$app_path"
+        return
+    fi
     local launcher
 
     # MathWorks 要求先签 MEX/其他嵌套代码，然后依次签 applauncher、

@@ -22,6 +22,7 @@ internal static class KssolvLauncher
     [STAThread]
     private static int Main(string[] args)
     {
+        DateTime launchStarted = DateTime.UtcNow;
         bool prewarm = args.Contains("--prewarm");
         chinese = Option(args, "--language", System.Globalization.CultureInfo.CurrentUICulture.Name.StartsWith("zh") ? "zh" : "en") == "zh";
         statusFile = prewarm ? Option(args, "--result", null) : null;
@@ -29,8 +30,8 @@ internal static class KssolvLauncher
         {
             string appRoot = AppDomain.CurrentDomain.BaseDirectory;
             var config = ReadConfig(Path.Combine(appRoot, "launcher.ini"));
-            string language;
-            if (!prewarm && config.TryGetValue("Language", out language)) chinese = language == "zh";
+            string locale = StartupLocale.Resolve(StartupLocale.FilePath, Environment.GetEnvironmentVariable("KSSOLV_LOCALE"), System.Globalization.CultureInfo.CurrentUICulture.Name);
+            if (!prewarm) chinese = locale == "zh_CN";
             string exe = Path.Combine(appRoot, "application", "KSSOLV_Toolbox.exe");
             string runtime = Path.GetFullPath(config["RuntimeRoot"]);
             string release = config["RuntimeRelease"];
@@ -75,17 +76,25 @@ internal static class KssolvLauncher
                     // Clear inherited installer-only signaling for regular launches.
                     start.EnvironmentVariables.Remove("KSSOLV_PREWARM_RESULT");
                     start.EnvironmentVariables.Remove("KSSOLV_PREWARM_NONCE");
-                    if (prewarm)
+                    start.EnvironmentVariables.Remove("KSSOLV_STARTUP_SIGNAL");
+                    start.EnvironmentVariables.Remove("KSSOLV_STARTUP_NONCE");
+                    start.EnvironmentVariables.Remove("KSSOLV_STARTUP_COMPLETION");
+                    if (!prewarm)
                     {
-                        start.EnvironmentVariables["KSSOLV_PREWARM_RESULT"] = readyFile;
-                        start.EnvironmentVariables["KSSOLV_PREWARM_NONCE"] = nonce;
-                        WriteLog(logFile, "Start " + DateTime.UtcNow.ToString("o") + " user=" + sid + " runtime=" + runtime);
+                        start.EnvironmentVariables["KSSOLV_LOCALE"] = locale;
+                        start.EnvironmentVariables["KSSOLV_STARTUP_COMPLETION"] = Path.Combine(cache, "startup-loaded.json");
+                        File.AppendAllText(Path.Combine(cache, "startup.log"), launchStarted.ToString("o") + " launch-requested nonce=" + nonce + " locale=" + locale + Environment.NewLine, new UTF8Encoding(false));
+                        SplashWindow.Run(start, Path.Combine(appRoot, "startup", "index.html"),
+                            readyFile, nonce, chinese, Path.Combine(cache, "startup.log"), config["Version"]);
+                        return 0;
                     }
+                    start.EnvironmentVariables["KSSOLV_PREWARM_RESULT"] = readyFile;
+                    start.EnvironmentVariables["KSSOLV_PREWARM_NONCE"] = nonce;
+                    WriteLog(logFile, "Start " + DateTime.UtcNow.ToString("o") + " user=" + sid + " runtime=" + runtime);
                     var watch = Stopwatch.StartNew();
                     using (var child = Process.Start(start))
-                    using (var job = prewarm ? new ProcessJob(child) : null)
+                    using (var job = new ProcessJob(child))
                     {
-                        if (!prewarm) return 0;
                         WriteStatus(new { status = "warming", cacheRoot = cache, userSid = sid, runtimeRoot = runtime });
                         if (!child.WaitForExit(900000))
                             throw new TimeoutException("Runtime prewarm exceeded 15 minutes. See " + logFile);
@@ -104,10 +113,16 @@ internal static class KssolvLauncher
                         WriteStatus(result); // Published only after readiness AND successful process exit.
                     }
                 }
-                finally { if (owns) mutex.ReleaseMutex(); if (prewarm && File.Exists(readyFile)) File.Delete(readyFile); }
+                finally
+                {
+                    if (owns) mutex.ReleaseMutex();
+                    foreach (string path in new[] { readyFile, readyFile + ".tmp", readyFile + ".reveal", readyFile + ".reveal.tmp" })
+                        if (File.Exists(path)) File.Delete(path);
+                }
             }
             return 0;
         }
+        catch (OperationCanceledException) { return 0; }
         catch (Exception exception)
         {
             try { if (prewarmLogFile != null) WriteLog(prewarmLogFile, "Failed " + exception); } catch { }
@@ -157,7 +172,7 @@ internal static class KssolvLauncher
     { File.AppendAllText(file, text + Environment.NewLine, new UTF8Encoding(false)); }
 
     // Closing the job kills all Runtime descendants on failure/timeout, including MATLABWindow.
-    private sealed class ProcessJob : IDisposable
+    internal sealed class ProcessJob : IDisposable
     {
         private IntPtr handle;
         [StructLayout(LayoutKind.Sequential)] private struct BasicLimit
@@ -178,6 +193,12 @@ internal static class KssolvLauncher
             if (handle == IntPtr.Zero || !SetInformationJobObject(handle, 9, ref limit, (uint)Marshal.SizeOf(limit)) ||
                 !AssignProcessToJobObject(handle, process.Handle))
             { Dispose(); if (!process.HasExited) process.Kill(); throw new InvalidOperationException("Unable to supervise Runtime process lifetime."); }
+        }
+        public void Release()
+        {
+            var limit = new ExtendedLimit();
+            if (!SetInformationJobObject(handle, 9, ref limit, (uint)Marshal.SizeOf(limit)))
+                throw new InvalidOperationException("Unable to release Runtime process supervision.");
         }
         public void Dispose() { if (handle != IntPtr.Zero) { CloseHandle(handle); handle = IntPtr.Zero; } }
     }

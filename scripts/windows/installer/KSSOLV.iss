@@ -129,6 +129,11 @@ Name: "{app}\installation-state"; Permissions: users-modify
 [Files]
 Source: "{#ReleaseDirectory}\build\KSSOLV_Toolbox.exe"; DestDir: "{app}\application"; Flags: ignoreversion
 Source: "{#Stage}\KssolvLauncher.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#Stage}\Microsoft.Web.WebView2.Core.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#Stage}\Microsoft.Web.WebView2.WinForms.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#Stage}\WebView2Loader.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#Stage}\WebView2-SDK-LICENSE.txt"; DestDir: "{app}\licenses"; Flags: ignoreversion
+Source: "{#Stage}\startup\*"; DestDir: "{app}\startup"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{#Stage}\kssolv.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#Repository}\LICENSE"; DestDir: "{app}\licenses"; Flags: ignoreversion
 Source: "{#Repository}\THIRD-PARTY-LICENSES.md"; DestDir: "{app}\licenses"; Flags: ignoreversion

@@ -13,6 +13,10 @@ arguments
 end
 
 if ksFile == "--prewarm"
+    if isdeployed
+        setenv('KSSOLV_STARTUP_SIGNAL', '');
+        setenv('KSSOLV_STARTUP_NONCE', '');
+    end
     kssolvPrewarm();
     return
 end
@@ -20,6 +24,16 @@ end
 try
     app = kssolv(ksFile, hostInBrowser);
 catch exception
+    if isdeployed
+        try
+            kssolv.ui.util.StartupSplash.fail(exception);
+        catch signalException
+            disp(signalException.message);
+        end
+        if ~isfolder(KSSOLV_Toolbox.LogsDirectory)
+            mkdir(KSSOLV_Toolbox.LogsDirectory);
+        end
+    end
     disp(exception.message);
     writelines(exception.message, fullfile(KSSOLV_Toolbox.LogsDirectory, "kssolvStart.log"), "WriteMode", "append");
     return

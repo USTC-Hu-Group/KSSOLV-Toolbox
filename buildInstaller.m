@@ -47,23 +47,27 @@ buildOptions.TreatInputsAsNumeric = false;
 % 编译独立应用程序
 if ispc
     buildOptions.ExecutableSplashScreen = fullfile(KSSOLV_Toolbox.UIResourcesDirectory, "icons", "companyLOGO.png");
-    buildResult = compiler.build.standaloneWindowsApplication(buildOptions);
+end
+% 所有平台统一禁用 JVM；平台差异仅用于选择可执行文件格式、
+% 图标、启动画面以及待安装的文件。
+[buildResult, runtimeDefinition] = kssolv.util.StandaloneBuild.build(buildOptions);
+if ispc
     validateWindowsStandalonePayload(buildOptions, toolboxFolder);
 else
-    buildResult = compiler.build.standaloneApplication(buildOptions);
     validateStandalonePayload(buildOptions.OutputDir, toolboxFolder);
 end
 
-% Both platform packagers require a payload that implements the startup handshake.
+% 各平台打包器均要求应用载荷实现启动握手协议。
 runtimeMetadata = struct('RuntimeRelease', "R" + version('-release'), ...
     'RuntimeVersion', strjoin(string(sscanf(version, '%d.%d').'), '.'), ...
     'ApplicationVersion', KSSOLV_Toolbox.Version, ...
-    'Architecture', computer('arch'), 'StartupProtocolVersion', 1);
+    'Architecture', computer('arch'), 'StartupProtocolVersion', 1, ...
+    'JVMEnabled', false);
 writelines(jsonencode(runtimeMetadata), ...
     fullfile(buildOptions.OutputDir, 'runtime-metadata.json'), Encoding="UTF-8");
 
 % 设置打包属性
-packageOptions = compiler.package.InstallerOptions(buildResult);
+packageOptions = compiler.package.InstallerOptions('ApplicationName', KSSOLV_Toolbox.Name);
 packageOptions.ApplicationName = KSSOLV_Toolbox.Name;
 packageOptions.AuthorName = KSSOLV_Toolbox.Author;
 packageOptions.AuthorEmail = KSSOLV_Toolbox.AuthorEmail;
@@ -88,7 +92,7 @@ if ismac
         rmdir(installerApp, 's');
     end
 end
-compiler.package.installer(buildResult, "Options", packageOptions);
+compiler.package.installer(buildResult, runtimeDefinition, "Options", packageOptions);
 delete(addOnRuntimeCleanup)
 delete(dialogFrameworkCleanup)
 delete(buildPathCleanup)

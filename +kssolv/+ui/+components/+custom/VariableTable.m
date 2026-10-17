@@ -260,7 +260,6 @@ classdef VariableTable < matlab.ui.componentcontainer.ComponentContainer & ...
 
             % Reference: https://ww2.mathworks.cn/matlabcentral/fileexchange/131274-cctools
             warning('off', 'MATLAB:structOnObject');
-            warning('off', 'MATLAB:ui:javaframe:PropertyToBeRemoved');
 
             figureHandle = ancestor(this.Table, 'figure');
             webWindow = [];

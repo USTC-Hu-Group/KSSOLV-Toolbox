@@ -5,7 +5,7 @@ SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPOSITORY_DIR="$SCRIPTS_DIR/../.."
 RELEASE_DIR="$REPOSITORY_DIR/Release/StandaloneDesktopApp"
 PKG_ASSETS_DIR="$SCRIPTS_DIR/pkg"
-PKG_IDENTIFIER="com.hanhai.kssolv-toolbox"
+PKG_IDENTIFIER="com.pwdft.kssolv"
 METADATA="$RELEASE_DIR/build/runtime-metadata.json"
 [[ -f "$METADATA" ]] || { echo 'Missing runtime-metadata.json. Run buildInstaller() first.' >&2; exit 1; }
 RUNTIME_RELEASE=$(/usr/bin/plutil -extract RuntimeRelease raw -o - "$METADATA")

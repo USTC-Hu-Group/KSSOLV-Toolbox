@@ -58,6 +58,21 @@ OUTPUT_LOG="$WORK_DIR/output.log"
 TIMEOUT_FLAG="$WORK_DIR/timed-out"
 RUNNER_PID=""
 WATCHDOG_PID=""
+stop_prewarm_group() {
+    # The native prewarm supervisor creates a group with its own PID, before
+    # spawning Runtime/CEF. Stop that session only, never another MATLAB launch.
+    if ! kill -TERM -- "-$RUNNER_PID" 2>/dev/null; then
+        # The executable may fail or stall before creating its private group.
+        /usr/bin/pkill -KILL -P "$RUNNER_PID" 2>/dev/null || true
+        kill -KILL "$RUNNER_PID" 2>/dev/null || true
+        return
+    fi
+    for ((attempt=0; attempt<40; attempt++)); do
+        if ! kill -0 -- "-$RUNNER_PID" 2>/dev/null; then return; fi
+        sleep 0.1
+    done
+    kill -KILL -- "-$RUNNER_PID" 2>/dev/null || true
+}
 stop_watchdog() {
     if [[ -n "$WATCHDOG_PID" ]]; then
         /usr/bin/pkill -TERM -P "$WATCHDOG_PID" 2>/dev/null || true
@@ -69,8 +84,8 @@ stop_watchdog() {
 cleanup() {
     stop_watchdog
     if [[ -n "$RUNNER_PID" ]]; then
-        /usr/bin/pkill -KILL -P "$RUNNER_PID" 2>/dev/null || true
-        kill -KILL "$RUNNER_PID" 2>/dev/null || true
+        stop_prewarm_group
+        wait "$RUNNER_PID" 2>/dev/null || true
     fi
     /bin/rm "$OUTPUT_LOG"
     [[ ! -e "$TIMEOUT_FLAG" ]] || /bin/rm "$TIMEOUT_FLAG"
@@ -84,16 +99,21 @@ RUNNER_PID=$!
 (
     sleep "$TIMEOUT"
     touch "$TIMEOUT_FLAG"
-    /usr/bin/pkill -KILL -P "$RUNNER_PID" 2>/dev/null || true
-    kill -KILL "$RUNNER_PID" 2>/dev/null || true
+    stop_prewarm_group
 ) 2>/dev/null &
 WATCHDOG_PID=$!
 
 STATUS=0
 wait "$RUNNER_PID" 2>/dev/null || STATUS=$?
+# A killed supervisor cannot run its defer block. Reap any surviving members
+# of its dedicated group before accepting success or reporting failure.
+if kill -0 -- "-$RUNNER_PID" 2>/dev/null; then stop_prewarm_group; fi
 RUNNER_PID=""
 stop_watchdog
-[[ ! -e "$TIMEOUT_FLAG" ]] || fail "timed out after ${TIMEOUT}s"
+if [[ -e "$TIMEOUT_FLAG" ]]; then
+    cat "$OUTPUT_LOG" >&2
+    fail "timed out after ${TIMEOUT}s"
+fi
 if [[ "$STATUS" -ne 0 ]] || \
     ! /usr/bin/grep -qx 'KSSOLV_UI_PREWARM_OK' "$OUTPUT_LOG"; then
     cat "$OUTPUT_LOG" >&2

@@ -7,12 +7,12 @@ classdef StartupLocale
             if ispc
                 base = string(getenv('APPDATA'));
             elseif ismac
-                base = fullfile(string(java.lang.System.getProperty('user.home')), ...
+                base = fullfile(kssolv.util.Platform.home(), ...
                     'Library', 'Application Support');
             else
                 base = string(getenv('XDG_CONFIG_HOME'));
                 if strlength(base) == 0
-                    base = fullfile(string(java.lang.System.getProperty('user.home')), '.config');
+                    base = fullfile(kssolv.util.Platform.home(), '.config');
                 end
             end
             file = fullfile(base, 'KSSOLV Toolbox', 'startup.json');

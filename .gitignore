@@ -27,45 +27,7 @@
 
 # Debug scipts
 /examples/
-dev/*
-!dev/deployment/
-dev/deployment/*
-!dev/deployment/*.m
-!dev/docs/
-dev/docs/*
-!dev/docs/development/
-!dev/docs/development/*.md
-!dev/crystal-viewer/
-dev/crystal-viewer/*
-!dev/crystal-viewer/docs/
-!dev/crystal-viewer/docs/**
-!dev/volume-viewer/
-dev/volume-viewer/*
-!dev/volume-viewer/docs/
-!dev/volume-viewer/docs/**
-!dev/remote-computing/
-dev/remote-computing/*
-!dev/remote-computing/docs/
-!dev/remote-computing/docs/**
-!dev/remote-computing/acceptance/
-dev/remote-computing/acceptance/*
-!dev/remote-computing/acceptance/README.md
-!dev/remote-computing/acceptance/reports/
-!dev/remote-computing/acceptance/reports/**
-!dev/modeling/
-dev/modeling/*
-!dev/modeling/generateModelingExamples.m
-!dev/modeling/examples/
-dev/modeling/examples/*
-!dev/modeling/examples/README.zh-CN.md
-!dev/modeling/docs/
-!dev/modeling/docs/**
-!dev/modeling/acceptance/
-dev/modeling/acceptance/*
-!dev/modeling/acceptance/README.md
-!dev/modeling/acceptance/scenarios/
-!dev/modeling/acceptance/scenarios/*.m
-!dev/matgenlab/
+/dev/
 Untitled*
 
 # Build Output

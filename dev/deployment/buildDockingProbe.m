@@ -12,9 +12,5 @@ options.OutputDir = outputDirectory;
 options.ExecutableName = 'dockingProbe';
 options.TreatInputsAsNumeric = false;
 options.ObfuscateArchive = false;
-if ispc
-    compiler.build.standaloneWindowsApplication(options);
-else
-    compiler.build.standaloneApplication(options);
-end
+kssolv.util.StandaloneBuild.build(options);
 end

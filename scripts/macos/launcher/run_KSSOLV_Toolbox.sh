@@ -9,5 +9,5 @@ KSSOLV_RUNTIME_ROOT="$1"
 export KSSOLV_RUNTIME_ROOT
 shift
 exe_dir=$(CDPATH= cd "$(dirname "$0")" && pwd)
-# exec preserves the prewarm watchdog's existing process parent/child boundary.
+# The native prewarm supervisor uses this PID as its dedicated process group.
 exec "$exe_dir/KSSOLV_Toolbox.app/Contents/MacOS/KSSOLV_Toolbox" "$@"

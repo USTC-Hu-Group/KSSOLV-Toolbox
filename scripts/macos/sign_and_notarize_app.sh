@@ -52,6 +52,17 @@ sign_matlab_app() {
     if [[ -d "$runtime_app" ]]; then
         # Sign nested MATLAB code first; never rewrite it after sealing its bundle.
         sign_matlab_app "$runtime_app"
+        local window_app="$app_path/Contents/Helpers/KSSOLVWindow.app"
+        [[ -d "$window_app" ]] || fail '缺少私有品牌窗口应用'
+        sign_macho_files "$window_app"
+        codesign --force --options runtime --timestamp \
+            --entitlements "$ENTITLEMENTS" \
+            --identifier com.pwdft.kssolv.window \
+            --sign "$DEV_ID" "$window_app"
+        # The scoped Dock bridge is outer-bundle code, outside the Compiler copy.
+        if [[ -d "$app_path/Contents/Frameworks" ]]; then
+            sign_macho_files "$app_path/Contents/Frameworks"
+        fi
         codesign --force --options runtime --timestamp --sign "$DEV_ID" \
             "$app_path/Contents/MacOS/KSSOLV_Toolbox"
         codesign --force --options runtime --timestamp --sign "$DEV_ID" "$app_path"
@@ -96,7 +107,7 @@ sign_and_notarize_pkg() {
     identifier=$(/usr/bin/xmllint --xpath 'string(/pkg-info/@identifier)' "$package_info")
     version=$(/usr/bin/xmllint --xpath 'string(/pkg-info/@version)' "$package_info")
     install_location=$(/usr/bin/xmllint --xpath 'string(/pkg-info/@install-location)' "$package_info")
-    [[ "$identifier" == "com.hanhai.kssolv-toolbox" && -n "$version" && "$install_location" == "/" ]] || \
+    [[ "$identifier" == "com.pwdft.kssolv" && -n "$version" && "$install_location" == "/" ]] || \
         fail "PKG 标识、版本或安装位置不符合 KSSOLV 安装包要求"
 
     local app_path="$WORK_DIR/expanded/Payload/Applications/KSSOLV_Toolbox/application/KSSOLV_Toolbox.app"
@@ -150,6 +161,15 @@ if [[ $# -gt 0 ]]; then
     shift
 fi
 case "$MODE" in
+    --sign-app)
+        [[ $# -eq 1 && -d "$1" ]] || fail "用法: $0 --sign-app 应用.app"
+        APP_TO_SIGN="$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"
+        chmod -R u+w "$APP_TO_SIGN"
+        xattr -cr "$APP_TO_SIGN"
+        sign_matlab_app "$APP_TO_SIGN"
+        codesign --verify --deep --strict --verbose=2 "$APP_TO_SIGN"
+        exit 0
+        ;;
     --pkg)
         [[ $# -le 1 ]] || fail "用法: $0 [--pkg [安装包.pkg]]"
         if [[ $# -eq 1 ]]; then

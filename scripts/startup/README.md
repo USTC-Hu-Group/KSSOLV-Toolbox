@@ -19,6 +19,86 @@ The copyright displays the full company name: 合肥瀚海量子科技有限公�
 Chinese and Hefei Hanhai Quantum Technology Co., Ltd. in English. The company
 name stays together and wraps below the year when necessary.
 
+The macOS card floats above the Runtime's separate application. On macOS 13 and
+later, `canJoinAllApplications` keeps it visible when Stage Manager switches to
+the initializing Runtime, instead of moving the card into the recent-app strip.
+At handoff the host activates only the CEF application in its Runtime process
+group, so Stage Manager can reveal the Toolbox window in the active set.
+See Apple's [window collection behavior](https://developer.apple.com/documentation/appkit/nswindow/collectionbehavior-swift.struct/canjoinallapplications).
+
+On macOS Dock ownership is handed off serially. The startup host first displays
+its branded tile, then becomes an accessory before acknowledging the CEF
+process's foreground request. CEF becomes the regular application so its native
+menu bar and Stage Manager behavior remain available. This avoids concurrent
+foreground owners, but the separate system operations may briefly leave no tile;
+the accepted tradeoff prioritizes native window behavior. Both tiles use the
+existing `companyLOGO.png` branding, composited on one opaque white rounded
+plate by the existing Swift host at build time. The host and private window
+bundle receive identical ICNS bytes. The signed, launch-scoped
+`KssolvDockBridge.dylib` applies that image before promotion; AppKit draws the
+standard Dock tile without a custom content view.
+
+The macOS package identifier and public application's bundle identifier are both
+`com.pwdft.kssolv`. The private window bundle and its signing identifier use
+`com.pwdft.kssolv.window`; scoped Dock notifications use `com.pwdft.kssolv.dock.`
+followed by the launch nonce. Keep the packager, signer, host and bridge in sync
+when changing these identifiers.
+
+The copied Compiler bundle remains an `LSUIElement`. The host validates the
+bridge nonce, PID, process group and regular policy before revealing Toolbox.
+A private registry in `~/Library/Caches/KSSOLV Toolbox/dock` binds the launch to
+its host and signed library. Only the identified Compiler startup window is prevented
+from ordering onscreen until explicit reveal; panels, alerts and sheets retain
+their normal behavior, and the ordering hook is removed after reveal. Native
+CEF handles Dock activation and menus. Launch-specific notifications cover
+Finder reopen and host cleanup. Process-exit sources clean the owned session
+when its Runtime or window process exits. Unexpected host exit leaves CEF
+reachable. Shared Runtime files are untouched.
+
+The package embeds a signed, branded copy of `MATLABWindow.app`, keeping its
+executable name for Runtime compatibility. Only the validated Compiler process's
+exact window path at the `execvp`/`execv`/`execve` boundary is redirected; argv and environment are preserved.
+The host copies the template into an owner-only cache keyed by its content and
+the Runtime root, verifies its bytes on reuse, and provides sibling framework
+and helper aliases there. Those external aliases cannot live inside the sealed
+application bundle. The cache copy survives process exit so Dock can still read
+its branded icon while removing the tile. macOS can evict the cache; the host
+recreates it on the next launch. The cache uses the configured Runtime root and
+does not patch library load commands or require additional entitlements.
+
+All standalone builds (Windows, macOS, and Linux), including the docking probe,
+use the documented [`mcc -R -nojvm`](https://www.mathworks.com/help/compiler/matlab-runtime-startup-options.html) startup option through
+`kssolv.util.StandaloneBuild`. Runtime metadata records `JVMEnabled=false` on
+every platform. Startup locale paths use native environment variables.
+`test_startup_app.sh` exercises the policy interception and lifecycle with a native fixture, without MATLAB
+or a JVM; the signed real payload also requires installation acceptance tests.
+
+macOS installation prewarm uses a separate background path. The native entry
+does not construct `NSApplication` or WKWebView. It publishes a `mode=prewarm`
+bridge registration before starting Runtime, reuses the private branded window
+cache, and keeps the Compiler and CEF applications as UI elements. In this mode
+the bridge suppresses foreground promotion, regular activation policy and window
+ordering; it never requests a Dock handoff or reveals the main window. Runtime
+still initializes the full application and must emit `KSSOLV_UI_PREWARM_OK`.
+Both `orderWindow:relativeTo:` and `orderFrontRegardless` are guarded before
+ordering: the latter can bypass the former in AppKit. Prewarm also clamps native
+window opacity to zero from both public initializers through teardown, including
+later opacity requests; the real CEF window can bypass the public ordering guard.
+These guards are installed only in the validated prewarm CEF process. Foreground
+activation and key-window requests are also suppressed, so an invisible accessory
+application cannot take keyboard focus during prewarm. Foreground registration
+alone is insufficient evidence of background operation. Real-payload
+acceptance must sample WindowServer for the owned process group through startup
+and exit, and require no visible windows or frontmost application samples as well
+as the successful prewarm marker. A zero-opacity window may still be registered
+as onscreen.
+Prewarm runs in a dedicated process group led by its supervisor. The installer
+watchdog terminates that group on timeout; the supervisor reaps Runtime, bounds
+residual helper cleanup and removes its registry and communication directory.
+Failure diagnostics go to the installation log rather than a modal alert.
+The native fixture exercises successful background rendering, failure exit
+status and the real installer watchdog with an actual held window process.
+
 The 32-pixel margins and 8-pixel spacing grid align the issuer, product, status and
 footer. KSSOLV Toolbox is one title group; the issuer uses a smaller horizontal
 lockup. CSS clips the emblem, Chinese lettering and English lettering from the

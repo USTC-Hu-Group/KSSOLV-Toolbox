@@ -199,6 +199,20 @@ AppContainer contexts cannot be added after its children are attached.
 The host owns only its launch's process tree and terminates it on cancellation,
 failure, or timeout. Successful handoff leaves Toolbox running.
 
+The macOS public bundle is named `KSSOLV Toolbox.app`; Compiler executables and
+private helper names retain their generated spelling. The startup card uses
+a native cancel button above WebKit with always-active hover tracking, a pointing
+hand cursor and red hover/pressed feedback. It calls the same launch-scoped
+cancellation path as the HTML button, which remains in use on Windows.
+The card is a presentation surface: text selection, clipboard copying, native
+image dragging and the browser context menu are disabled. These restrictions do
+not consume button clicks or remove the accessibility text.
+On macOS the canvas stays at 800×494 logical points. The host fits it uniformly
+inside the current screen's visible frame with a 16-point margin, never enlarging
+it above its design size. WebKit and the native cancel button share this canvas,
+so artwork, text and hit targets scale together. Screen changes refit the card;
+Retina backing resolution remains managed by AppKit.
+
 Windows regression entry points are `scripts/windows/tests/Test-StartupSplash.ps1`
 for the native/HTML hosts and `scripts/windows/tests/Test-InstalledStartup.ps1`
 for the installed MATLAB payload, Locale, handoff, and full interface loading.

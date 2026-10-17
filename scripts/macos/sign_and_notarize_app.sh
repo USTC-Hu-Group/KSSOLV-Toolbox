@@ -110,8 +110,8 @@ sign_and_notarize_pkg() {
     [[ "$identifier" == "com.pwdft.kssolv" && -n "$version" && "$install_location" == "/" ]] || \
         fail "PKG 标识、版本或安装位置不符合 KSSOLV 安装包要求"
 
-    local app_path="$WORK_DIR/expanded/Payload/Applications/KSSOLV_Toolbox/application/KSSOLV_Toolbox.app"
-    [[ -d "$app_path" ]] || fail "PKG 中找不到 KSSOLV_Toolbox.app"
+    local app_path="$WORK_DIR/expanded/Payload/Applications/KSSOLV_Toolbox/application/KSSOLV Toolbox.app"
+    [[ -d "$app_path" ]] || fail "PKG 中找不到 KSSOLV Toolbox.app"
     chmod -R u+w "$app_path"
     xattr -cr "$app_path"
     sign_matlab_app "$app_path"

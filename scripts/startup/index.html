@@ -8,6 +8,9 @@
   <title>KSSOLV Toolbox</title>
   <style>
     html, body { width:100%; height:100%; margin:0; overflow:hidden; background:#fff; color:#152a40; font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,"Microsoft YaHei UI","Microsoft YaHei","PingFang SC",sans-serif; font-weight:400; }
+    /* Presentation-only surface; the cancel button remains interactive. */
+    * { -webkit-user-select:none; -ms-user-select:none; user-select:none; }
+    img { -webkit-user-drag:none; pointer-events:none; }
     html[lang="zh-CN"] body { font-family:"Microsoft YaHei UI","Microsoft YaHei","PingFang SC",-apple-system,BlinkMacSystemFont,sans-serif; }
     h1, .art, .art-caption { font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,sans-serif; }
     body { box-shadow:inset 0 0 0 1px #e1e6eb; }
@@ -50,15 +53,15 @@
 </head>
 <body>
   <div class="art" aria-hidden="true">
-    <img class="crystal" id="crystal" src="quantum-materials.png" alt="">
+    <img class="crystal" id="crystal" src="quantum-materials.png" alt="" draggable="false">
     <div class="art-shade"></div>
   </div>
   <button type="button" class="cancel" id="cancel" aria-label="Cancel startup" title="Cancel startup">&#215;</button>
   <main>
     <div class="brand" role="img" aria-label="瀚海量子 Hanhai Quantum">
-      <div class="brand-fragment brand-mark"><img id="logo" src="company-logo.png" alt=""></div>
-      <div class="brand-fragment brand-chinese"><img src="company-logo.png" alt=""></div>
-      <div class="brand-fragment brand-english"><img src="company-logo.png" alt=""></div>
+      <div class="brand-fragment brand-mark"><img id="logo" src="company-logo.png" alt="" draggable="false"></div>
+      <div class="brand-fragment brand-chinese"><img src="company-logo.png" alt="" draggable="false"></div>
+      <div class="brand-fragment brand-english"><img src="company-logo.png" alt="" draggable="false"></div>
     </div>
     <div class="product">
     <h1>KSSOLV<span>Toolbox</span></h1>
@@ -78,6 +81,11 @@
   <script>
     // ES5 and classic layout also support the Windows system HTML viewer.
     (function () {
+      function preventPresentationAction(event) { event.preventDefault(); }
+      var blockedActions = ['selectstart', 'copy', 'cut', 'dragstart', 'contextmenu'];
+      for (var action = 0; action < blockedActions.length; action += 1) {
+        document.addEventListener(blockedActions[action], preventPresentationAction, false);
+      }
       function send(name) {
         if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers[name]) {
           window.webkit.messageHandlers[name].postMessage(true);
@@ -90,6 +98,8 @@
       }
       function text(element, value) { element.textContent = value; element.innerText = value; }
       var metadata = window.kssolvStartup || {};
+      // macOS overlays a native button with always-active pointer tracking.
+      if (metadata.nativeCancel) { document.getElementById('cancel').style.display = 'none'; }
       var language = metadata.language || navigator.language || navigator.userLanguage || 'en';
       var version = metadata.version || '';
       try { if (window.external) { language = window.external.GetLanguage(); version = window.external.GetVersion(); } } catch (ignored) {}

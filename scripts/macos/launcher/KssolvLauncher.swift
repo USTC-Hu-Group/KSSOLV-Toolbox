@@ -3,6 +3,42 @@ import WebKit
 import Darwin
 import CryptoKit
 
+// Borderless NSWindow instances cannot become key by default. WebKit needs a
+// key window and mouse-moved delivery for hover/cursor feedback and first-click
+// interaction with the startup card's cancel button.
+final class StartupCardWindow: NSWindow {
+    override var canBecomeKey: Bool { true }
+}
+
+final class StartupCancelButton: NSButton {
+    private var hoverArea: NSTrackingArea?
+    private var hovered = false
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+    override func updateTrackingAreas() {
+        if let hoverArea = hoverArea { removeTrackingArea(hoverArea) }
+        let area = NSTrackingArea(rect: bounds, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect], owner: self, userInfo: nil)
+        addTrackingArea(area)
+        hoverArea = area
+        super.updateTrackingAreas()
+        if let window = window {
+            hovered = bounds.contains(convert(window.mouseLocationOutsideOfEventStream, from: nil))
+            updateBackground()
+        }
+    }
+    override func resetCursorRects() { addCursorRect(bounds, cursor: .pointingHand) }
+    override func mouseEntered(with event: NSEvent) { hovered = true; updateBackground() }
+    override func mouseExited(with event: NSEvent) { hovered = false; updateBackground() }
+    override func mouseDown(with event: NSEvent) {
+        layer?.backgroundColor = NSColor(srgbRed: 0.56, green: 0.13, blue: 0.17, alpha: 1).cgColor
+        super.mouseDown(with: event)
+        updateBackground()
+    }
+    private func updateBackground() {
+        layer?.backgroundColor = (hovered ? NSColor(srgbRed: 0.71, green: 0.17, blue: 0.22, alpha: 1) : .clear).cgColor
+    }
+}
+
 // The outer .app loads no MATLAB libraries. The original Compiler app is retained
 // in Helpers, while its runner and a relative app link live in Resources/Runtime.
 final class StartupHost: NSObject, NSApplicationDelegate, WKScriptMessageHandler, WKNavigationDelegate, NSWindowDelegate {
@@ -15,6 +51,8 @@ final class StartupHost: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     private let locale: String
     private var window: NSWindow!
     private var web: WKWebView!
+    private var cardCanvas: NSView?
+    private var fittingCard = false
     private var timer: Timer?
     private var child: pid_t = 0
     private var processGroup: pid_t = 0
@@ -61,14 +99,15 @@ final class StartupHost: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         controller.add(self, name: "cancel")
         record("launch-requested locale=" + locale)
         let language = locale == "zh_CN" ? "zh" : "en"
-        guard let bytes = try? JSONSerialization.data(withJSONObject: ["language": language, "version": config["version"] as? String ?? ""]),
+        guard let bytes = try? JSONSerialization.data(withJSONObject: ["language": language, "version": config["version"] as? String ?? "", "nativeCancel": true]),
             let metadata = String(data: bytes, encoding: .utf8) else { fail("Unable to read startup metadata."); return }
         controller.addUserScript(WKUserScript(source: "window.kssolvStartup=\(metadata);", injectionTime: .atDocumentStart, forMainFrameOnly: true))
         let configuration = WKWebViewConfiguration()
         configuration.userContentController = controller
         web = WKWebView(frame: NSRect(x: 0, y: 0, width: 800, height: 494), configuration: configuration)
         web.navigationDelegate = self
-        window = NSWindow(contentRect: web.bounds, styleMask: [.borderless], backing: .buffered, defer: false)
+        window = StartupCardWindow(contentRect: web.bounds, styleMask: [.borderless], backing: .buffered, defer: false)
+        window.acceptsMouseMovedEvents = true
         window.title = "KSSOLV Toolbox"
         window.isReleasedWhenClosed = false
         // MATLAB is a separate application and can become active before it has
@@ -79,8 +118,28 @@ final class StartupHost: NSObject, NSApplicationDelegate, WKScriptMessageHandler
             window.collectionBehavior.insert(.canJoinAllApplications)
         }
         window.delegate = self
-        window.contentView = web
-        window.center()
+        let canvas = NSView(frame: web.bounds)
+        // Keep WebKit's logical viewport fixed; AppKit scales this entire
+        // canvas, including the native cancel button, on small work areas.
+        canvas.autoresizesSubviews = false
+        canvas.addSubview(web)
+        let cancel = StartupCancelButton(frame: NSRect(x: 756, y: 458, width: 44, height: 36))
+        cancel.autoresizingMask = [.minXMargin, .minYMargin]
+        cancel.title = "×"
+        cancel.font = .systemFont(ofSize: 22)
+        cancel.contentTintColor = .white
+        cancel.isBordered = false
+        cancel.wantsLayer = true
+        cancel.toolTip = locale == "zh_CN" ? "取消启动" : "Cancel startup"
+        cancel.setAccessibilityLabel(cancel.toolTip)
+        cancel.target = self
+        cancel.action = #selector(cancelStartup(_:))
+        canvas.addSubview(cancel)
+        let content = NSView(frame: web.bounds)
+        content.addSubview(canvas)
+        window.contentView = content
+        cardCanvas = canvas
+        fitStartupCard()
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         let folder = resources.appendingPathComponent("startup", isDirectory: true)
@@ -88,6 +147,39 @@ final class StartupHost: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         started = Date()
         timer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in self?.poll() }
     }
+
+    @objc private func cancelStartup(_ sender: Any?) {
+        fail("Application startup was cancelled.", alert: false)
+    }
+
+    private func fitStartupCard() {
+        guard !finished, !running, !fittingCard, let window = window,
+            let canvas = cardCanvas, let screen = window.screen ?? NSScreen.main else { return }
+        #if KSSOLV_TEST_SMALL_DISPLAY
+        // Native UI fixture only; normal builds contain no display override.
+        let visibleFrame = NSRect(x: screen.visibleFrame.minX, y: screen.visibleFrame.minY, width: 640, height: 400)
+        #else
+        let visibleFrame = screen.visibleFrame
+        #endif
+        let available = visibleFrame.insetBy(dx: 16, dy: 16)
+        guard available.width > 0, available.height > 0 else { return }
+        fittingCard = true
+        defer { fittingCard = false }
+        let scale = min(1, available.width / 800, available.height / 494)
+        let size = NSSize(width: 800 * scale, height: 494 * scale)
+        window.setContentSize(size)
+        canvas.frame = NSRect(origin: .zero, size: size)
+        canvas.bounds = NSRect(x: 0, y: 0, width: 800, height: 494)
+        window.setFrameOrigin(NSPoint(x: available.midX - size.width / 2, y: available.midY - size.height / 2))
+        for case let button as StartupCancelButton in canvas.subviews {
+            button.updateTrackingAreas()
+            window.invalidateCursorRects(for: button)
+        }
+        record("card-layout width=\(size.width) height=\(size.height) scale=\(scale)")
+    }
+
+    func windowDidChangeScreen(_ notification: Notification) { fitStartupCard() }
+    func applicationDidChangeScreenParameters(_ notification: Notification) { fitStartupCard() }
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         guard !finished, message.frameInfo.isMainFrame else { return }

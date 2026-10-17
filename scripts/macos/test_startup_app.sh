@@ -82,8 +82,8 @@ xcrun clang -fobjc-arc -fblocks -target arm64-apple-macos12.0 -framework AppKit 
     "$SCRIPTS_DIR/launcher/tests/DockBridgeFixture.m" -o "$WORK/MATLABWindow.app/Contents/MacOS/MATLABWindow"
 ln -s "$WORK/MATLABWindow.app" "$WORK/runtime/bin/maca64/MATLABWindow.app"
 KSSOLV_WINDOW_APP_SOURCE="$WORK/MATLABWindow.app" /bin/bash "$SCRIPTS_DIR/build_startup_app.sh" "$WORK/original.app" "$WORK/runner.sh" \
-    "$WORK/KSSOLV_Toolbox.app" R2026b 0.0.1
-HOST="$WORK/KSSOLV_Toolbox.app/Contents/MacOS/KSSOLV_Toolbox"
+    "$WORK/KSSOLV Toolbox.app" R2026b 0.0.1
+HOST="$WORK/KSSOLV Toolbox.app/Contents/MacOS/KSSOLV_Toolbox"
 cp "$SCRIPTS_DIR/launcher/run_KSSOLV_Toolbox.sh" "$WORK/run_KSSOLV_Toolbox.sh"
 chmod 0755 "$WORK/run_KSSOLV_Toolbox.sh"
 KSSOLV_STARTUP_TEST_PREWARM="$WORK/prewarm-background" KSSOLV_STARTUP_TEST_PID="$WORK/prewarm.pid" \

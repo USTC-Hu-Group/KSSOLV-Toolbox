@@ -4,7 +4,7 @@ set -u
 LABEL="com.gleamoe.kssolv.prewarm"
 RUNTIME_RELEASE="@MATLAB_RUNTIME_RELEASE@"
 APP_ROOT="${KSSOLV_APP_ROOT:-/Applications/KSSOLV_Toolbox/application}"
-APP_PATH="$APP_ROOT/KSSOLV_Toolbox.app"
+APP_PATH="$APP_ROOT/KSSOLV Toolbox.app"
 RUNNER="$APP_ROOT/run_KSSOLV_Toolbox.sh"
 TIMEOUT="${KSSOLV_PREWARM_TIMEOUT:-900}"
 

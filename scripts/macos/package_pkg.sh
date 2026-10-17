@@ -69,10 +69,10 @@ ditto "$EXTRACT_DIR/application" \
 /bin/bash "$SCRIPTS_DIR/build_startup_app.sh" \
     "$EXTRACT_DIR/application/KSSOLV_Toolbox.app" \
     "$EXTRACT_DIR/application/run_KSSOLV_Toolbox.sh" \
-    "$WORK_DIR/startup/KSSOLV_Toolbox.app" "$RUNTIME_RELEASE" "$VERSION"
+    "$WORK_DIR/startup/KSSOLV Toolbox.app" "$RUNTIME_RELEASE" "$VERSION"
 mv "$PAYLOAD_ROOT/Applications/KSSOLV_Toolbox/application/KSSOLV_Toolbox.app" "$WORK_DIR/original-payload.app"
-ditto "$WORK_DIR/startup/KSSOLV_Toolbox.app" \
-    "$PAYLOAD_ROOT/Applications/KSSOLV_Toolbox/application/KSSOLV_Toolbox.app"
+ditto "$WORK_DIR/startup/KSSOLV Toolbox.app" \
+    "$PAYLOAD_ROOT/Applications/KSSOLV_Toolbox/application/KSSOLV Toolbox.app"
 cp "$SCRIPTS_DIR/launcher/run_KSSOLV_Toolbox.sh" \
     "$PAYLOAD_ROOT/Applications/KSSOLV_Toolbox/application/run_KSSOLV_Toolbox.sh"
 chmod 0755 "$PAYLOAD_ROOT/Applications/KSSOLV_Toolbox/application/run_KSSOLV_Toolbox.sh"
@@ -114,9 +114,8 @@ while bundle_path=$(/usr/libexec/PlistBuddy -c "Print :$bundle_index:RootRelativ
     /usr/libexec/PlistBuddy -c "Set :$bundle_index:BundleIsRelocatable false" "$COMPONENTS_PLIST"
     /usr/libexec/PlistBuddy -c "Set :$bundle_index:BundleIsVersionChecked false" "$COMPONENTS_PLIST"
     /usr/libexec/PlistBuddy -c "Set :$bundle_index:BundleOverwriteAction upgrade" "$COMPONENTS_PLIST"
-    if [[ "$bundle_path" == 'Applications/KSSOLV_Toolbox/application/KSSOLV_Toolbox.app' ]]; then
+    if [[ "$bundle_path" == 'Applications/KSSOLV_Toolbox/application/KSSOLV Toolbox.app' ]]; then
         outer_bundle_index="$bundle_index"
-        # The outer app replaces the earlier raw Compiler bundle at this exact path.
         /usr/libexec/PlistBuddy -c "Set :$bundle_index:BundleHasStrictIdentifier false" "$COMPONENTS_PLIST"
     fi
     bundle_index=$((bundle_index + 1))

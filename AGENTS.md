@@ -25,4 +25,5 @@
 - `type` 表示提交类型，可使用 `feat`、`fix`、`chore`、`docs`、`style`、`refactor`、`test`、`perf`、`deps`、`revert`、`merge`、`wip`、`conflict` 等与变更性质相符的类型。
 - `scope` 表示代码或变更所在的范围，例如模块、目录或功能；范围为空时仍必须保留括号，例如 `docs(): update repository development rules`。
 - 提交信息中的简短说明（`subject`）及详细描述正文（`body`）都必须使用英文。
+- 正文（`body`）应简洁、突出重点、语言凝练，避免过长；仅说明关键变更及必要原因，不重复标题或罗列实现细节。
 - `subject` 应简明、准确地描述本次变更。例如：`fix(startup): fix startup path resolution`。

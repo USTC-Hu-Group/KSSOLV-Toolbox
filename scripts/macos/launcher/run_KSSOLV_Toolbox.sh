@@ -10,4 +10,4 @@ export KSSOLV_RUNTIME_ROOT
 shift
 exe_dir=$(CDPATH= cd "$(dirname "$0")" && pwd)
 # The native prewarm supervisor uses this PID as its dedicated process group.
-exec "$exe_dir/KSSOLV_Toolbox.app/Contents/MacOS/KSSOLV_Toolbox" "$@"
+exec "$exe_dir/KSSOLV Toolbox.app/Contents/MacOS/KSSOLV_Toolbox" "$@"

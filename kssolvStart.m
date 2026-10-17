@@ -12,6 +12,12 @@ arguments
     hostInBrowser (1, 1) logical = kssolv.settings.Environment.hostInBrowser()
 end
 
+if isdeployed
+    % 在正常启动或预热创建界面之前，为独立程序会话统一设置原生浅色主题。
+    runtimeSettings = settings;
+    runtimeSettings.matlab.appearance.MATLABTheme.TemporaryValue = 'Light';
+end
+
 if ksFile == "--prewarm"
     if isdeployed
         setenv('KSSOLV_STARTUP_SIGNAL', '');

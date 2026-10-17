@@ -84,6 +84,15 @@ ln -s "$WORK/MATLABWindow.app" "$WORK/runtime/bin/maca64/MATLABWindow.app"
 KSSOLV_WINDOW_APP_SOURCE="$WORK/MATLABWindow.app" /bin/bash "$SCRIPTS_DIR/build_startup_app.sh" "$WORK/original.app" "$WORK/runner.sh" \
     "$WORK/KSSOLV Toolbox.app" R2026b 0.0.1
 HOST="$WORK/KSSOLV Toolbox.app/Contents/MacOS/KSSOLV_Toolbox"
+# Keep installer configuration inside the fixture. Runtime content validation is
+# covered separately against both inert trees and a real installed Runtime.
+mkdir -p "$WORK/support"
+sed "s|SUPPORT='/Library/Application Support/KSSOLV Toolbox'|SUPPORT='$WORK/support'|" \
+    "$SCRIPTS_DIR/pkg/prewarm.sh" > "$WORK/prewarm.sh"
+cat > "$WORK/support/runtime-common.sh" <<'EOF'
+kssolv_plist() { return 1; }
+kssolv_find_runtime() { [[ -d "$KSSOLV_RUNTIME_ROOT/runtime/maca64" ]] && echo "$KSSOLV_RUNTIME_ROOT"; }
+EOF
 cp "$SCRIPTS_DIR/launcher/run_KSSOLV_Toolbox.sh" "$WORK/run_KSSOLV_Toolbox.sh"
 chmod 0755 "$WORK/run_KSSOLV_Toolbox.sh"
 KSSOLV_STARTUP_TEST_PREWARM="$WORK/prewarm-background" KSSOLV_STARTUP_TEST_PID="$WORK/prewarm.pid" \
@@ -106,7 +115,7 @@ KSSOLV_APP_ROOT="$WORK" KSSOLV_RUNTIME_ROOT="$WORK/runtime" KSSOLV_PREWARM_SKIP_
     KSSOLV_PREWARM_TIMEOUT=2 KSSOLV_STARTUP_TEST_PREWARM="$WORK/prewarm-timeout" \
     KSSOLV_STARTUP_TEST_PREWARM_HOLD=1 KSSOLV_STARTUP_TEST_PID="$WORK/prewarm-timeout.pid" \
     KSSOLV_STARTUP_TEST_APP="$WORK/runtime/bin/maca64/MATLABWindow.app" KSSOLV_STARTUP_TEST_CACHE="$WORK/window-cache-path" \
-    /bin/bash "$SCRIPTS_DIR/pkg/prewarm.sh" > "$WORK/prewarm-timeout.log" 2>&1 &
+    /bin/bash "$WORK/prewarm.sh" > "$WORK/prewarm-timeout.log" 2>&1 &
 PREWARM_SCRIPT=$!
 if wait "$PREWARM_SCRIPT"; then echo 'Prewarm timeout incorrectly succeeded' >&2; exit 1; fi
 [[ -f "$WORK/prewarm-timeout" ]]
@@ -125,7 +134,7 @@ KSSOLV_APP_ROOT="$WORK" KSSOLV_RUNTIME_ROOT="$WORK/runtime" KSSOLV_PREWARM_SKIP_
     KSSOLV_PREWARM_TIMEOUT=15 KSSOLV_STARTUP_TEST_PREWARM="$WORK/prewarm-host-death" \
     KSSOLV_STARTUP_TEST_PREWARM_HOLD=1 KSSOLV_STARTUP_TEST_PID="$WORK/prewarm-death.pid" \
     KSSOLV_STARTUP_TEST_APP="$WORK/runtime/bin/maca64/MATLABWindow.app" KSSOLV_STARTUP_TEST_CACHE="$WORK/window-cache-path" \
-    /bin/bash "$SCRIPTS_DIR/pkg/prewarm.sh" > "$WORK/prewarm-host-death.log" 2>&1 &
+    /bin/bash "$WORK/prewarm.sh" > "$WORK/prewarm-host-death.log" 2>&1 &
 PREWARM_SCRIPT=$!
 for ((i=0; i<100; i++)); do
     if [[ -f "$WORK/prewarm-host-death" ]]; then break; fi

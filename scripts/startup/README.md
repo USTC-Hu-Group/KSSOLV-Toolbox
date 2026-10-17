@@ -213,6 +213,67 @@ it above its design size. WebKit and the native cancel button share this canvas,
 so artwork, text and hit targets scale together. Screen changes refit the card;
 Retina backing resolution remains managed by AppKit.
 
+The native macOS product PKG supports three Runtime delivery modes:
+`web` downloads missing Runtime components from MathWorks; `installer` carries
+those components for offline installation; `none` requires a compatible existing
+Runtime. All modes first check the release, minimum build, arm64 architecture and
+required component records without executing Runtime. Existing standard system
+and user locations, an explicit `KSSOLV_RUNTIME_ROOT`, and the previously recorded
+location are checked. New Runtime installations use
+`/Applications/MATLAB/MATLAB_Runtime/<release>`. The `web` and `installer` packages
+present the Runtime license in the native Installer before installation.
+
+In `none` mode, Installation Type includes an **Existing MATLAB Runtime** choice
+with a native location control. Its default startup disk root (`/`) requests
+automatic detection. Select the version folder containing `VersionInfo.xml` to
+override detection, including a location on another mounted volume. An explicit
+selection must pass the release, minimum build, arm64 and component checks even
+when another compatible Runtime is installed. A payload-free component validates
+and records this choice before support or application installation; it writes
+nothing into the selected Runtime. Missing or incompatible Runtime stops the
+installation while preserving the old application and Runtime configuration.
+
+For `web` and `installer`, the support component prepares and verifies Runtime before application removal.
+The application preinstall hook verifies it again, refusing to uninstall when
+Runtime is unavailable. It then finds identified old bundles in `/Applications`,
+local users' `Applications` folders and the previously recorded custom location,
+including the underscored name. It removes those bundles, their generated runner
+and icon, known receipts and the old prewarm task. Shared Runtime, user settings,
+projects and unknown files remain. Running Toolbox instances block removal.
+
+On Installation Type, the native `customLocation` control selects the application
+folder (default `/Applications`, startup volume only). System support remains
+under `/Library`. The selected application and validated Runtime paths are stored
+in `/Library/Application Support/KSSOLV Toolbox/{application,runtime}.plist`.
+The launcher and background prewarm use these paths. Prewarm runs as the logged-in
+user only after the application payload has been installed.
+
+Build with MATLAB `-nojvm -batch "buildInstaller('web');"`, then run
+`bash scripts/macos/package_pkg.sh --runtime-delivery web` and
+`bash scripts/macos/sign_and_notarize_app.sh --pkg <output.pkg>`.
+To package a second delivery mode from the same compiled application without
+recompiling, run MATLAB `-nojvm -batch
+"addpath('scripts/macos'); prepareRuntimeInstaller('installer');"`, then package
+with `--runtime-delivery installer`. `none` needs no Runtime installer payload.
+`auto` follows the compiled metadata. Runtime-only installers are generated through
+MathWorks `compiler.runtime.customInstaller` and tied to the dependency JSON hash;
+stale or mismatched installers are rejected.
+For offline packaging, first run `compiler.runtime.download` with `-nojvm`, or
+set `MATLAB_RUNTIME_INSTALLER` to the matching official ZIP. The macOS helper
+configures the compiler cache location with a temporary settings value; it
+restores existing temporary values and removes any setting/group it introduced.
+It never writes a personal value. An isolated `MATLAB_PREFDIR` may also be used
+for a packaging-only process.
+Runtime license text is extracted verbatim from the official PDF for Installer's
+text viewer; both are included. `pkg/RuntimeLicense.json` records hashes of the
+reviewed PDF and text. A changed vendor agreement stops packaging until those
+assets are refreshed and checked. `MATLAB_RUNTIME_LICENSE` can point to the
+official PDF when it is not available in an installed Runtime or compiler cache.
+
+`python3 scripts/macos/test_pkg_runtime_modes.py` checks Runtime branches and
+failure preservation. `python3 scripts/macos/test_pkg_upgrade.py` exercises old
+installation detection and removal against isolated filesystem fixtures.
+
 Windows regression entry points are `scripts/windows/tests/Test-StartupSplash.ps1`
 for the native/HTML hosts and `scripts/windows/tests/Test-InstalledStartup.ps1`
 for the installed MATLAB payload, Locale, handoff, and full interface loading.

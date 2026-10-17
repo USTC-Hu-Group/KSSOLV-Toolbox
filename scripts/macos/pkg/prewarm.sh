@@ -3,9 +3,12 @@ set -u
 
 LABEL="com.gleamoe.kssolv.prewarm"
 RUNTIME_RELEASE="@MATLAB_RUNTIME_RELEASE@"
-APP_ROOT="${KSSOLV_APP_ROOT:-/Applications/KSSOLV_Toolbox/application}"
-APP_PATH="$APP_ROOT/KSSOLV Toolbox.app"
-RUNNER="$APP_ROOT/run_KSSOLV_Toolbox.sh"
+SUPPORT='/Library/Application Support/KSSOLV Toolbox'
+source "$SUPPORT/runtime-common.sh"
+APP_PATH=$(kssolv_plist "$SUPPORT/application.plist" ApplicationPath || true)
+APP_PATH="${APP_PATH:-/Applications/KSSOLV Toolbox.app}"
+if [[ -n "${KSSOLV_APP_ROOT:-}" ]]; then APP_PATH="$KSSOLV_APP_ROOT/KSSOLV Toolbox.app"; fi
+RUNNER="$APP_PATH/Contents/MacOS/KSSOLV_Toolbox"
 TIMEOUT="${KSSOLV_PREWARM_TIMEOUT:-900}"
 
 fail() {
@@ -22,36 +25,11 @@ if [[ "$USER_ID" -eq 0 ]]; then
 fi
 
 if [[ ! -d "$APP_PATH" || ! -x "$RUNNER" ]]; then
-    fail "application or Runtime launcher is missing: $APP_ROOT"
+    fail "application or Runtime launcher is missing: $APP_PATH"
 fi
 
-RUNTIME_ROOTS=(
-    "/Applications/MATLAB/MATLAB_Runtime/$RUNTIME_RELEASE"
-    "/Applications/MATLAB/MATLABRuntime/$RUNTIME_RELEASE"
-    "$HOME/Applications/MATLAB/MATLAB_Runtime/$RUNTIME_RELEASE"
-    "$HOME/Applications/MATLAB/MATLABRuntime/$RUNTIME_RELEASE"
-)
-
-RUNTIME_ROOT=""
-if [[ -n "${KSSOLV_RUNTIME_ROOT:-}" ]]; then
-    RUNTIME_ROOT="$KSSOLV_RUNTIME_ROOT"
-fi
-for candidate in "${RUNTIME_ROOTS[@]}"; do
-    if [[ -n "$RUNTIME_ROOT" ]]; then
-        break
-    fi
-    if [[ -d "$candidate/runtime/maca64" && \
-          -d "$candidate/bin/maca64" ]]; then
-        RUNTIME_ROOT="$candidate"
-        break
-    fi
-done
-
-# PKG 不包含 Runtime；同步安装要求它已经就绪。登录时的备用
-# LaunchAgent 会在 Runtime 暂未安装时保持启用并定期重试。
-[[ -n "$RUNTIME_ROOT" && -d "$RUNTIME_ROOT/runtime/maca64" && \
-    -d "$RUNTIME_ROOT/bin/maca64" ]] || \
-    fail "MATLAB Runtime $RUNTIME_RELEASE is not installed"
+RUNTIME_ROOT=$(kssolv_find_runtime "$SUPPORT/runtime-requirements.plist" || true)
+[[ -n "$RUNTIME_ROOT" ]] || fail "MATLAB Runtime $RUNTIME_RELEASE is not installed or is incomplete"
 
 WORK_DIR=$(mktemp -d "${TMPDIR:-/tmp}/kssolv-prewarm.XXXXXX")
 OUTPUT_LOG="$WORK_DIR/output.log"
@@ -94,7 +72,7 @@ cleanup() {
 trap cleanup EXIT
 trap 'exit 1' HUP INT TERM
 
-"$RUNNER" "$RUNTIME_ROOT" --prewarm >"$OUTPUT_LOG" 2>&1 &
+KSSOLV_RUNTIME_ROOT="$RUNTIME_ROOT" "$RUNNER" --prewarm >"$OUTPUT_LOG" 2>&1 &
 RUNNER_PID=$!
 (
     sleep "$TIMEOUT"

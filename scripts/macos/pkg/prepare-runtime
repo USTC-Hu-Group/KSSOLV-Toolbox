@@ -1,0 +1,65 @@
+#!/bin/bash
+set -euo pipefail
+fail() { echo "KSSOLV Runtime: $*" >&2; exit 1; }
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+source "$SCRIPT_DIR/runtime-common.sh"
+REQUIREMENTS="$SCRIPT_DIR/runtime-requirements.plist"
+RELEASE=$(kssolv_plist "$REQUIREMENTS" RuntimeRelease)
+DELIVERY=$(kssolv_plist "$REQUIREMENTS" RuntimeDelivery)
+# The none choice has no payload and may reference Runtime on another volume.
+# Components that install Runtime or support files stay on the startup volume.
+[[ "$DELIVERY" == none || "${3:-/}" == / ]] || fail 'Install on the startup volume.'
+DEFAULT_PARENT='/Applications/MATLAB/MATLAB_Runtime'
+
+USER_HOME="$HOME"
+CONSOLE_USER=$(/usr/bin/stat -f '%Su' /dev/console)
+case "$CONSOLE_USER" in
+    ''|root|loginwindow|_mbsetupuser) ;;
+    *) USER_HOME=$(/usr/bin/dscl /Search -read "/Users/$CONSOLE_USER" NFSHomeDirectory)
+       USER_HOME="${USER_HOME#NFSHomeDirectory: }" ;;
+esac
+SELECTION="${2:-/}"
+if [[ "$DELIVERY" == none ]]; then
+    [[ "$SELECTION" == /* && -d "$SELECTION" ]] || fail 'Choose an existing Runtime version folder containing VersionInfo.xml. Previous Toolbox retained.'
+    # PackageKit can report the startup root as // (or an APFS mount alias).
+    SELECTION=$(cd "$SELECTION" && /bin/pwd -P)
+fi
+if [[ "$DELIVERY" == none && "$SELECTION" != / ]]; then
+    # The payload-free choice passes its native folder selection as $2. Never
+    # install files into that directory or fall back after an explicit choice.
+    ROOT="$SELECTION"
+    kssolv_runtime_usable "$ROOT" "$REQUIREMENTS" || fail "Selected Runtime is incompatible or incomplete: $ROOT. Requires $RELEASE Apple silicon, the matching build and components. Previous Toolbox retained."
+    echo "KSSOLV: using selected compatible Runtime at $ROOT"
+else
+    ROOT=$(kssolv_find_runtime "$REQUIREMENTS" "$USER_HOME" || true)
+fi
+if [[ -z "$ROOT" ]]; then
+    [[ "$DELIVERY" != none ]] || fail "A complete $RELEASE Apple silicon Runtime is required. On Installation Type, select the existing Runtime choice and use its Location control to choose the version folder containing VersionInfo.xml. The application has not been uninstalled."
+    [[ "$DELIVERY" == web || "$DELIVERY" == installer ]] || fail 'Invalid Runtime delivery mode.'
+    [[ ! -L /Applications && ! -L /Applications/MATLAB && ! -L "$DEFAULT_PARENT" ]] || fail 'Unexpected Runtime directory symlink.'
+    EXECUTABLE=$(kssolv_plist "$REQUIREMENTS" InstallerExecutable)
+    [[ "$EXECUTABLE" != */* && -x "$SCRIPT_DIR/RuntimeSetup.app/Contents/MacOS/$EXECUTABLE" ]] || fail 'Matching Runtime installer is missing.'
+    LOG=$(/usr/bin/mktemp /var/tmp/kssolv-runtime-install.XXXXXX)
+    /bin/chmod 0644 "$LOG"
+    echo "KSSOLV: preparing $RELEASE Runtime ($DELIVERY) at $DEFAULT_PARENT; log: $LOG"
+    if ! "$SCRIPT_DIR/RuntimeSetup.app/Contents/MacOS/$EXECUTABLE" \
+        -agreeToLicense yes -runtimeFolder "$DEFAULT_PARENT" -outputFile "$LOG"; then
+        fail "Runtime preparation failed; previous Toolbox retained. See $LOG"
+    fi
+    ROOT="$DEFAULT_PARENT/$RELEASE"
+    kssolv_runtime_usable "$ROOT" "$REQUIREMENTS" || fail "Installed Runtime is incomplete; previous Toolbox retained. See $LOG"
+else
+    echo "KSSOLV: reusing compatible Runtime at $ROOT"
+fi
+
+# Only a validated Runtime is published; this is outside signed application code.
+[[ ! -L /Library && ! -L '/Library/Application Support' && ! -L "$KSSOLV_SUPPORT" ]] || fail 'Unexpected configuration directory symlink.'
+/bin/mkdir -p "$KSSOLV_SUPPORT"
+TEMP=$(/usr/bin/mktemp "$KSSOLV_SUPPORT/.runtime.XXXXXX")
+trap '/bin/rm -f "$TEMP"' EXIT
+/usr/bin/plutil -create xml1 "$TEMP"
+/usr/bin/plutil -insert RuntimeRoot -string "$ROOT" "$TEMP"
+/usr/bin/plutil -insert RuntimeRelease -string "$RELEASE" "$TEMP"
+/bin/chmod 0644 "$TEMP"
+/bin/mv -f "$TEMP" "$KSSOLV_SUPPORT/runtime.plist"
+echo 'KSSOLV_RUNTIME_PREPARED'

@@ -4,6 +4,18 @@ set -eu
 LABEL="com.gleamoe.kssolv.prewarm"
 PLIST="/Library/LaunchAgents/$LABEL.plist"
 PREWARM_SCRIPT="/Library/Application Support/KSSOLV Toolbox/prewarm.sh"
+SUPPORT="/Library/Application Support/KSSOLV Toolbox"
+APPLICATION_PATH="${2%/}/KSSOLV Toolbox.app"
+if [[ "${2:-}" == *.app ]]; then APPLICATION_PATH="$2"; fi
+[[ -x "$APPLICATION_PATH/Contents/MacOS/KSSOLV_Toolbox" ]] || { echo 'KSSOLV: installed application not found.' >&2; exit 1; }
+APPLICATION_PATH="$(cd -P "$APPLICATION_PATH" && pwd -P)"
+[[ ! -L "$SUPPORT" ]] || exit 1
+TEMP=$(/usr/bin/mktemp "$SUPPORT/.application.XXXXXX")
+trap '/bin/rm -f "$TEMP"' EXIT
+/usr/bin/plutil -create xml1 "$TEMP"
+/usr/bin/plutil -insert ApplicationPath -string "$APPLICATION_PATH" "$TEMP"
+/bin/chmod 0644 "$TEMP"
+/bin/mv -f "$TEMP" "$SUPPORT/application.plist"
 
 /usr/sbin/chown root:wheel "$PLIST" \
     "$PREWARM_SCRIPT"

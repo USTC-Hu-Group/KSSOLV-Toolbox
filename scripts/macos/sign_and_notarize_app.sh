@@ -89,7 +89,6 @@ sign_matlab_app() {
 
 sign_and_notarize_pkg() {
     local input_pkg="$1"
-    local package_info identifier version install_location install_kbytes number_of_files
 
     [[ -f "$input_pkg" && "$input_pkg" == *.pkg ]] || fail "找不到 PKG: $input_pkg"
     input_pkg="$(cd "$(dirname "$input_pkg")" && pwd)/$(basename "$input_pkg")"
@@ -101,38 +100,63 @@ sign_and_notarize_pkg() {
     # 1200 秒超时、固定安装位置及 Runtime 版本。只重新生成签名后的载荷和 BOM。
     pkgutil --expand "$input_pkg" "$WORK_DIR/original"
     pkgutil --expand-full "$input_pkg" "$WORK_DIR/expanded"
-    package_info="$WORK_DIR/original/PackageInfo"
-    [[ -f "$package_info" && -d "$WORK_DIR/expanded/Payload" ]] || \
-        fail "只支持 package_pkg.sh 生成的组件 PKG"
-    identifier=$(/usr/bin/xmllint --xpath 'string(/pkg-info/@identifier)' "$package_info")
-    version=$(/usr/bin/xmllint --xpath 'string(/pkg-info/@version)' "$package_info")
-    install_location=$(/usr/bin/xmllint --xpath 'string(/pkg-info/@install-location)' "$package_info")
-    [[ "$identifier" == "com.pwdft.kssolv" && -n "$version" && "$install_location" == "/" ]] || \
-        fail "PKG 标识、版本或安装位置不符合 KSSOLV 安装包要求"
-
-    local app_path="$WORK_DIR/expanded/Payload/Applications/KSSOLV_Toolbox/application/KSSOLV Toolbox.app"
+    local app_source="$WORK_DIR/expanded" app_original="$WORK_DIR/original" product=false
+    local app_path="$app_source/Payload/Applications/KSSOLV_Toolbox/application/KSSOLV Toolbox.app"
+    if [[ -f "$WORK_DIR/original/Distribution" ]]; then
+        product=true
+        app_source="$WORK_DIR/expanded/KSSOLVApplication.pkg"
+        app_original="$WORK_DIR/original/KSSOLVApplication.pkg"
+        app_path="$app_source/Payload/KSSOLV Toolbox.app"
+        [[ -f "$WORK_DIR/original/KSSOLVSupport.pkg/PackageInfo" ]] || fail '缺少 Runtime 支持组件'
+    fi
     [[ -d "$app_path" ]] || fail "PKG 中找不到 KSSOLV Toolbox.app"
     chmod -R u+w "$app_path"
     xattr -cr "$app_path"
     sign_matlab_app "$app_path"
     codesign --verify --deep --strict --verbose=2 "$app_path"
 
-    pkgbuild --root "$WORK_DIR/expanded/Payload" \
-        --identifier "$identifier" --version "$version" \
-        --install-location "$install_location" "$WORK_DIR/payload.pkg"
-    pkgutil --expand "$WORK_DIR/payload.pkg" "$WORK_DIR/rebuilt"
-    cp "$WORK_DIR/rebuilt/Payload" "$WORK_DIR/original/Payload"
-    cp "$WORK_DIR/rebuilt/Bom" "$WORK_DIR/original/Bom"
-    install_kbytes=$(/usr/bin/xmllint --xpath 'string(/pkg-info/payload/@installKBytes)' "$WORK_DIR/rebuilt/PackageInfo")
-    number_of_files=$(/usr/bin/xmllint --xpath 'string(/pkg-info/payload/@numberOfFiles)' "$WORK_DIR/rebuilt/PackageInfo")
-    [[ "$install_kbytes" =~ ^[0-9]+$ && "$number_of_files" =~ ^[0-9]+$ ]] || \
-        fail "无法读取签名后载荷的大小和文件数量"
-    /usr/bin/sed -E \
-        -e "/<payload /s/installKBytes=\"[^\"]*\"/installKBytes=\"$install_kbytes\"/" \
-        -e "/<payload /s/numberOfFiles=\"[^\"]*\"/numberOfFiles=\"$number_of_files\"/" \
-        "$package_info" > "$WORK_DIR/PackageInfo"
-    /usr/bin/xmllint --noout "$WORK_DIR/PackageInfo"
-    mv "$WORK_DIR/PackageInfo" "$package_info"
+    rebuild_signed_component() {
+        local source="$1" original="$2" tag="$3" info identifier version location
+        info="$original/PackageInfo"
+        identifier=$(/usr/bin/xmllint --xpath 'string(/pkg-info/@identifier)' "$info")
+        version=$(/usr/bin/xmllint --xpath 'string(/pkg-info/@version)' "$info")
+        location=$(/usr/bin/xmllint --xpath 'string(/pkg-info/@install-location)' "$info")
+        case "$identifier" in com.pwdft.kssolv|com.pwdft.kssolv.support) ;; *) fail 'Unexpected component identity.' ;; esac
+        pkgbuild --root "$source/Payload" --scripts "$source/Scripts" \
+            --identifier "$identifier" --version "$version" --install-location "$location" "$WORK_DIR/$tag.pkg"
+        pkgutil --expand "$WORK_DIR/$tag.pkg" "$WORK_DIR/$tag"
+        cp "$WORK_DIR/$tag/Payload" "$WORK_DIR/$tag/Bom" "$original/"
+        ditto "$WORK_DIR/$tag/Scripts" "$original/Scripts"
+        python3 - "$info" "$WORK_DIR/$tag/PackageInfo" <<'PY'
+import sys,xml.etree.ElementTree as ET
+target=ET.parse(sys.argv[1]); rebuilt=ET.parse(sys.argv[2])
+target.getroot().find('payload').attrib.update(rebuilt.getroot().find('payload').attrib)
+target.write(sys.argv[1],encoding='utf-8',xml_declaration=True)
+PY
+    }
+    rebuild_signed_component "$app_source" "$app_original" rebuilt-app
+    if [[ "$product" == true ]]; then
+        local support="$WORK_DIR/expanded/KSSOLVSupport.pkg"
+        local runtime_installer="$support/Scripts/RuntimeSetup.app"
+        if [[ -d "$runtime_installer" ]]; then
+            sign_macho_files "$runtime_installer"
+            codesign --force --options runtime --timestamp --entitlements "$ENTITLEMENTS" --sign "$DEV_ID" "$runtime_installer"
+            codesign --verify --deep --strict "$runtime_installer"
+        fi
+        rebuild_signed_component "$support" "$WORK_DIR/original/KSSOLVSupport.pkg" rebuilt-support
+        python3 - "$WORK_DIR/original" <<'PY'
+from pathlib import Path
+import sys,xml.etree.ElementTree as ET
+root=Path(sys.argv[1]); tree=ET.parse(root/'Distribution')
+for path in root.glob('*.pkg/PackageInfo'):
+    info=ET.parse(path).getroot()
+    for ref in tree.getroot().findall('pkg-ref'):
+        if ref.get('id')==info.get('identifier'):
+            payload=info.find('payload')
+            ref.set('installKBytes',payload.get('installKBytes') if payload is not None else '0')
+tree.write(root/'Distribution',encoding='utf-8',xml_declaration=True)
+PY
+    fi
     pkgutil --flatten "$WORK_DIR/original" "$WORK_DIR/unsigned.pkg"
 
     mkdir "$WORK_DIR/signed"
@@ -181,7 +205,15 @@ case "$MODE" in
                 "s/^[[:space:]]*Version[[:space:]]+string[[:space:]]*=[[:space:]]*'([^']+)'.*/\1/p" \
                 "$REPOSITORY_DIR/KSSOLV_Toolbox.m" | head -n 1)
             [[ -n "$VERSION" ]] || fail "无法从 KSSOLV_Toolbox.m 读取版本号"
-            INPUT_PKG="$RELEASE_DIR/KSSOLV_Toolbox_V$VERSION.pkg"
+            local_delivery="${PKG_RUNTIME_DELIVERY:-auto}"
+            if [[ "$local_delivery" == auto ]]; then
+                local_delivery=$(/usr/bin/plutil -extract RuntimeDelivery raw -o - \
+                    "$RELEASE_DIR/build/runtime-metadata.json" 2>/dev/null || true)
+            fi
+            case "$local_delivery" in
+                web|installer|none) INPUT_PKG="$RELEASE_DIR/KSSOLV_Toolbox_V${VERSION}_${local_delivery}.pkg" ;;
+                *) INPUT_PKG="$RELEASE_DIR/KSSOLV_Toolbox_V$VERSION.pkg" ;;
+            esac
         fi
         sign_and_notarize_pkg "$INPUT_PKG"
         exit 0

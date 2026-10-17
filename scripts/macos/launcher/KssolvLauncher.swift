@@ -591,17 +591,48 @@ func runtimeRoot(config: [String: Any], environment: [String: String]) throws ->
     var candidates: [String] = []
     if let explicit = environment["KSSOLV_RUNTIME_ROOT"], !explicit.isEmpty { candidates = [explicit] }
     else {
+        if let data = try? Data(contentsOf: URL(fileURLWithPath: "/Library/Application Support/KSSOLV Toolbox/runtime.plist")),
+            let saved = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any],
+            let root = saved["RuntimeRoot"] as? String { candidates.append(root) }
         for entry in (environment["DYLD_LIBRARY_PATH"] ?? "").split(separator: ":") where entry.hasSuffix("/runtime/maca64") {
             candidates.append(String(entry.dropLast("/runtime/maca64".count)))
         }
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
         candidates += ["/Applications/MATLAB/MATLAB_Runtime/" + release,
-            "/Applications/MATLAB_Runtime/" + release, "/Applications/MATLAB/MATLAB Runtime/" + release]
+            "/Applications/MATLAB/MATLABRuntime/" + release,
+            "/Applications/MATLAB/MATLAB Runtime/" + release, "/Applications/MATLAB_Runtime/" + release,
+            home + "/Applications/MATLAB/MATLAB_Runtime/" + release,
+            home + "/Applications/MATLAB/MATLABRuntime/" + release,
+            home + "/Applications/MATLAB_Runtime/" + release]
     }
-    guard let root = candidates.first(where: {
-        FileManager.default.fileExists(atPath: $0 + "/runtime/maca64") &&
-        FileManager.default.fileExists(atPath: $0 + "/bin/maca64")
-    }) else { throw hostError("Matching MATLAB Runtime " + release + " is not installed. Set KSSOLV_RUNTIME_ROOT if it is installed elsewhere.") }
+    guard let root = candidates.first(where: { runtimeMatches($0, release: release, requirements: config["runtimeRequirements"] as? [String: Any]) })
+        else { throw hostError("Matching MATLAB Runtime " + release + " is missing or incomplete. Run the KSSOLV Toolbox installer to configure it.") }
     return root
+}
+
+func runtimeMatches(_ root: String, release: String, requirements: [String: Any]?) -> Bool {
+    let files = FileManager.default
+    guard files.fileExists(atPath: root + "/runtime/maca64"), files.fileExists(atPath: root + "/bin/maca64") else { return false }
+    // Native launcher fixtures intentionally omit packaged requirements. Every
+    // production PKG seals the exact same requirements used by shell preflight.
+    guard let requirements = requirements else { return true }
+    guard files.isExecutableFile(atPath: root + "/bin/maca64/MATLABWindow.app/Contents/MacOS/MATLABWindow") else { return false }
+    guard let version = requirements["RuntimeVersion"] as? String,
+        let products = requirements["RequiredProductFiles"] as? [String], !products.isEmpty,
+        let document = try? XMLDocument(contentsOf: URL(fileURLWithPath: root + "/VersionInfo.xml"), options: []),
+        let actualRelease = try? document.nodes(forXPath: "/MathWorks_version_info/release").first?.stringValue,
+        actualRelease == release,
+        let actualVersion = try? document.nodes(forXPath: "/MathWorks_version_info/version").first?.stringValue,
+        actualVersion.hasPrefix(version + ".") else { return false }
+    if let minimum = requirements["RuntimeBuildVersion"] as? String, !minimum.isEmpty,
+        actualVersion.compare(minimum, options: .numeric) == .orderedAscending { return false }
+    guard products.allSatisfy({ !$0.contains("/") && files.isReadableFile(atPath: root + "/appdata/products/" + $0) }) else { return false }
+    let check = Process()
+    check.executableURL = URL(fileURLWithPath: "/usr/bin/lipo")
+    check.arguments = [root + "/runtime/maca64/libmwmclmcrrt." + version + ".dylib", "-verify_arch", "arm64"]
+    check.standardOutput = FileHandle.nullDevice
+    check.standardError = FileHandle.nullDevice
+    do { try check.run(); check.waitUntilExit(); return check.terminationStatus == 0 } catch { return false }
 }
 
 func spawnRunner(resources: URL, runtime: String, arguments: [String], environment: [String: String], group: pid_t = 0, resetSignals: Bool = false) throws -> pid_t {
@@ -727,9 +758,17 @@ if CommandLine.arguments.count == 4 && CommandLine.arguments[1] == "--export-doc
 
 do {
     guard let resources = Bundle.main.resourceURL else { throw hostError("Missing application resources.") }
-    let config = try JSONSerialization.jsonObject(with: Data(contentsOf: resources.appendingPathComponent("startup-host.json"))) as? [String: Any] ?? [:]
+    var config = try JSONSerialization.jsonObject(with: Data(contentsOf: resources.appendingPathComponent("startup-host.json"))) as? [String: Any] ?? [:]
+    let requirementsFile = resources.appendingPathComponent("runtime-requirements.plist")
+    if FileManager.default.fileExists(atPath: requirementsFile.path) {
+        config["runtimeRequirements"] = try PropertyListSerialization.propertyList(from: Data(contentsOf: requirementsFile), format: nil)
+    }
     guard config["protocolVersion"] as? Int == 1 else { throw hostError("Unsupported startup host protocol.") }
     let arguments = Array(CommandLine.arguments.dropFirst())
+    if arguments == ["--check-runtime"] {
+        print(try runtimeRoot(config: config, environment: ProcessInfo.processInfo.environment))
+        exit(0)
+    }
     if arguments.contains("--prewarm") {
         exit(try runPrewarm(resources: resources, config: config, arguments: arguments))
     }
@@ -739,7 +778,7 @@ do {
     app.delegate = host
     withExtendedLifetime(host) { app.run() }
 } catch {
-    if CommandLine.arguments.contains("--prewarm") {
+    if CommandLine.arguments.contains("--prewarm") || CommandLine.arguments.contains("--check-runtime") {
         fputs("KSSOLV prewarm: \(error.localizedDescription)\n", stderr)
         exit(1)
     }

@@ -119,6 +119,12 @@ en.DesktopShortcut=Create a desktop shortcut
 zh.DesktopShortcut=创建桌面快捷方式
 en.RuntimeSummary=MATLAB Runtime:
 zh.RuntimeSummary=MATLAB Runtime：
+en.UpgradeStatus=Removing the previous KSSOLV Toolbox installation...
+zh.UpgradeStatus=正在卸载旧版 KSSOLV Toolbox……
+en.UpgradeFailed=The previous KSSOLV Toolbox installation could not be removed. Close the application and retry. See:
+zh.UpgradeFailed=未能卸载旧版 KSSOLV Toolbox。请关闭应用后重试。详细信息：
+en.UpgradeRestart=Restart Windows to finish removing the previous KSSOLV Toolbox installation, then run Setup again.
+zh.UpgradeRestart=请重启 Windows 完成旧版 KSSOLV Toolbox 的卸载，然后重新运行安装程序。
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:DesktopShortcut}"; Flags: unchecked
@@ -127,6 +133,7 @@ Name: "desktopicon"; Description: "{cm:DesktopShortcut}"; Flags: unchecked
 Name: "{app}\installation-state"; Permissions: users-modify
 
 [Files]
+Source: "Remove-PreviousInstallation.ps1"; Flags: dontcopy
 Source: "{#ReleaseDirectory}\build\KSSOLV_Toolbox.exe"; DestDir: "{app}\application"; Flags: ignoreversion
 Source: "{#Stage}\KssolvLauncher.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#Stage}\Microsoft.Web.WebView2.Core.dll"; DestDir: "{app}"; Flags: ignoreversion
@@ -314,7 +321,7 @@ begin
 end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;
-var Path: String; I: Integer;
+var Path, PowerShell, Parameters, UpgradeLog: String; I, J, Code: Integer; Success: Boolean; UpgradeText: TArrayOfString;
 begin
   Result := '';
   if not AcceptRuntime.Checked then Result := CustomMessage('RuntimeLicenseRequired');
@@ -326,6 +333,30 @@ begin
 #if RuntimeDelivery == "none"
   if InstallNewRuntime then Result := CustomMessage('RuntimeMissing');
 #endif
+  if Result <> '' then Exit;
+  ExtractTemporaryFile('Remove-PreviousInstallation.ps1');
+  PowerShell := ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe');
+  WizardForm.StatusLabel.Caption := CustomMessage('UpgradeStatus');
+  { The per-user uninstall must run as the original user, even after UAC. }
+  for I := 0 to 1 do begin
+    if I = 0 then Path := 'User' else Path := 'Machine';
+    UpgradeLog := ExpandConstant('{tmp}\kssolv-upgrade-') + Path + '.log';
+    Parameters := '-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "'
+      + ExpandConstant('{tmp}\Remove-PreviousInstallation.ps1') + '" -Scope ' + Path + ' -LogPath "' + UpgradeLog + '"';
+    if I = 0 then Success := ExecAsOriginalUser(PowerShell, Parameters, '', SW_HIDE, ewWaitUntilTerminated, Code)
+    else Success := Exec(PowerShell, Parameters, '', SW_HIDE, ewWaitUntilTerminated, Code);
+    if LoadStringsFromFile(UpgradeLog, UpgradeText) then
+      for J := 0 to GetArrayLength(UpgradeText) - 1 do Log(UpgradeText[J]);
+    if Success and (Code = 3010) then begin
+      NeedsRestart := True;
+      Result := CustomMessage('UpgradeRestart');
+      Exit;
+    end;
+    if not Success or (Code <> 0) then begin
+      Result := CustomMessage('UpgradeFailed') + #13#10 + ExpandConstant('{log}');
+      Exit;
+    end;
+  end;
 end;
 
 function UpdateReadyMemo(Space, NewLine, MemoUserInfoInfo, MemoDirInfo, MemoTypeInfo,

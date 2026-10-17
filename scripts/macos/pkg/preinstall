@@ -1,0 +1,119 @@
+#!/bin/bash
+set -euo pipefail
+
+# PackageKit runs this before extracting the new payload. Remove only identified
+# application bundles and installer-owned companions, never the whole app folder.
+fail() { echo "KSSOLV: $*" >&2; exit 1; }
+[[ "${3:-/}" == / ]] || fail 'Install KSSOLV Toolbox on the startup volume.'
+
+APPS=()
+RECEIPTS=()
+LABEL=com.gleamoe.kssolv.prewarm
+PLIST="/Library/LaunchAgents/$LABEL.plist"
+SUPPORT='/Library/Application Support/KSSOLV Toolbox'
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+source "$SCRIPT_DIR/runtime-common.sh"
+RUNTIME_ROOT=$(kssolv_find_runtime "$SCRIPT_DIR/runtime-requirements.plist" || true)
+[[ -n "$RUNTIME_ROOT" ]] || fail 'Runtime preflight has not completed; previous Toolbox retained.'
+[[ "${2:-}" == /* && "${2:-}" != / ]] || fail 'Choose an application installation folder.'
+
+for identifier in com.pwdft.kssolv com.hanhai.kssolv-toolbox com.gleamoe.kssolv-toolbox; do
+    if /usr/sbin/pkgutil --pkg-info "$identifier" >/dev/null 2>&1; then
+        RECEIPTS+=("$identifier")
+    fi
+done
+
+is_kssolv() {
+    local app="$1" identifier executable
+    [[ -f "$app/Contents/Info.plist" && ! -L "$app" ]] || return 1
+    identifier=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Contents/Info.plist" 2>/dev/null || true)
+    executable=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Contents/Info.plist" 2>/dev/null || true)
+    [[ "$executable" == KSSOLV_Toolbox && -f "$app/Contents/MacOS/KSSOLV_Toolbox" ]] || return 1
+    case "$identifier" in
+        com.pwdft.kssolv|com.hanhai.kssolv-toolbox|com.gleamoe.kssolv-toolbox|KSSOLV_Toolbox) return 0 ;;
+    esac
+    return 1
+}
+
+scan() {
+    local directory="$1" app
+    [[ -d "$directory" && ! -L "$directory" ]] || return 0
+    # Do not descend into other apps (including MATLAB) or follow symlinks.
+    while IFS= read -r -d '' app; do
+        if is_kssolv "$app"; then
+            duplicate=false
+            for previous in "${APPS[@]+${APPS[@]}}"; do
+                if [[ "$previous" -ef "$app" ]]; then duplicate=true; break; fi
+            done
+            if [[ "$duplicate" == false ]]; then APPS+=("$app"); fi
+        fi
+    done < <(/usr/bin/find "$directory" -type d -name '*.app' -prune -print0)
+}
+scan /Applications
+for home in /Users/*; do
+    [[ -d "$home" && ! -L "$home" ]] || continue
+    scan "$home/Applications"
+done
+SAVED_APP=$(kssolv_plist "$SUPPORT/application.plist" ApplicationPath || true)
+if [[ -n "$SAVED_APP" ]] && is_kssolv "$SAVED_APP"; then
+    duplicate=false
+    for previous in "${APPS[@]+${APPS[@]}}"; do
+        if [[ "$previous" -ef "$SAVED_APP" ]]; then duplicate=true; break; fi
+    done
+    if [[ "$duplicate" == false ]]; then APPS+=("$SAVED_APP"); fi
+fi
+
+# Check all candidates before removing anything. Do not kill a user's running
+# calculation or use a broad process-name match that could terminate MATLAB.
+PROCESSES=$(/bin/ps -axo pid=,comm=)
+for app in "${APPS[@]+${APPS[@]}}"; do
+    while read -r pid executable; do
+        case "$executable" in
+            "$app/Contents/"*) fail "Close KSSOLV Toolbox before installing: $app (PID $pid)." ;;
+        esac
+        if [[ "$executable" -ef "$app/Contents/MacOS/KSSOLV_Toolbox" || \
+            "$executable" -ef "$app/Contents/Helpers/KSSOLV_Toolbox.app/Contents/MacOS/KSSOLV_Toolbox" ]]; then
+            fail "Close KSSOLV Toolbox before installing: $app (PID $pid)."
+        fi
+    done <<< "$PROCESSES"
+done
+
+if [[ ${#APPS[@]} -eq 0 && ${#RECEIPTS[@]} -eq 0 ]]; then
+    echo 'KSSOLV: no previous installation found.'
+    exit 0
+fi
+if [[ ${#RECEIPTS[@]} -gt 0 ]]; then
+    [[ ! -L /Library && ! -L '/Library/Application Support' && ! -L /Library/LaunchAgents && ! -L "$SUPPORT" ]] || fail 'Unexpected system directory symlink.'
+fi
+
+# Stop the previous login prewarm agent in every active GUI domain before its
+# files are removed. The new postinstall installs and enables its replacement.
+for uid in $(/bin/ps -axo uid= | /usr/bin/sort -un); do
+    [[ "$uid" -ne 0 ]] || continue
+    /bin/launchctl bootout "gui/$uid/$LABEL" >/dev/null 2>&1 || true
+done
+
+for app in "${APPS[@]+${APPS[@]}}"; do
+    # Recheck identity immediately before deletion.
+    is_kssolv "$app" || fail "Previous application changed during installation: $app"
+    echo "KSSOLV: removing previous application: $app"
+    /bin/rm -rf -- "$app"
+    [[ ! -e "$app" ]] || fail "Cannot remove previous application: $app"
+    parent="${app%/*}"
+    if [[ "${parent##*/}" == application ]]; then
+        # The runner and icon are generated installation files. Leave any other
+        # contents, such as user-created projects, in the old installation folder.
+        /bin/rm -f -- "$parent/run_KSSOLV_Toolbox.sh" "${parent%/*}/icon_48.png"
+        /bin/rmdir "$parent" 2>/dev/null || true
+        /bin/rmdir "${parent%/*}" 2>/dev/null || true
+    fi
+done
+
+# The preceding support component has already installed the new prewarm files.
+# Leave those in place, together with validated Runtime and application settings.
+if [[ ${#RECEIPTS[@]} -gt 0 ]]; then
+    for identifier in "${RECEIPTS[@]}"; do
+        /usr/sbin/pkgutil --forget "$identifier" >/dev/null || fail "Cannot forget previous receipt: $identifier"
+    done
+fi
+echo 'KSSOLV: previous installation removed; user data and MATLAB Runtime retained.'

@@ -62,7 +62,8 @@ runtimeMetadata = struct('RuntimeRelease', "R" + version('-release'), ...
     'RuntimeVersion', strjoin(string(sscanf(version, '%d.%d').'), '.'), ...
     'ApplicationVersion', KSSOLV_Toolbox.Version, ...
     'Architecture', computer('arch'), 'StartupProtocolVersion', 1, ...
-    'JVMEnabled', false);
+    'JVMEnabled', false, 'RuntimeDelivery', string(runtimeDelivery), ...
+    'RuntimeBuildVersion', string(regexp(version, '^\d+\.\d+\.\d+\.\d+', 'match', 'once')));
 writelines(jsonencode(runtimeMetadata), ...
     fullfile(buildOptions.OutputDir, 'runtime-metadata.json'), Encoding="UTF-8");
 
@@ -85,6 +86,10 @@ packageOptions.InstallerName = sprintf('KSSOLV_Toolbox_V%s', KSSOLV_Toolbox.Vers
 
 % 生成独立应用程序安装包
 if ismac
+    runtimePackagerFolder = fullfile(toolboxFolder, 'scripts', 'macos');
+    addpath(runtimePackagerFolder);
+    runtimePackagerCleanup = onCleanup(@() rmpath(runtimePackagerFolder));
+    runtimeSourceCleanup = configureRuntimeSource(string(runtimeDelivery), runtimeMetadata);
     % 在 macOS 上切换 Runtime 分发方式前需清除旧载荷。
     installerApp = fullfile(packageOptions.OutputDir, ...
         packageOptions.InstallerName + ".app");
@@ -93,6 +98,13 @@ if ismac
     end
 end
 compiler.package.installer(buildResult, runtimeDefinition, "Options", packageOptions);
+if ismac && string(runtimeDelivery) ~= "none"
+    prepareRuntimeInstaller(string(runtimeDelivery));
+end
+if ismac
+    delete(runtimeSourceCleanup)
+    delete(runtimePackagerCleanup)
+end
 delete(addOnRuntimeCleanup)
 delete(dialogFrameworkCleanup)
 delete(buildPathCleanup)

@@ -471,6 +471,8 @@ __attribute__((constructor)) static void installDockBridge(void) {
         @autoreleasepool {
             // Never create NSApplication before CEF constructs its own subclass.
             // LSUIElement already supplies the initial accessory policy.
+            // 在窗口宿主中统一使用浅色外观，让主窗口和后续弹窗自然继承。
+            NSApp.appearance = [NSAppearance appearanceNamed:NSAppearanceNameAqua];
             identifyStartupWindow();
             recordWindows("bridge-main-ready");
             if (bridgePrewarm) {

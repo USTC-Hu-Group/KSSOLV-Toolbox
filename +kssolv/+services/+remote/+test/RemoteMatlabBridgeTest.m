@@ -42,6 +42,10 @@ classdef RemoteMatlabBridgeTest < matlab.unittest.TestCase
                 testCase.Configuration.Id, snapshot);
             testCase.verifyEqual(record.ExecutionMode, "Bridge");
             testCase.verifyEqual(record.State, "Queued");
+            commands = testCase.Access.Commands( ...
+                contains(testCase.Access.Commands, "-batch"));
+            testCase.verifyNotEmpty(commands);
+            testCase.verifyTrue(all(contains(commands, "-nojvm -batch")));
             testCase.verifyEqual(record.MatlabJobId, 42);
             testCase.verifyEqual(record.BridgeMatlabRelease, "2024a");
             testCase.verifyEqual(record.MatlabProfileName, "remote-slurm");

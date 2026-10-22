@@ -129,6 +129,7 @@ classdef RemoteJobManagerTest < matlab.unittest.TestCase
             [envelope, recovered] = recoveredManager.fetchWorkflow( ...
                 record.LocalJobId);
             info = envelope.Context("info");
+            testCase.verifyClass(envelope.Context("molecule"), 'Crystal');
             energy = info.Etotvec(end);
             baseline = -5.9666002670969;
 

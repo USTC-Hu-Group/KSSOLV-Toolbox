@@ -30,7 +30,10 @@ classdef StandardBackend < kssolv.services.remote.backend.RemoteBackend
             additionalPaths = strings(0, 1);
             runner = @kssolv.services.remote.execution.RemoteWorkflowRunner.execute;
             inputs = {snapshot};
-            if configuration.CodeDeploymentMode == "ClusterInstalled"
+            if isdeployed
+                % Parallel Server transfers the compiled application's CTF.
+                % Its workers execute compiled functions without addpath.
+            elseif configuration.CodeDeploymentMode == "ClusterInstalled"
                 additionalPaths = configuration.RemoteKssolvRoot;
             else
                 bundlePath = kssolv.services.remote.execution.CodeBundleBuilder( ...

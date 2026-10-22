@@ -16,9 +16,17 @@ accounts, install a scheduler, or start cloud resources without user action.
 | **Mirror** | A single remote node can run ordinary MATLAB | Remote MATLAB and the required licenses are available; Parallel Server is not required |
 | **Cloud** | An existing cloud-backed MATLAB cluster profile is available | The selected profile is already configured and usable |
 
-All modes require Parallel Computing Toolbox on the local MATLAB installation.
-Standalone deployments must include the products required by the selected
-workflow and remote mode.
+Both the MATLAB Toolbox and standalone application expose remote computing.
+Bridge, Mirror and the remote Command Window use native SSH/SFTP and do not
+require local Parallel Computing Toolbox. The remote MATLAB installation still
+needs the licenses required by the selected mode. Standard and Cloud use local
+Parallel Computing Toolbox cluster APIs; standalone builds must include those
+APIs and the Runtime products required by the workflow.
+
+The standalone application ships a portable P-Code worker bundle for remote
+MATLAB, rather than uploading Compiler's encrypted Runtime source files.
+Probes, Bridge, Mirror and command sessions launch MATLAB with `-nojvm`.
+Remote MATLAB must support the bundled R2022a P-Code format.
 
 Start with the simplest mode supported by the environment. Use Standard when
 the releases already match, Bridge when submission must happen from a remote

@@ -15,8 +15,14 @@ KSSOLV Toolbox 可以把工作流提交到远端 MATLAB 环境，并将结果导
 | **Mirror** | 单个远端节点可以运行普通 MATLAB | 远端具备 MATLAB 和所需许可；不要求 Parallel Server |
 | **Cloud** | 已有可用的云端 MATLAB Cluster Profile | 所选 Profile 已经配置并可正常使用 |
 
-所有模式都要求本地 MATLAB 安装 Parallel Computing Toolbox。独立部署还必须包含当前
-工作流和远程模式所需的产品。
+MATLAB Toolbox 和独立应用程序均提供远程计算入口。Bridge、Mirror 及远程命令窗口
+使用原生 SSH/SFTP，不要求本地 Parallel Computing Toolbox；远端仍需具备所选模式要求的
+MATLAB 和许可。Standard、Cloud 使用本地 Parallel Computing Toolbox 的集群接口，
+独立部署必须包含这些接口及当前工作流所需的 Runtime 产品。
+
+独立应用程序内置可分发的 P-Code 工作代码包，提交任务时使用该代码包，不向远端发送
+Compiler 的加密运行时源码。远程探测、Bridge、Mirror 和远程命令会话均以 `-nojvm`
+启动 MATLAB；不需要 Java/JVM。远端 MATLAB 必须支持随包提供的 R2022a 格式 P-Code。
 
 优先选择环境能够支持的最简单模式。版本已经一致时使用 Standard；必须从远端 MATLAB
 发起集群提交时使用 Bridge；只需要单个远端 MATLAB 进程时使用 Mirror。

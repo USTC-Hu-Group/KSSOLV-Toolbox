@@ -15,13 +15,6 @@ classdef RemoteRunController
                 options.JobManager = []
                 options.StatusReporter = @footerStatus
             end
-            if isdeployed
-                mode = "Local";
-                record = struct.empty();
-                kssolv.services.workflow.codegeneration.CodeGenerator. ...
-                    executeTasks(workflow, workflowName);
-                return
-            end
             selectedId = options.SelectionStore.get( ...
                 options.ConfigurationStore);
             if strlength(selectedId) == 0
@@ -63,10 +56,6 @@ classdef RemoteRunController
                     kssolv.services.remote.config.RemoteConfigurationStore()
                 options.SelectionStore = ...
                     kssolv.services.remote.config.RemoteSelectionStore()
-            end
-            if isdeployed
-                id = "";
-                return
             end
             id = options.SelectionStore.get(options.ConfigurationStore);
         end

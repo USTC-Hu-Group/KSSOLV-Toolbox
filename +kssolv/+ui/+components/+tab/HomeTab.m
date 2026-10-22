@@ -361,7 +361,6 @@ classdef HomeTab < handle
             % 创建 Environment Section
             section = Section(message("KSSOLV:toolbox:EnvironmentSectionTitle"));
             section.Tag = 'EnvironmentSection';
-            remoteComputingAvailable = ~isdeployed;
             % 创建 Column
             column1 = Column();
             column2 = Column();
@@ -380,37 +379,26 @@ classdef HomeTab < handle
 
             % 组装 Column 和 Button
             column1.add(EnvironmentSettingsButton);
-            if remoteComputingAvailable
-                EnvironmentRemoteButton = CreateButton('dropdown', ...
-                    'EnvironmentRemote', section.Tag, 'matlabCloud');
-                EnvironmentRemoteButton.DynamicPopupFcn = ...
-                    @(~, ~) this.createRemoteComputingPopup();
-                EnvironmentRemoteButton.Popup = ...
-                    this.createRemoteComputingPopup();
-                column2.add(EnvironmentRemoteButton);
-                column3.add(EnvironmentParallelButton);
-                column4 = Column();
-                column4.add(EnvironmentExtraButton);
-            else
-                column2.add(EnvironmentParallelButton);
-                column3.add(EnvironmentExtraButton);
-            end
+            EnvironmentRemoteButton = CreateButton('dropdown', ...
+                'EnvironmentRemote', section.Tag, 'matlabCloud');
+            EnvironmentRemoteButton.DynamicPopupFcn = ...
+                @(~, ~) this.createRemoteComputingPopup();
+            EnvironmentRemoteButton.Popup = this.createRemoteComputingPopup();
+            column2.add(EnvironmentRemoteButton);
+            column3.add(EnvironmentParallelButton);
+            column4 = Column();
+            column4.add(EnvironmentExtraButton);
             section.add(column1);
             section.add(column2);
             section.add(column3);
-            if remoteComputingAvailable
-                section.add(column4);
-            end
+            section.add(column4);
             this.Tab.add(section);
 
             % 添加到 Widgets
             this.Widgets.EnvironmentSection = struct('EnvironmentSettingsButton', EnvironmentSettingsButton, ...
                 'EnvironmentParallelButton', EnvironmentParallelButton, ...
-                'EnvironmentExtraButton', EnvironmentExtraButton);
-            if remoteComputingAvailable
-                this.Widgets.EnvironmentSection.EnvironmentRemoteButton = ...
-                    EnvironmentRemoteButton;
-            end
+                'EnvironmentExtraButton', EnvironmentExtraButton, ...
+                'EnvironmentRemoteButton', EnvironmentRemoteButton);
         end
 
         function createResourceSection(this)

@@ -109,6 +109,11 @@ classdef ClusterFactory < handle
                 return
             end
             cluster = this.build(configuration);
+            if isdeployed
+                % Runtime can use the cluster object directly; saving a
+                % MATLAB development profile is unnecessary for recovery.
+                return
+            end
             profiles = string(parallel.listProfiles());
             if any(profiles == configuration.ManagedProfileName)
                 cluster.saveAsProfile(char(configuration.ManagedProfileName), ...

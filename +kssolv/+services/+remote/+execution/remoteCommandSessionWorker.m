@@ -5,7 +5,8 @@ workspace = string(workspace);
 writePid(fullfile(workspace, "session.pid"), currentProcessId());
 writeJson(fullfile(workspace, "ready.json"), struct( ...
     "Version", 1, "ProcessId", currentProcessId(), ...
-    "MatlabRelease", string(version("-release"))));
+    "MatlabRelease", string(version("-release")), ...
+    "JVMEnabled", usejava('jvm')));
 stopPath = fullfile(workspace, "stop");
 while ~isfile(stopPath)
     requests = dir(fullfile(workspace, "request-*.json"));

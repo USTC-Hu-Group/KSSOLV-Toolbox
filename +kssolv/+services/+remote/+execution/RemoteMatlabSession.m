@@ -26,9 +26,7 @@ classdef RemoteMatlabSession < handle
                     kssolv.services.remote.transport.RemoteAccessFactory()
                 options.StartupTimeout (1, 1) double = 120
                 options.CommandTimeout (1, 1) double = 3600
-                options.WorkerFile (1, 1) string = string(which( ...
-                    "kssolv.services.remote.execution." + ...
-                    "remoteCommandSessionWorker"))
+                options.WorkerFile (1, 1) string = defaultWorkerFile()
             end
             configuration = kssolv.services.remote.config. ...
                 RemoteConfiguration.sanitized(configuration);
@@ -148,7 +146,7 @@ classdef RemoteMatlabSession < handle
                     this.Configuration.ClusterMatlabRoot, "bin", "matlab");
                 logPath = remoteJoin(this.RemoteWorkspace, "session.log");
                 pidPath = remoteJoin(this.RemoteWorkspace, "session.pid");
-                launch = "nohup " + shellQuote(executable) + " -batch " + ...
+                launch = "nohup " + shellQuote(executable) + " -nojvm -batch " + ...
                     shellQuote(expression) + " >" + shellQuote(logPath) + ...
                     " 2>&1 < /dev/null & pid=$!; " + ...
                     "printf '%s\n' ""$pid"" >" + shellQuote(pidPath);
@@ -233,6 +231,16 @@ classdef RemoteMatlabSession < handle
             end
         end
     end
+end
+
+function file = defaultWorkerFile()
+if isdeployed
+    root = kssolv.services.remote.execution.StandaloneWorkerRuntime.resolve();
+    file = fullfile(root, '+kssolv', '+services', '+remote', ...
+        '+execution', 'remoteCommandSessionWorker.p');
+else
+    file = string(which('kssolv.services.remote.execution.remoteCommandSessionWorker'));
+end
 end
 
 function reportStatus(reporter, phase, detail)

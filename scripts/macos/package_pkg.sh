@@ -12,6 +12,15 @@ if [[ $# -gt 0 ]]; then
 fi
 case "$DELIVERY" in auto|web|installer|none) ;; *) echo 'Invalid Runtime delivery mode.' >&2; exit 1 ;; esac
 fail() { echo "错误: $*" >&2; exit 1; }
+timestamp_at_least() {
+    # macOS Bash compares -nt at whole-second precision; Compiler can write
+    # the executable and its metadata within the same second.
+    python3 - "$1" "$2" <<'PY'
+from pathlib import Path
+import sys
+sys.exit(0 if Path(sys.argv[1]).stat().st_mtime_ns >= Path(sys.argv[2]).stat().st_mtime_ns else 1)
+PY
+}
 METADATA="$RELEASE_DIR/build/runtime-metadata.json"
 [[ -f "$METADATA" ]] || fail 'Missing runtime-metadata.json. Run buildInstaller() first.'
 RUNTIME_RELEASE=$(/usr/bin/plutil -extract RuntimeRelease raw -o - "$METADATA")
@@ -26,7 +35,7 @@ VERSION=$(sed -nE "s/^[[:space:]]*Version[[:space:]]+string[[:space:]]*=[[:space
 command -v python3 >/dev/null || fail '打包需要 Python 3；安装后的应用和安装脚本不依赖 Python'
 INSTALLER_APP="$RELEASE_DIR/KSSOLV_Toolbox_V$VERSION.app"
 BUNDLE_ZIP="$INSTALLER_APP/Contents/Resources/bundle.zip"
-[[ -f "$BUNDLE_ZIP" && "$BUNDLE_ZIP" -nt "$METADATA" ]] || fail '基础安装器缺失或早于编译元数据，请运行 buildInstaller()'
+[[ -f "$BUNDLE_ZIP" ]] && timestamp_at_least "$BUNDLE_ZIP" "$METADATA" || fail '基础安装器缺失或早于编译元数据，请运行 buildInstaller()'
 for asset in preinstall postinstall prewarm.sh prepare-runtime runtime-common.sh com.gleamoe.kssolv.prewarm.plist; do
     [[ -f "$PKG_ASSETS_DIR/$asset" ]] || fail "找不到 PKG 资源: $asset"
 done
@@ -49,7 +58,7 @@ ditto -x -k "$BUNDLE_ZIP" "$WORK_DIR/extracted"
 ORIGINAL="$WORK_DIR/extracted/application/KSSOLV_Toolbox.app"
 RUNNER="$WORK_DIR/extracted/application/run_KSSOLV_Toolbox.sh"
 [[ -d "$ORIGINAL" && -x "$RUNNER" ]] || fail '基础安装器缺少 Compiler 应用或 runner'
-[[ "$METADATA" -nt "$ORIGINAL/Contents/MacOS/KSSOLV_Toolbox" ]] || fail '编译元数据已过期'
+timestamp_at_least "$METADATA" "$ORIGINAL/Contents/MacOS/KSSOLV_Toolbox" || fail '编译元数据已过期'
 /bin/bash "$SCRIPTS_DIR/build_startup_app.sh" "$ORIGINAL" "$RUNNER" "$APP_PAYLOAD/KSSOLV Toolbox.app" "$RUNTIME_RELEASE" "$VERSION"
 cp "$REQUIREMENTS" "$APP_PAYLOAD/KSSOLV Toolbox.app/Contents/Resources/runtime-requirements.plist"
 

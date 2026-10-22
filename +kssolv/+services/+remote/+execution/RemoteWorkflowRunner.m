@@ -30,6 +30,13 @@ classdef RemoteWorkflowRunner
             names = keys(context);
             for index = 1:numel(names)
                 value = context(names{index});
+                if isstruct(value) && isscalar(value) && ...
+                        isfield(value, 'KSSOLVRemoteObject') && ...
+                        isequal(string(value.KSSOLVRemoteObject), "Crystal") && ...
+                        isfield(value, 'SavedState')
+                    value = Crystal.loadobj(value.SavedState);
+                    context(names{index}) = value;
+                end
                 if isobject(value) && ismethod(value, "attachListeners")
                     try
                         value.attachListeners();
@@ -54,6 +61,14 @@ classdef RemoteWorkflowRunner
                 if isobject(value) && ismethod(value, "detachListeners")
                     value.detachListeners();
                 end
+                if isa(value, 'Crystal')
+                    % A worker bundle may be removed before Parallel Server
+                    % serializes outputs. Carry explicit saved state so that
+                    % dynamic model properties survive that boundary.
+                    context(names{index}) = struct( ...
+                        'KSSOLVRemoteObject', 'Crystal', ...
+                        'SavedState', saveobj(value));
+                end
             end
         end
 
@@ -72,18 +87,20 @@ classdef RemoteWorkflowRunner
                     "Snapshot requires KSSOLV %s but worker runs %s.", ...
                     snapshot.ToolboxVersion, localVersion);
             end
-            toolboxFile = string(which("KSSOLV_Toolbox"));
-            if strlength(toolboxFile) == 0
-                error("KSSOLV:Remote:ToolboxRootUnavailable", ...
-                    "The KSSOLV Toolbox root is not available on the worker.");
+            if ~isdeployed
+                toolboxFile = string(which("KSSOLV_Toolbox"));
+                if strlength(toolboxFile) == 0
+                    error("KSSOLV:Remote:ToolboxRootUnavailable", ...
+                        "The KSSOLV Toolbox root is not available on the worker.");
+                end
+                toolboxRoot = string(fileparts(toolboxFile));
+                coreRoot = fullfile(toolboxRoot, "+kssolv", "+core", ...
+                    "kssolv-3o");
+                if isfolder(coreRoot)
+                    addpath(coreRoot);
+                end
+                KSSOLV.startup();
             end
-            toolboxRoot = string(fileparts(toolboxFile));
-            coreRoot = fullfile(toolboxRoot, "+kssolv", "+core", ...
-                "kssolv-3o");
-            if isfolder(coreRoot)
-                addpath(coreRoot);
-            end
-            KSSOLV.startup();
             context = containers.Map("KeyType", "char", ...
                 "ValueType", "any");
             taskStates = repmat(struct("NodeId", "", ...

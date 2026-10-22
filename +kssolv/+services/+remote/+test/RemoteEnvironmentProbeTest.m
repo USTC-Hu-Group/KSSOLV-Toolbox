@@ -64,7 +64,7 @@ classdef RemoteEnvironmentProbeTest < matlab.unittest.TestCase
             testCase.verifyEqual(probe.PoolSize, 60);
             testCase.verifyTrue(contains(access.Command, ...
                 "command -v matlab"));
-            testCase.verifyTrue(contains(access.Command, "-batch"));
+            testCase.verifyTrue(contains(access.Command, "-nojvm -batch"));
             testCase.verifyTrue(contains(access.Command, "id -un"));
             testCase.verifyTrue(contains(access.Command, "getent passwd"));
             testCase.verifyTrue(contains(access.Command, "mkdir -p"));
@@ -107,7 +107,7 @@ classdef RemoteEnvironmentProbeTest < matlab.unittest.TestCase
                 "su - yliu7949 -c "));
             testCase.verifyTrue(contains(delegate.Command, ...
                 "command -v matlab"));
-            testCase.verifyTrue(contains(delegate.Command, "-batch"));
+            testCase.verifyTrue(contains(delegate.Command, "-nojvm -batch"));
             testCase.verifyFalse(contains(delegate.LoginCommand, "gpu6"));
         end
 

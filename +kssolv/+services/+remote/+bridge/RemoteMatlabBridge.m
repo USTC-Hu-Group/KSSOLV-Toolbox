@@ -236,7 +236,7 @@ classdef RemoteMatlabBridge < handle
                 matlabLiteral(action) + "," + matlabLiteral(workspace) + ");";
             executable = remoteJoin(configuration.ClusterMatlabRoot, ...
                 "bin", "matlab");
-            command = shellQuote(executable) + " -batch " + ...
+            command = shellQuote(executable) + " -nojvm -batch " + ...
                 shellQuote(expression);
             [status, output] = runBridgeCommand(access, char(command));
             assertRemoteCommand(status, output, "run remote MATLAB bridge");
@@ -256,6 +256,9 @@ end
 end
 
 function ensureKssolvRuntime()
+if isdeployed
+    return
+end
 toolboxFile = string(which("KSSOLV_Toolbox"));
 if strlength(toolboxFile) == 0
     return

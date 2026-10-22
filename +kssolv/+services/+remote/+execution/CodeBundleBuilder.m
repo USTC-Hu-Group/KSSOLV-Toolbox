@@ -41,12 +41,24 @@ classdef CodeBundleBuilder < handle
             try
                 toolboxEntry = this.toolboxEntryPoint(sourceRoot);
                 copyfile(toolboxEntry, stagingPath);
+                onlineEntry = fullfile(sourceRoot, 'isKSSOLVOnline.m');
+                if ~isfile(onlineEntry)
+                    onlineEntry = fullfile(sourceRoot, 'isKSSOLVOnline.p');
+                end
+                if isfile(onlineEntry)
+                    copyfile(onlineEntry, stagingPath);
+                end
                 if mode == "Probe"
                     this.copyProbeRuntime(sourceRoot, stagingPath);
                 else
                     packageRoot = fullfile(stagingPath, "+kssolv");
                     mkdir(packageRoot);
                     folders = ["+core", "+analysis", "+util"];
+                    for optional = ["+settings", "+ui"]
+                        if isfolder(fullfile(sourceRoot, "+kssolv", optional))
+                            folders(end+1) = optional; %#ok<AGROW>
+                        end
+                    end
                     for folder = folders
                         this.copyTree(fullfile(sourceRoot, "+kssolv", ...
                             folder), fullfile(packageRoot, folder));
@@ -72,6 +84,10 @@ classdef CodeBundleBuilder < handle
                 [~, entryName, entryExtension] = fileparts(toolboxEntry);
                 archiveEntries = [entryName + entryExtension, ...
                     "remote-bundle-manifest.json", "+kssolv"];
+                [~, onlineName, onlineExtension] = fileparts(onlineEntry);
+                if isfile(onlineEntry)
+                    archiveEntries(end+1) = onlineName + onlineExtension;
+                end
                 zip(archivePath, archiveEntries, stagingPath);
                 if ~isfile(archivePath)
                     error("KSSOLV:Remote:BundleArchiveFailed", ...
@@ -90,6 +106,12 @@ classdef CodeBundleBuilder < handle
         function sourceRoot = resolveRuntimeRoot(this)
             if strlength(this.RuntimeRoot) > 0
                 sourceRoot = this.RuntimeRoot;
+                this.validateRuntimeRoot(sourceRoot);
+                return
+            end
+            if isdeployed
+                sourceRoot = kssolv.services.remote.execution. ...
+                    StandaloneWorkerRuntime.resolve();
                 this.validateRuntimeRoot(sourceRoot);
                 return
             end
@@ -191,6 +213,10 @@ classdef CodeBundleBuilder < handle
                 if entries(index).isdir
                     this.copyTree(sourcePath, destinationPath);
                 else
+                    if kssolv.util.isTestFileName(name) && ...
+                            ~any(name == ["RemoteLoginTest.m", "RemoteLoginTest.p"])
+                        continue
+                    end
                     [copied, detail] = copyfile(sourcePath, destinationPath);
                     if ~copied
                         error("KSSOLV:Remote:BundleCopyFailed", ...

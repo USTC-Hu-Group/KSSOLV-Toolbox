@@ -46,6 +46,17 @@ sign_macho_files() {
     done < <(find "$root" -type f -print0)
 }
 
+sign_archived_remote_worker() {
+    local app_path="$1" archive count=0
+    while IFS= read -r -d '' archive; do
+        count=$((count + 1))
+        [[ "$count" == 1 ]] || fail '远程工作代码包重复'
+        python3 "$SCRIPTS_DIR/sign_remote_worker.py" "$archive" \
+            --identity "$DEV_ID" \
+            --report "$app_path/Contents/Resources/remote-worker-signing.json"
+    done < <(find "$app_path" -type f -name kssolv-remote-worker.zip -print0)
+}
+
 sign_matlab_app() {
     local app_path="$1"
     local runtime_app="$app_path/Contents/Helpers/KSSOLV_Toolbox.app"
@@ -70,6 +81,8 @@ sign_matlab_app() {
     fi
     local launcher
 
+    # Notarization also inspects native code nested inside ZIP resources.
+    sign_archived_remote_worker "$app_path"
     # MathWorks 要求先签 MEX/其他嵌套代码，然后依次签 applauncher、
     # 主程序和 prelaunch，最后再签 app bundle。
     sign_macho_files "$app_path" true

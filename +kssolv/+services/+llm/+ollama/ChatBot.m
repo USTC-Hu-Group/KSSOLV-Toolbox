@@ -22,8 +22,7 @@ classdef ChatBot < kssolv.services.llm.internal.AbstractChatBot
 
     methods (Access = protected)
         function buildChatBot(this)
-            settings = kssolv.settings.Settings.load();
-            endpoint = settings.OllamaServerURL;
+            endpoint = this.Configuration.Endpoint;
 
             if ismember('tools', this.modelCapabilities)
                 this.systemPrompt = strcat(this.systemPrompt, ...

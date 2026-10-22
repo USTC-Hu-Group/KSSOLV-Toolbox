@@ -15,6 +15,11 @@ classdef CommandWindow < matlab.ui.internal.databrowser.AbstractDataBrowser
         RemoteExecutionEnabled (1, 1) logical = false
     end
 
+    properties (Access = private)
+        Transcript
+        ChatBusy (1,1) logical = false
+    end
+
     methods
         function this = CommandWindow(options)
             %COMMANDWINDOW 构造此类的实例
@@ -30,6 +35,9 @@ classdef CommandWindow < matlab.ui.internal.databrowser.AbstractDataBrowser
             title = kssolv.ui.util.Localizer.message('KSSOLV:toolbox:CommandWindowTitle');
             % 调用超类构造函数
             this = this@matlab.ui.internal.databrowser.AbstractDataBrowser('CommandWindow', title);
+            if isKSSOLVOnline()
+                this.Transcript = kssolv.ui.util.CommandTranscript();
+            end
             % 自定义 widget 和 layout
             buildUI(this);
             % 设定 FigurePanel 的 Tag
@@ -74,6 +82,25 @@ classdef CommandWindow < matlab.ui.internal.databrowser.AbstractDataBrowser
             try
                 this.RemoteCommandExecutor.closeSession();
             catch
+            end
+        end
+
+        function state = captureBrowserSession(this)
+            state = struct('Workspace', this.Workspace, 'ChatBot', this.ChatBot, ...
+                'RemoteExecutionEnabled', this.RemoteExecutionEnabled, ...
+                'Transcript',this.Transcript);
+        end
+
+        function restoreBrowserSession(this, state)
+            this.Workspace = state.Workspace;
+            this.RemoteExecutionEnabled = state.RemoteExecutionEnabled;
+            if isfield(state,'Transcript') && ~isempty(state.Transcript)
+                this.Transcript = state.Transcript;
+                this.restoreTerminal();
+            end
+            if ~isempty(state.ChatBot) && isvalid(state.ChatBot)
+                this.ChatBot = state.ChatBot;
+                this.ChatBot.setStreamFunction(@(tokens) this.addChat(tokens));
             end
         end
 
@@ -132,7 +159,7 @@ classdef CommandWindow < matlab.ui.internal.databrowser.AbstractDataBrowser
     methods (Access = protected)
         function buildUI(this)
             fig = this.Figure;
-            g = uigridlayout(fig);
+            g = uigridlayout(fig, 'Tag', 'KSSOLVFillFigure');
             g.BackgroundColor = "white";
             g.Padding = [0 0 0 0];
             g.RowHeight = {'1x'};
@@ -140,7 +167,7 @@ classdef CommandWindow < matlab.ui.internal.databrowser.AbstractDataBrowser
 
             htmlFile = fullfile(fileparts(mfilename('fullpath')), 'html', 'index.html');
 
-            h = uihtml(g, "HTMLSource", htmlFile);
+            h = uihtml(g, "HTMLSource", kssolv.ui.browser.htmlSource(htmlFile, FillFigure=true));
             this.Widgets.html = h;
 
             % 向 html 组件传递参考命令列表以供自动补全
@@ -184,12 +211,22 @@ classdef CommandWindow < matlab.ui.internal.databrowser.AbstractDataBrowser
         function addChat(this, content)
             %ADDCHAT 向 html 组件流式更新 tokens
             % content = replace(content, newline, " <br>");
+            if ~isempty(this.Transcript)
+                this.Transcript.append('tokens',content);
+            end
             this.Widgets.html.sendEventToHTMLSource('TokensStreamed', content);
             drawnow
         end
 
         function eventReceiver(this, src, event)
             switch event.HTMLEventName
+                case 'TerminalReady'
+                    this.restoreTerminal();
+                case 'TerminalCommand'
+                    if ~isempty(this.Transcript)
+                        data = event.HTMLEventData;
+                        this.Transcript.recordCommand(data.Command,data.Remote);
+                    end
                 case 'CommandSubmitted'
                     this.callbackCommandSubmitted(src, event);
                 case 'UserPromptSubmitted'
@@ -213,7 +250,17 @@ classdef CommandWindow < matlab.ui.internal.databrowser.AbstractDataBrowser
                 return
             end
             output = this.executeCommand(command);
+            if ~isempty(this.Transcript)
+                this.Transcript.append('result',output);
+            end
             this.Widgets.html.sendEventToHTMLSource('ResultUpdated', output);
+        end
+
+        function restoreTerminal(this)
+            if isempty(this.Transcript), return, end
+            state = this.Transcript.snapshot();
+            state.Remote = this.RemoteExecutionEnabled;
+            this.Widgets.html.sendEventToHTMLSource('RestoreTranscript',state);
         end
 
         function configuration = selectedRemoteConfiguration(this)
@@ -235,11 +282,14 @@ classdef CommandWindow < matlab.ui.internal.databrowser.AbstractDataBrowser
             % 执行命令行窗口提交的用户提示词
             import kssolv.ui.util.Localizer.*
 
+            if this.ChatBusy, return, end
+            this.ChatBusy = true;
+            cleanup = onCleanup(@() this.finishChat());
             userPrompt = event.HTMLEventData;
-
             initializationFailure = [];
             try
-                if isempty(this.ChatBot)
+                if isempty(this.ChatBot) || ~isvalid(this.ChatBot) || ...
+                        ~this.ChatBot.matchesSettings()
                     % 若未初始化对话机器人，则创建对话机器人
                     [this.ChatBot, initializationFailure] = ...
                         kssolv.services.llm.chatBot('', '', ...
@@ -259,10 +309,28 @@ classdef CommandWindow < matlab.ui.internal.databrowser.AbstractDataBrowser
                 this.addChat(message('KSSOLV:toolbox:LLMServiceInitializationFailed'));
                 return
             end
+            this.Widgets.html.sendEventToHTMLSource('LLMStatusChanged', ...
+                struct('Busy', true, 'Text', sprintf(message( ...
+                    'KSSOLV:toolbox:LLMWaiting'), this.ChatBot.modelName)));
+            drawnow
             try
                 this.ChatBot.chat(userPrompt.prompt, userPrompt.useHistory);
             catch
                 this.addChat(message('KSSOLV:toolbox:LLMRequestFailed'));
+            end
+        end
+
+        function finishChat(this)
+            this.ChatBusy = false;
+            if ~isempty(this.Widgets.html) && isvalid(this.Widgets.html)
+                text = '';
+                if ~isempty(this.ChatBot) && isvalid(this.ChatBot) && ...
+                        strlength(this.ChatBot.responseModel) > 0
+                    text = sprintf(kssolv.ui.util.Localizer.message( ...
+                        'KSSOLV:toolbox:LLMResponseModel'),this.ChatBot.responseModel);
+                end
+                this.Widgets.html.sendEventToHTMLSource('LLMStatusChanged', ...
+                    struct('Busy', false, 'Text', text));
             end
         end
 

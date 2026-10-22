@@ -1,0 +1,372 @@
+[
+  {
+    "id": "atomic_editor",
+    "label": "原子编辑",
+    "count": 12,
+    "commands": [
+      {
+        "id": "add_atom",
+        "label": "添加原子"
+      },
+      {
+        "id": "center_atoms",
+        "label": "原子居中"
+      },
+      {
+        "id": "delete_atoms",
+        "label": "删除原子"
+      },
+      {
+        "id": "merge_atoms",
+        "label": "合并原子"
+      },
+      {
+        "id": "fix_atoms",
+        "label": "固定原子"
+      },
+      {
+        "id": "mirror_atoms",
+        "label": "镜像原子"
+      },
+      {
+        "id": "move_atoms",
+        "label": "移动原子"
+      },
+      {
+        "id": "perturb_atoms",
+        "label": "扰动原子"
+      },
+      {
+        "id": "sort_atoms",
+        "label": "原子排序"
+      },
+      {
+        "id": "rotate_atoms",
+        "label": "旋转原子"
+      },
+      {
+        "id": "substitute_atoms",
+        "label": "替换元素"
+      },
+      {
+        "id": "translate_atoms",
+        "label": "平移原子"
+      }
+    ]
+  },
+  {
+    "id": "molecule_builder",
+    "label": "分子建模",
+    "count": 18,
+    "commands": [
+      {
+        "id": "sketch_atom",
+        "label": "绘制原子"
+      },
+      {
+        "id": "add_bond",
+        "label": "添加化学键"
+      },
+      {
+        "id": "delete_bond",
+        "label": "删除化学键"
+      },
+      {
+        "id": "set_bond_order",
+        "label": "设置键级"
+      },
+      {
+        "id": "sketch_ring",
+        "label": "绘制环"
+      },
+      {
+        "id": "set_atom_chemistry",
+        "label": "原子化学属性"
+      },
+      {
+        "id": "add_hydrogens",
+        "label": "添加氢"
+      },
+      {
+        "id": "remove_hydrogens",
+        "label": "删除氢"
+      },
+      {
+        "id": "diagnose_molecule",
+        "label": "分子诊断"
+      },
+      {
+        "id": "measure_geometry",
+        "label": "测量几何"
+      },
+      {
+        "id": "set_distance",
+        "label": "设置距离"
+      },
+      {
+        "id": "set_angle",
+        "label": "设置键角"
+      },
+      {
+        "id": "set_dihedral",
+        "label": "设置二面角"
+      },
+      {
+        "id": "align_geometry",
+        "label": "几何对齐"
+      },
+      {
+        "id": "clean_geometry",
+        "label": "整理几何"
+      },
+      {
+        "id": "optimize_geometry",
+        "label": "优化几何"
+      },
+      {
+        "id": "attach_fragment",
+        "label": "连接片段"
+      },
+      {
+        "id": "save_user_fragment",
+        "label": "保存用户片段"
+      }
+    ]
+  },
+  {
+    "id": "polymer_builder",
+    "label": "聚合物建模",
+    "count": 6,
+    "commands": [
+      {
+        "id": "build_homopolymer",
+        "label": "构建均聚物"
+      },
+      {
+        "id": "build_block_copolymer",
+        "label": "构建嵌段共聚物"
+      },
+      {
+        "id": "build_random_copolymer",
+        "label": "构建无规共聚物"
+      },
+      {
+        "id": "build_branched_polymer",
+        "label": "构建支化聚合物"
+      },
+      {
+        "id": "build_dendrimer",
+        "label": "构建基础树枝状聚合物"
+      },
+      {
+        "id": "save_user_repeat_unit",
+        "label": "保存用户重复单元"
+      }
+    ]
+  },
+  {
+    "id": "amorphous_builder",
+    "label": "无定形建模",
+    "count": 5,
+    "commands": [
+      {
+        "id": "construct_amorphous",
+        "label": "构建无定形晶胞"
+      },
+      {
+        "id": "pack_mixture",
+        "label": "装填混合物"
+      },
+      {
+        "id": "build_confined_layer",
+        "label": "构建受限分子层"
+      },
+      {
+        "id": "pack_into_existing_box",
+        "label": "装入已有晶胞"
+      },
+      {
+        "id": "pack_around_nanoparticle",
+        "label": "绕纳米粒子装填"
+      }
+    ]
+  },
+  {
+    "id": "lattice_editor",
+    "label": "晶格编辑",
+    "count": 5,
+    "commands": [
+      {
+        "id": "apply_strain",
+        "label": "施加应变"
+      },
+      {
+        "id": "edit_lattice",
+        "label": "编辑晶格"
+      },
+      {
+        "id": "mirror_lattice",
+        "label": "镜像晶格"
+      },
+      {
+        "id": "rotate_lattice",
+        "label": "旋转晶格"
+      },
+      {
+        "id": "swap_axes",
+        "label": "交换坐标轴"
+      }
+    ]
+  },
+  {
+    "id": "supercell_lattice",
+    "label": "超胞与晶格",
+    "count": 5,
+    "commands": [
+      {
+        "id": "build_supercell",
+        "label": "构建超胞"
+      },
+      {
+        "id": "redefine_lattice",
+        "label": "重定义晶胞"
+      },
+      {
+        "id": "orthogonalize_cell",
+        "label": "晶胞正交化"
+      },
+      {
+        "id": "strain_structure",
+        "label": "结构应变"
+      },
+      {
+        "id": "perturb_structure",
+        "label": "扰动结构"
+      }
+    ]
+  },
+  {
+    "id": "defects_alloys",
+    "label": "缺陷与合金",
+    "count": 3,
+    "commands": [
+      {
+        "id": "create_point_defects",
+        "label": "创建点缺陷"
+      },
+      {
+        "id": "enumerate_point_defects",
+        "label": "枚举点缺陷"
+      },
+      {
+        "id": "generate_sqs_model",
+        "label": "生成 SQS 模型"
+      }
+    ]
+  },
+  {
+    "id": "nanostructures",
+    "label": "纳米结构",
+    "count": 4,
+    "commands": [
+      {
+        "id": "roll_nanotube",
+        "label": "生成纳米管"
+      },
+      {
+        "id": "cut_nanoribbon",
+        "label": "截取纳米带"
+      },
+      {
+        "id": "cut_nanowire",
+        "label": "截取纳米线"
+      },
+      {
+        "id": "quantum_dot_void",
+        "label": "量子点 / 纳米空洞"
+      }
+    ]
+  },
+  {
+    "id": "surfaces_interfaces",
+    "label": "表面与界面",
+    "count": 11,
+    "commands": [
+      {
+        "id": "build_slab",
+        "label": "构建表面模型"
+      },
+      {
+        "id": "add_vacuum",
+        "label": "添加真空层"
+      },
+      {
+        "id": "insert_structure",
+        "label": "插入结构"
+      },
+      {
+        "id": "stack_heterostructure",
+        "label": "堆叠异质结构"
+      },
+      {
+        "id": "twist_moire",
+        "label": "扭转莫尔超晶格"
+      },
+      {
+        "id": "interpolate_neb",
+        "label": "生成 NEB 路径"
+      },
+      {
+        "id": "find_adsorption_sites",
+        "label": "寻找吸附位点"
+      },
+      {
+        "id": "locate_adsorbate",
+        "label": "吸附构型定位器"
+      },
+      {
+        "id": "place_adsorbate",
+        "label": "放置吸附物"
+      },
+      {
+        "id": "passivate_surface",
+        "label": "表面钝化"
+      },
+      {
+        "id": "add_solvent_layer",
+        "label": "添加溶剂层"
+      }
+    ]
+  },
+  {
+    "id": "symmetry_tools",
+    "label": "对称性工具",
+    "count": 6,
+    "commands": [
+      {
+        "id": "build_from_spacegroup",
+        "label": "按空间群构建"
+      },
+      {
+        "id": "make_p1",
+        "label": "转为 P1"
+      },
+      {
+        "id": "find_symmetry",
+        "label": "分析对称性"
+      },
+      {
+        "id": "primitive_cell",
+        "label": "原胞"
+      },
+      {
+        "id": "conventional_cell",
+        "label": "惯用胞"
+      },
+      {
+        "id": "wigner_seitz_cell",
+        "label": "Wigner-Seitz 晶胞"
+      }
+    ]
+  }
+]

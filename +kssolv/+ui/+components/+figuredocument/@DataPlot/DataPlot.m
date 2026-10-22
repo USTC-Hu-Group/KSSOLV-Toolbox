@@ -107,6 +107,9 @@ classdef DataPlot
                     ax.Parent = g;
                     this.figure.Parent = [];
                 end
+                for index = 1:numel(ax)
+                    kssolv.ui.browser.OnlineAxesToolbar.install(ax(index));
+                end
             else
                 image = uiimage(g);
                 image.ImageSource = this.figureFilePath;
@@ -117,7 +120,10 @@ classdef DataPlot
             appContainer.add(document);
 
             % 等待渲染完成
-            waitfor(document.Figure, 'FigureViewReady', true);
+            if ~kssolv.ui.browser.BrowserReconnectMonitor.waitFor( ...
+                    document.Figure, 'FigureViewReady', true)
+                return
+            end
             if isdeployed
                 % document 会异常地取消停靠（undocked），在渲染完成后需要重新停靠它
                 document.Docked = true;

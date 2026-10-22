@@ -141,7 +141,7 @@
         <entry key="ProjectBrowserTitle">Project Browser</entry>
 
         <!-- Info Browser -->
-        <entry key="InfoBrowserTitle">Information</entry>
+        <entry key="InfoBrowserTitle">Information Browser</entry>
 
         <!-- Config Browser -->
         <entry key="ConfigBrowserTitle">Config Editor</entry>
@@ -159,7 +159,15 @@
         <entry key="ConfigBrowserInputPanelCheckboxText">Use last node output as input</entry>
         <entry key="ConfigBrowserExecutionResourcesPanelTitle">Execution Resources</entry>
         <entry key="ConfigBrowserExecutionResourcesPanelEnvironmentLabel">Parallel: </entry>
-        <entry key="ConfigBrowserExecutionResourcesPanelEnvironmentLabelTooltip">Parallel environment settings</entry>
+        <entry key="ConfigBrowserExecutionResourcesPanelEnvironmentLabelTooltip">Select serial, process-pool parallel, or GPU diagonalization as supported by the node and algorithm</entry>
+        <entry key="WorkflowExecutionInherit">Use NSCF settings</entry>
+        <entry key="WorkflowExecutionGPU">GPU (diagonalization)</entry>
+        <entry key="WorkflowExecutionSerial">Serial</entry>
+        <entry key="WorkflowExecutionParallel">Parallel (process pool)</entry>
+        <entry key="WorkflowExecutionProcesses">Max processes:</entry>
+        <entry key="WorkflowExecutionProcessesTooltip">Maximum concurrent calculation workers. An existing pool must fit this limit.</entry>
+        <entry key="WorkflowExecutionThreads">Threads/process:</entry>
+        <entry key="WorkflowExecutionThreadsTooltip">Maximum CPU computational threads per process (GPU kernel threads are device managed). Parallel execution requires Parallel Computing Toolbox; thread-worker pools are not supported.</entry>
         <entry key="ConfigBrowserExecutionResourcesPanelTimeLimitLabel">Time limit: </entry>
         <entry key="ConfigBrowserExecutionResourcesPanelTimeLimitLabelTooltip">Execution time limit</entry>
         <entry key="ConfigBrowserOutputPanelTitle">Output</entry>
@@ -175,7 +183,7 @@
         <entry key="VariableTableClearButtonTooltip">Clear all variables</entry>
 
         <!-- Run Browser -->
-        <entry key="RunBrowserTitle">Simulation</entry>
+        <entry key="RunBrowserTitle">Simulation Browser</entry>
         <entry key="RunBrowserRunLabel">Run</entry>
         <entry key="RunBrowserRunButtonTooltip">Run simulation</entry>
         <entry key="RunBrowserStopLabel">Stop</entry>
@@ -191,6 +199,8 @@
         <entry key="LLMServiceInitializationFailed">Failed to initialize LLM service.</entry>
         <entry key="LLMConfigurationMissing">The OpenAI-compatible service configuration is incomplete. Review the API base URL and API key in Settings.</entry>
         <entry key="LLMAddonUnavailable">Large Language Models (LLMs) with MATLAB version 4.9.0 or later is required. Install, update, or enable the Add-On and try again.</entry>
+        <entry key="LLMResponseModel">Model: %s</entry>
+        <entry key="LLMWaiting">Waiting for %s…</entry>
         <entry key="LLMRequestFailed">The LLM request failed. Verify the service settings and connection, then try again.</entry>
 
         <!-- Document Group -->

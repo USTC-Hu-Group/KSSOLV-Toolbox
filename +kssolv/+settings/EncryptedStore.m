@@ -71,15 +71,7 @@ classdef EncryptedStore
 
     methods (Static, Access = private)
         function folder = storageFolder()
-            userFolders = split(string(userpath), pathsep);
-            userFolders = strip(userFolders);
-            userFolders(strlength(userFolders) == 0) = [];
-            if isempty(userFolders)
-                error('KSSOLV:Settings:UserPathUnavailable', ...
-                    'MATLAB userpath is not configured.');
-            end
-            folder = fullfile(char(userFolders(1)), ...
-                'KSSOLV_Toolbox', 'credentials');
+            folder = fullfile(kssolv.util.userDataDirectory(), 'credentials');
             if ~isfolder(folder)
                 [created, detail] = mkdir(folder);
                 if ~created

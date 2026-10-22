@@ -74,9 +74,12 @@ if ispc
 elseif ismac
     pattern = 'libcrypto*.dylib';
 else
-    pattern = 'libcrypto.so*';
+    pattern = 'libcrypto*.so*';
 end
 files = dir(fullfile(folder,pattern));
+if isempty(files)
+    files = dir(fullfile(matlabroot,'sys','os',computer('arch'),pattern));
+end
 if isempty(files)
     error('KSSOLV:Crypto:BackendMissing', ...
         'MATLAB native cryptography library is missing from %s.',folder);
@@ -85,7 +88,7 @@ end
 names = string({files.name});
 preferred = find(contains(names,'3'),1);
 if isempty(preferred), preferred = 1; end
-loadlibrary(fullfile(folder,files(preferred).name), ...
+loadlibrary(fullfile(files(preferred).folder,files(preferred).name), ...
     @kssolv.util.cryptoPrototype,'alias',lib);
 end
 

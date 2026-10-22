@@ -5,7 +5,7 @@ classdef EnergyConvergencePlot < kssolv.services.workflow.module.visualization.c
     %   版权 2024-2025 合肥瀚海量子科技有限公司
 
     properties
-        TotalEnergy % Etot 能量数据 (eV)
+        TotalEnergy % KSSOLV Etot 能量数据 (Hartree)
         SCFError % 误差数据
     end
 
@@ -33,7 +33,7 @@ classdef EnergyConvergencePlot < kssolv.services.workflow.module.visualization.c
             % 设置双 Y 轴标签
             hold(ax, "on");
             yyaxis(ax, 'left');
-            ylabel(ax, 'Energy (eV)');
+            ylabel(ax, 'Energy (Ha)');
             yyaxis(ax, 'right');
             ylabel(ax, 'Error');
 

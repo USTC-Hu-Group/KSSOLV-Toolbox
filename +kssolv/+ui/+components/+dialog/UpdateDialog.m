@@ -1,4 +1,4 @@
-classdef UpdateDialog < controllib.ui.internal.dialog.AbstractDialog
+classdef UpdateDialog < kssolv.ui.components.dialog.SessionDialog
     %UPDATEDIALOG 从 GitHub Release 检查 KSSOLV Toolbox 更新。
 
     % 开发者：杨柳
@@ -12,7 +12,6 @@ classdef UpdateDialog < controllib.ui.internal.dialog.AbstractDialog
         width = 560
         height = 330
         checkFuture = []
-        completionFuture = []
         checkToken (1, 1) uint64 = uint64(0)
         latestReleaseURL (1, 1) string = ""
     end
@@ -30,14 +29,14 @@ classdef UpdateDialog < controllib.ui.internal.dialog.AbstractDialog
 
         function show(this, varargin)
             this.stopCheck();
-            show@controllib.ui.internal.dialog.AbstractDialog( ...
+            show@kssolv.ui.components.dialog.SessionDialog( ...
                 this, varargin{:});
             this.startCheck();
         end
 
         function close(this)
             this.stopCheck();
-            close@controllib.ui.internal.dialog.AbstractDialog(this);
+            close@kssolv.ui.components.dialog.SessionDialog(this);
         end
     end
 
@@ -110,11 +109,18 @@ classdef UpdateDialog < controllib.ui.internal.dialog.AbstractDialog
                 'Text', message('KSSOLV:dialogs:UpdateDialogRetryButton'), ...
                 'ButtonPushedFcn', @(~, ~) this.startCheck());
             retryButton.Layout.Column = 1;
-            releaseButton = uibutton(buttonLayout, ...
-                'Text', message( ...
-                'KSSOLV:dialogs:UpdateDialogViewReleaseButton'), ...
-                'Enable', 'off', ...
-                'ButtonPushedFcn', @(~, ~) this.openLatestRelease());
+            if isKSSOLVOnline()
+                releaseButton = uihyperlink(buttonLayout, ...
+                    'Text', message( ...
+                    'KSSOLV:dialogs:UpdateDialogViewReleaseButton'), ...
+                    'URL', '', 'Enable', 'off');
+            else
+                releaseButton = uibutton(buttonLayout, ...
+                    'Text', message( ...
+                    'KSSOLV:dialogs:UpdateDialogViewReleaseButton'), ...
+                    'Enable', 'off', ...
+                    'ButtonPushedFcn', @(~, ~) this.openLatestRelease());
+            end
             releaseButton.Layout.Column = 2;
             closeButton = uibutton(buttonLayout, ...
                 'Text', message('KSSOLV:dialogs:DialogCloseButton'), ...
@@ -143,6 +149,7 @@ classdef UpdateDialog < controllib.ui.internal.dialog.AbstractDialog
             this.widgets.LatestVersion.Text = '—';
             this.widgets.RetryButton.Enable = 'off';
             this.widgets.ReleaseButton.Enable = 'off';
+            if isKSSOLVOnline(), this.widgets.ReleaseButton.URL = ''; end
             this.setStatus('checking', ...
                 message('KSSOLV:dialogs:UpdateDialogChecking'), ...
                 message('KSSOLV:dialogs:UpdateDialogCheckingDetail'));
@@ -150,18 +157,17 @@ classdef UpdateDialog < controllib.ui.internal.dialog.AbstractDialog
 
             future = [];
             try
-                future = parfeval(backgroundPool, ...
-                    @kssolv.ui.components.dialog.UpdateDialog.fetchLatestRelease, ...
-                    1);
+                endpoint = strrep([KSSOLV_Toolbox.CodeRepository, '/releases/latest'], ...
+                    'https://github.com/', 'https://api.github.com/repos/');
+                future = kssolv.services.http.HTTPJSONRequest(endpoint, ...
+                    struct(), ...
+                    @kssolv.ui.components.dialog.UpdateDialog.decodeLatestRelease, ...
+                    @(completed) this.checkFinished(completed, token));
                 this.checkFuture = future;
-                this.completionFuture = afterEach(future, ...
-                    @(completedFuture) this.checkFinished( ...
-                    completedFuture, token), ...
-                    0, PassFuture = true);
+                future.start();
             catch exception
                 this.cancelFuture(future);
                 this.checkFuture = [];
-                this.completionFuture = [];
                 this.widgets.RetryButton.Enable = 'on';
                 this.setStatus('failure', ...
                     message('KSSOLV:dialogs:UpdateDialogCheckFailed'), ...
@@ -177,7 +183,6 @@ classdef UpdateDialog < controllib.ui.internal.dialog.AbstractDialog
             end
 
             this.checkFuture = [];
-            this.completionFuture = [];
             this.widgets.RetryButton.Enable = 'on';
 
             if ~isempty(future.Error)
@@ -185,9 +190,15 @@ classdef UpdateDialog < controllib.ui.internal.dialog.AbstractDialog
                 if iscell(exception)
                     exception = exception{1};
                 end
-                this.setStatus('failure', ...
-                    message('KSSOLV:dialogs:UpdateDialogCheckFailed'), ...
-                    this.localizedNetworkError(exception));
+                if contains(lower(exception.identifier), 'http404')
+                    this.setStatus('neutral', ...
+                        message('KSSOLV:dialogs:UpdateDialogNoRelease'), ...
+                        message('KSSOLV:dialogs:UpdateDialogNoReleaseDetail'));
+                else
+                    this.setStatus('failure', ...
+                        message('KSSOLV:dialogs:UpdateDialogCheckFailed'), ...
+                        this.localizedNetworkError(exception));
+                end
                 return
             end
 
@@ -204,6 +215,9 @@ classdef UpdateDialog < controllib.ui.internal.dialog.AbstractDialog
                 latestVersion = this.normalizedVersion(release.TagName);
                 this.widgets.LatestVersion.Text = char(latestVersion);
                 this.latestReleaseURL = string(release.URL);
+                if isKSSOLVOnline()
+                    this.widgets.ReleaseButton.URL = this.latestReleaseURL;
+                end
                 this.widgets.ReleaseButton.Enable = 'on';
 
                 if this.isNewerVersion( ...
@@ -231,11 +245,8 @@ classdef UpdateDialog < controllib.ui.internal.dialog.AbstractDialog
 
         function stopCheck(this)
             requestFuture = this.checkFuture;
-            completion = this.completionFuture;
             this.checkToken = this.checkToken + 1;
             this.checkFuture = [];
-            this.completionFuture = [];
-            this.cancelFuture(completion);
             this.cancelFuture(requestFuture);
         end
 
@@ -325,6 +336,10 @@ classdef UpdateDialog < controllib.ui.internal.dialog.AbstractDialog
                 rethrow(exception);
             end
 
+            release = kssolv.ui.components.dialog.UpdateDialog.decodeLatestRelease(response);
+        end
+
+        function release = decodeLatestRelease(response)
             requiredFields = {'tag_name', 'html_url'};
             if ~isstruct(response) || ...
                     ~all(isfield(response, requiredFields))
@@ -332,8 +347,8 @@ classdef UpdateDialog < controllib.ui.internal.dialog.AbstractDialog
                     'GitHub returned an invalid release response.');
             end
 
-            release.Exists = true;
-            release.TagName = string(response.tag_name);
+            release = struct('Exists', true, 'TagName', string(response.tag_name), ...
+                'Name', "", 'URL', "", 'PublishedAt', "");
             release.URL = string(response.html_url);
             if isfield(response, 'name')
                 release.Name = string(response.name);
@@ -386,7 +401,7 @@ classdef UpdateDialog < controllib.ui.internal.dialog.AbstractDialog
                 return
             end
             try
-                if isvalid(future) && ~strcmp(future.State, 'finished')
+                if isvalid(future)
                     cancel(future);
                 end
             catch

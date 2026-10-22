@@ -1,0 +1,154 @@
+<!doctype html>
+<html><head><meta charset="utf-8"></head><body><script>
+function setup(component) {
+    'use strict';
+    const host = window.parent;
+    // uihtml can initialize again while the prior iframe is being replaced.
+    // Keep one bridge per app document, including across setup calls.
+    const slot = '__kssolvOnlineActionsCleanup';
+    if (host[slot]) host[slot]();
+    // Keep the MATLAB peer/action and native popup, but place the user widget
+    // in Toolstrip's dedicated account slot, outside the QAB capsule.
+    let accountViewObserver, accountViewCleanup = () => {};
+    function installAccountView() {
+        if(typeof host.document.querySelector !== 'function') return;
+        const tagged = host.document.querySelector('[data-tag="QABAccountButton"]');
+        const target = host.document.querySelector('.toolstrip .logoutContainer');
+        if(!tagged || !target) return;
+        const control = tagged.closest('.mwWidget') || tagged.querySelector('.mwWidget') || tagged;
+        const parent = control.parentElement, next = control.nextSibling;
+        if(!parent || target.contains(control) || control.contains(target)) return;
+        const separator = host.document.createElement('div');
+        separator.className = 'quickAccessGroupSeparator';
+        separator.setAttribute('aria-hidden','true');
+        control.classList.add('motwLogoutButton');
+        target.classList.add('kssolv-online-user');
+        target.append(separator,control);
+        if(!host.document.getElementById('kssolv-account-style')) {
+            const style = host.document.createElement('style');
+            style.id = 'kssolv-account-style';
+            style.textContent = '.toolstrip .topRightContainer .logoutContainer.kssolv-online-user{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}.kssolv-online-user .quickAccessGroupSeparator{flex:none}.kssolv-online-user .motwLogoutButton{max-width:250px}';
+            host.document.head.appendChild(style);
+        }
+        accountViewObserver?.disconnect();
+        accountViewCleanup = () => {
+            if(parent.isConnected && control.isConnected) parent.insertBefore(control,next?.parentElement===parent?next:null);
+            control.classList.remove('motwLogoutButton');
+            separator.remove(); target.classList.remove('kssolv-online-user');
+        };
+    }
+    if(typeof host.document.querySelector === 'function' && host.MutationObserver) {
+        accountViewObserver = new host.MutationObserver(installAccountView);
+        accountViewObserver.observe(host.document.documentElement,{childList:true,subtree:true});
+        installAccountView();
+    }
+    let accountActive = true, accountController, portalOrigin = '';
+    async function accountRequest(name, write = false) {
+        accountController = new AbortController();
+        const controller = accountController;
+        const timeout = setTimeout(() => controller.abort(), 10000);
+        try {
+            const response = await host.fetch('/_portal/api/' + name, {
+                credentials:'same-origin', signal:controller.signal,
+                ...(write ? {method:'POST',headers:{'Content-Type':'application/json'},body:'{}'} : {})});
+            if (!response.ok) throw new Error('Online account request failed (' + response.status + ').');
+            return await response.json();
+        } finally { clearTimeout(timeout); }
+    }
+    function accountShell(type, reason) {
+        let root = host;
+        try { while(root.parent !== root && root.parent.location.origin === root.location.origin) root=root.parent; } catch {}
+        if (portalOrigin && root.parent !== root) root.parent.postMessage({type,reason},portalOrigin);
+    }
+    async function accountAction(event) {
+        if (!accountActive) return;
+        try {
+            if(event.Data.action === 'reconnect') {
+                accountShell('kssolv-session-reconnect');
+            } else if(['logout','exit'].includes(event.Data.action)) {
+                const exiting = event.Data.action === 'exit';
+                const state=await accountRequest(exiting?'exit':'logout',true);
+                if(accountActive && exiting) component.sendEventToMATLAB('accountState',state);
+                if(accountActive) accountShell(exiting?'kssolv-workspace-exited':'kssolv-session-ended','logout');
+            }
+        } catch(error) {
+            if(accountActive) component.sendEventToMATLAB('accountError',{message:error.message});
+        }
+    }
+    if (typeof component.addEventListener === 'function') {
+        component.addEventListener('accountAction',accountAction);
+        accountRequest('session').then(state => {
+            if(!accountActive) return;
+            const origin = new URL(state.portalOrigin);
+            if(!['https:','http:'].includes(origin.protocol) || origin.origin !== state.portalOrigin) throw new Error('Invalid portal origin');
+            portalOrigin = origin.origin;
+            component.sendEventToMATLAB('accountState',state);
+        }).catch(() => {
+            if(accountActive) component.sendEventToMATLAB('accountState',{username:'',idleSeconds:0,ready:false});
+        });
+    }
+    function shortcut(event) {
+        if (event.type !== 'keydown' || !event.isTrusted || event.altKey ||
+            !!event.metaKey === !!event.ctrlKey) return false;
+        const key = event.key.toLowerCase();
+        const editable = event.target && (event.target.isContentEditable ||
+            event.target.closest('input,textarea,select,[role="textbox"]'));
+        let command;
+        if (key === 's') command = event.shiftKey ? 'saveAs' : 'save';
+        else if (key === 'o' && !event.shiftKey) command = 'open';
+        else if (!editable && key === 'z') command = event.shiftKey ? 'redo' : 'undo';
+        else if (!editable && key === 'y' && event.ctrlKey && !event.shiftKey) command = 'redo';
+        if (!command) return false;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        if (event.repeat || host.__kssolvOnlineModals?.count > 0) return true;
+        if (command === 'undo' || command === 'redo') {
+            const tag = command === 'undo' ? 'QABUndoButton' : 'QABRedoButton';
+            const button = host.document.querySelector('[data-tag="' + tag + '"]');
+            if (button && button.getAttribute('aria-disabled') !== 'true') button.click();
+        } else component.sendEventToMATLAB('shortcut', {command});
+        return true;
+    }
+    host.__kssolvOnlineShortcut = shortcut;
+    // Handle the actual client click (including keyboard activation), before
+    // a MATLAB round trip loses the browser's transient user activation.
+    function activate(event) {
+        if (shortcut(event)) return;
+        // The native toolstrip redispatches a synthetic click while handling
+        // the real pointer event. Only the trusted gesture may open a link.
+        if (!event.isTrusted) return;
+        const button = event.target.closest('[data-tag]');
+        if (!button || button.getAttribute('aria-disabled') === 'true') return;
+        const data = component.Data;
+        const entry = data.links.find(item => item.tag === button.getAttribute('data-tag'));
+        if (!entry) return;
+        if (event.type === 'keydown' && !['Enter',' '].includes(event.key)) return;
+        event.preventDefault();
+        // Let native click handling dismiss the toolstrip popup. MATLAB's
+        // Online callbacks return without launching a server-side browser.
+        if (event.type === 'keydown') event.stopImmediatePropagation();
+        const link = host.document.createElement('a');
+        link.href = entry.url;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        host.document.body.appendChild(link);
+        link.click();
+        link.remove();
+    }
+    host.document.addEventListener('click', activate, true);
+    host.document.addEventListener('keydown', activate, true);
+    function cleanup() {
+        accountViewObserver?.disconnect();
+        accountViewCleanup();
+        accountActive = false;
+        accountController?.abort();
+        if(typeof component.removeEventListener === 'function') component.removeEventListener('accountAction',accountAction);
+        host.document.removeEventListener('click', activate, true);
+        host.document.removeEventListener('keydown', activate, true);
+        if (host[slot] === cleanup) delete host[slot];
+        if (host.__kssolvOnlineShortcut === shortcut) delete host.__kssolvOnlineShortcut;
+    }
+    host[slot] = cleanup;
+    window.addEventListener('unload', cleanup, {once:true});
+}
+</script></body></html>

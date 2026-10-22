@@ -1,4 +1,4 @@
-classdef MaterialsProjectDialog < controllib.ui.internal.dialog.AbstractDialog
+classdef MaterialsProjectDialog < kssolv.ui.components.dialog.SessionDialog
     %MATERIALSPROJECTDIALOG Search and import Materials Project crystals.
 
     % 开发者：杨柳
@@ -53,7 +53,7 @@ classdef MaterialsProjectDialog < controllib.ui.internal.dialog.AbstractDialog
                 this.setBusy(false, message( ...
                     "KSSOLV:dialogs:MaterialsProjectReady"));
             end
-            close@controllib.ui.internal.dialog.AbstractDialog(this);
+            close@kssolv.ui.components.dialog.SessionDialog(this);
         end
 
     end

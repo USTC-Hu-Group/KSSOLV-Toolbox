@@ -83,6 +83,11 @@ classdef ProjectBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser
     methods (Access = protected)
         function buildUI(this)
             this.IsClientReady = false;
+            % Replace only our tree layout; keep the shared Online action host.
+            if isstruct(this.Widgets) && isfield(this.Widgets, 'html') && ...
+                    isgraphics(this.Widgets.html)
+                delete(this.Widgets.html.Parent);
+            end
             fig = this.Figure;
             g = uigridlayout(fig);
             g.BackgroundColor = "white";
@@ -91,7 +96,7 @@ classdef ProjectBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser
             g.ColumnWidth = {'1x'};
 
             htmlFile = fullfile(fileparts(mfilename('fullpath')), 'TreeTable', 'TreeTable.html');
-            h = uihtml(g, "HTMLSource", htmlFile);
+            h = uihtml(g, "HTMLSource", kssolv.ui.browser.htmlSource(htmlFile, FillFigure=true));
             this.Widgets.html = h;
 
             % 将当前加载的 project 文件编码为 JSON，发送给 HTML 组件
@@ -126,6 +131,11 @@ classdef ProjectBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser
             % 在 DataStorage 被清空后尝试对 double([]) 调用对象方法。
             this.resolveCurrentProject();
             this.currentSelectedItem = event.HTMLEventData;
+            prewarm = kssolv.ui.util.DataStorage.getData('CrystalViewerPrewarm');
+            if ~isempty(prewarm) && isvalid(prewarm)
+                project = this.resolveCurrentProject();
+                prewarm.prepareSelection(project.findChildrenItem(this.currentSelectedItem));
+            end
         end
 
         function callbackRowDoubleClicked(this, ~, event)

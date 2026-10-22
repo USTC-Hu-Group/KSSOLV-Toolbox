@@ -1,4 +1,4 @@
-classdef LicenseDialog < controllib.ui.internal.dialog.AbstractDialog
+classdef LicenseDialog < kssolv.ui.components.dialog.SessionDialog
     %LICENSEDIALOG 显示工具箱根目录中的 LICENSE 文件。
 
     % 开发者：杨柳
@@ -26,7 +26,7 @@ classdef LicenseDialog < controllib.ui.internal.dialog.AbstractDialog
 
         function show(this, varargin)
             this.widgets.LicenseText.Value = this.readLicenseFile();
-            show@controllib.ui.internal.dialog.AbstractDialog( ...
+            show@kssolv.ui.components.dialog.SessionDialog( ...
                 this, varargin{:});
         end
     end

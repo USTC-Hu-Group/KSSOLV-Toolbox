@@ -6,8 +6,8 @@ classdef KSSOLV_Toolbox
 
     properties (Constant)
         Name string = 'KSSOLV Toolbox'
-        Version string = '0.4.1'
-        ReleaseDate string = '2026.10.13'
+        Version string = '0.5.0'
+        ReleaseDate string = '2026.10.20'
         License char = 'Business Source License 1.1 (BUSL-1.1)'
         CodeRepository char = 'https://github.com/USTC-Hu-Group/KSSOLV-Toolbox'
 
@@ -29,6 +29,6 @@ classdef KSSOLV_Toolbox
     properties (Constant, Hidden)
         Identifier = '5200919d-0e3d-4525-ad64-977f32dedd5d'
         UIResourcesDirectory char = fullfile(fileparts(mfilename('fullpath')), '+kssolv', '+ui', 'resources')
-        LogsDirectory char = fullfile(userpath, 'KSSOLV_Toolbox', 'Logs')
+        LogsDirectory char = fullfile(kssolv.util.userDataDirectory(), 'Logs')
     end
 end

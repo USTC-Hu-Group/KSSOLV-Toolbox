@@ -198,12 +198,10 @@ scripts/windows/tests/Test-InstalledStartup.ps1 -ApplicationRoot 'E:\Apps\KSSOLV
 # 等待人工点击卡片右上角关闭按钮，核对后台进程树退出：
 scripts/windows/tests/Test-InstalledStartup.ps1 -ApplicationRoot 'E:\Apps\KSSOLV Toolbox' -ManualCancel -Runs 1
 scripts/windows/tests/Test-RuntimePayload.ps1
-python scripts/windows/tests/Test-PlatformScope.py <本次变更之前的提交>
 ```
 
 启动器测试覆盖正常预热、进程失败、缺少就绪信号、旧 nonce、子进程回收与父进程
-环境变量不变。平台测试比较非 deploy 实际执行语句，覆盖共享启动入口、Toolbox
-构造和显示。HTML 宿主测试另检查阶段补齐、中英文、版权完整及排版、原 logo、
+环境变量不变。HTML 宿主测试另检查阶段补齐、中英文、版权完整及排版、原 logo、
 动态进度段的逐帧更新、艺术图静止、握手顺序和旧 nonce 拒绝，并覆盖旧系统
 兼容宿主。`.animation` 文件记录回调/样式更新频率和帧间隔，不等同于 GPU 实际扫描输出。
 安装后验收另输出逐次 JSON、timings.csv 和可选的原生 PNG；截图用例在同一安装目录中

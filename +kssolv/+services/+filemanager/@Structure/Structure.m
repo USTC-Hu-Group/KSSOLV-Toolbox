@@ -16,6 +16,12 @@ classdef Structure < kssolv.services.filemanager.AbstractItem
 
         function showMoleculeDisplay(this)
             % 使用 Data 数据中的文件路径以打开对应结构的渲染界面
+            app = kssolv.ui.util.DataStorage.getData('AppContainer');
+            document = app.getDocument('Structure', this.name);
+            if ~isempty(document)
+                document.Selected = true;
+                return
+            end
             if isobject(this.data) && ...
                     isprop(this.data, "MatgenlabObject") && ...
                     ~isempty(this.data.MatgenlabObject)
@@ -31,10 +37,11 @@ classdef Structure < kssolv.services.filemanager.AbstractItem
                 input, format, this.name).Display();
         end
 
-        function importedFileCount = importStructureFromFile(this)
+        function importedFileCount = importStructureFromFile(this, paths)
             % 打开导入结构文件对话框，创建并添加 Structure 节点，渲染结构
             import kssolv.ui.util.Localizer.message
 
+            if nargin < 2
             [files, path] = ...
                 kssolv.services.fileparser.FileDialogRegistry. ...
                 chooseMany( ...
@@ -42,6 +49,10 @@ classdef Structure < kssolv.services.filemanager.AbstractItem
                 structureFilters(), ...
                 message("KSSOLV:dialogs:ImportStructureFromFile"), ...
                 "LastStructureImportFolder");
+            else
+                files = cellstr(string(paths));
+                path = "";
+            end
 
             % 检查用户是否点击了取消按钮
             if isempty(files)

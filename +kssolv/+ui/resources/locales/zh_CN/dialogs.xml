@@ -117,6 +117,7 @@
         <entry key="SaveWFFileTitle">保存文件</entry>
 
         <!-- HomeTab: callbackRunAndTime -->
+        <entry key="ComputationFailedTitle">计算失败</entry>
         <entry key="RunTimeUsed">用时：</entry>
         <entry key="RunTimeUsedUnit">秒</entry>
 
@@ -377,5 +378,47 @@
         <entry key="RemoteCommandWaiting">远程命令执行中，正在等待结果…</entry>
         <entry key="RemoteCommandFinished">远程命令执行完成。</entry>
         <entry key="RemoteCommandFailed">远程命令执行失败：%s</entry>
+        <entry key="OnlineAccountTab">账号</entry>
+        <entry key="OnlineAccountLogin">登录</entry>
+        <entry key="OnlineAccountSettings">设置</entry>
+        <entry key="OnlineAccountSignOut">注销</entry>
+        <entry key="OnlineAccountClose">关闭</entry>
+        <entry key="OnlineAccountCancel">取消</entry>
+        <entry key="OnlineAccountUsername">用户名</entry>
+        <entry key="OnlineAccountStatus">连接状态</entry>
+        <entry key="OnlineAccountIdle">空闲释放时间</entry>
+        <entry key="OnlineAccountConnected">已连接</entry>
+        <entry key="OnlineAccountNotConnected">未登录</entry>
+        <entry key="OnlineAccountIdleMinutes">%d 分钟</entry>
+        <entry key="OnlineAccountReconnect">重新连接</entry>
+        <entry key="OnlineAccountSignOutNote">是否注销并释放此工作区？请先保存项目，未保存的更改将丢失。</entry>
+        <entry key="OnlineAccountUnavailable">此实例未连接 Online 账号服务，请通过集群入口登录。</entry>
+        <entry key="OnlineAccountRetentionNote">关闭网页后，工作区会保留至空闲超时；期间重新访问同一入口即可重连。注销会立即释放实例，请先保存项目。</entry>
+        <entry key="FilesActions">文件操作</entry>
+        <entry key="FilesSortDescending">按名称降序排列</entry>
+        <entry key="FilesSortAscending">按名称升序排列</entry>
+        <entry key="FilesItemCount">%d 个条目</entry>
+        <entry key="FilesRefreshPartial">部分文件夹刷新失败。</entry>
+        <entry key="FilesRoot">Online</entry>
+        <entry key="OnlineResourceMemory">内存</entry>
+        <entry key="OnlineResourceHost">宿主机</entry>
+        <entry key="OpenPanelsTitle">打开面板</entry>
+        <entry key="FilesTitle">文件</entry>
+        <entry key="FilesImport">导入</entry>
+        <entry key="FilesUpload">上传</entry>
+        <entry key="FilesDownload">下载</entry>
+        <entry key="FilesSaveProject">保存项目到云端</entry>
+        <entry key="FilesNewFolder">新建文件夹</entry>
+        <entry key="FilesRefresh">刷新</entry>
+        <entry key="FilesUnavailable">当前部署未启用持久化文件。</entry>
+        <entry key="FilesFilename">名称</entry>
+        <entry key="FilesSaved">已保存到云端文件。</entry>
+        <entry key="FilesTruncated">显示前 1,000 个条目。</entry>
+        <entry key="FilesAll">所有文件</entry>
+        <entry key="FilesReplace">替换</entry>
+        <entry key="FilesExists">已存在同名文件，是否替换？</entry>
+        <entry key="OnlineAccountMyAccount">我的账户</entry>
+        <entry key="OnlineAccountExit">退出 KSSOLV Toolbox</entry>
+        <entry key="OnlineAccountExitNote">是否返回入口？工作空间将保留至空闲超时。保留此标签页可原样返回；关闭或刷新网页将重建界面。</entry>
     </message>
 </rsccat>

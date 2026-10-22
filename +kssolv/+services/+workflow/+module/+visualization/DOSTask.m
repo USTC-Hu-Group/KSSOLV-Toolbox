@@ -14,7 +14,8 @@ classdef DOSTask < kssolv.services.workflow.module.AbstractTask
         function this = setup(this)
             this.module = kssolv.services.workflow.module.ModuleType.Visualization;
             this.requiredTasks = ['SCFTask', 'NSCFTask'];
-            this.supportGPU = false;
+            this.supportGPU = true;
+            this.usedParallelType = 'Inherit';
             this.supportParallel = true;
         end
     end
@@ -34,22 +35,25 @@ classdef DOSTask < kssolv.services.workflow.module.AbstractTask
 
             context = kssolv.services.workflow.module.visualization. ...
                 DOSTask.executeWithOptions( ...
-                context, this.getExecutionOptions());
+                context, this.getExecutionOptions(), this.getExecutionResources());
             kssolv.services.workflow.module.visualization. ...
                 DOSTask.presentWithContext(context);
         end
     end
 
     methods (Static)
-        function context = executeWithOptions(context, taskOptions)
+        function context = executeWithOptions(context, taskOptions, resources)
             arguments
                 context containers.Map
                 taskOptions (1, 1) struct
+                resources (1, 1) struct = kssolv.services.workflow.ExecutionResources.defaults()
             end
+            [NSCFOptions, resourceCleanup] = ...
+                kssolv.services.workflow.ExecutionResources.prepareNSCF( ...
+                context, 'kssolv.services.workflow.module.visualization.DOSTask', ...
+                taskOptions, resources); %#ok<ASGLU>
             crystal = copy(context("molecule"));
-            NSCFOptions = context("NSCFOptions");
             NSCFOptions.rho0 = context("H").rho;
-            NSCFOptions.enableParallelPool = true;
             energyBands = eband(crystal, NSCFOptions, ...
                 taskOptions.NSCFGrid);
             energyRange = taskOptions.startEnergy:taskOptions.stepSize: ...

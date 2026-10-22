@@ -338,7 +338,7 @@ classdef WorkflowTab < handle
             import kssolv.ui.util.Localizer.*
 
             % 打开文件选取对话框
-            [file, path] = uigetfile({'*.wf', 'KSSOLV Workflow Files (*.wf)'}, ...
+            [file, path] = kssolv.ui.util.FileDialog.open({'*.wf', 'KSSOLV Workflow Files (*.wf)'}, ...
                 message('KSSOLV:dialogs:OpenWFFileTitle'), 'MultiSelect', 'off');
             if isequal(file, 0)
                 % 用户点击了"取消"按钮
@@ -364,7 +364,7 @@ classdef WorkflowTab < handle
             workflow = project.findChildrenItem(currentWorkflowDocument.Tag);
 
             % 选择保存为 .wf 文件的路径
-            [file,location] = uiputfile({'*.wf', 'KSSOLV Workflow Files (*.wf)'}, ...
+            [file,location] = kssolv.ui.util.FileDialog.save({'*.wf', 'KSSOLV Workflow Files (*.wf)'}, ...
                 message('KSSOLV:dialogs:SaveWFFileTitle'), 'untitled');
             if isequal(file, 0) || isequal(location, 0)
                 % 用户点击了"取消"按钮
@@ -373,6 +373,7 @@ classdef WorkflowTab < handle
                 % 用户选择了具体的文件路径
                 wfFile = fullfile(location, file);
                 workflow.saveToWfFile(wfFile);
+                kssolv.ui.util.FileDialog.download(wfFile);
             end
             kssolv.ui.util.DataStorage.getData('AppContainer').bringToFront();
         end

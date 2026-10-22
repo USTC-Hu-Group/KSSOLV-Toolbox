@@ -105,6 +105,10 @@ classdef RunBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser
             stopButton = createButton(buttonPanelLayout, 1, 3, ...
                 stopButtonTooltip, stopButtonIcon);
             stopButton.Enable = false;
+            if isKSSOLVOnline()
+                stopButton.Tooltip = ...
+                    'Stopping synchronous calculations is unavailable in Online sessions.';
+            end
             stopButton.ButtonPushedFcn = @(src, event) callbackStopButton(this, src, event);
             % 停止标签，Row = 1，Column = 4
             stopLabel = uilabel(buttonPanelLayout);
@@ -143,6 +147,7 @@ classdef RunBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser
 
             % 添加到 Widgets
             this.Widgets.OutputTextPanel = struct('OutputTextArea', outputTextArea);
+            kssolv.ui.browser.enableClientGridSizing(this.Figure);
         end
     end
 
@@ -157,9 +162,9 @@ classdef RunBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser
             project = kssolv.ui.util.DataStorage.getData('Project');
             homeTab = kssolv.ui.util.DataStorage.getData('HomeTab');
             homeTab.Widgets.RunningSection.RunningRunButton.Enabled = false;
-            homeTab.Widgets.RunningSection.RunningStopButton.Enabled = true;
+            homeTab.Widgets.RunningSection.RunningStopButton.Enabled = ~isKSSOLVOnline();
             this.Widgets.ButtonPanel.RunButton.Enable = false;
-            this.Widgets.ButtonPanel.StopButton.Enable = true;
+            this.Widgets.ButtonPanel.StopButton.Enable = ~isKSSOLVOnline();
 
             % 增加换行以便于阅读
             this.addNewLineToOutputTextArea();

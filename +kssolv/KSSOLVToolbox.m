@@ -11,12 +11,19 @@ classdef KSSOLVToolbox < handle
     end
 
     properties (Access = private)
+        Sidebar kssolv.ui.browser.Sidebar
+    end
+
+    properties (Access = private)
         projectBrowser % 用于判断 AppContainer 是否渲染结束
+        filesBrowser
         runBrowser % 运行浏览器
         modelingTab % 结构文档打开时显示的上下文建模标签页
         appStateListener % AppContainer 状态监听器
         IsShuttingDown (1,1) logical = false
         IsDeleting (1,1) logical = false
+        BrowserStartupPending (1,1) logical = false
+        CrystalPrewarm = []
     end
 
     methods
@@ -37,7 +44,11 @@ classdef KSSOLVToolbox < handle
             appOptions.Tag = sprintf('kssolv(%s)', char(matlab.lang.internal.uuid));
             appOptions.ToolstripEnabled = true;
             appOptions.EnableTheming = false;
-            this.AppContainer = matlab.ui.container.internal.AppContainer(appOptions);
+            if strlength(getenv('KSSOLV_BROWSER_SESSION_FILE')) > 0
+                this.AppContainer = kssolv.ui.browser.BrowserAppContainer(appOptions);
+            else
+                this.AppContainer = kssolv.ui.browser.SidebarAppContainer(appOptions);
+            end
             this.Name = this.AppContainer.Tag;
             % 保存 AppContainer 至 DataStorage
             kssolv.ui.util.DataStorage.setData('AppContainer', this.AppContainer);
@@ -52,6 +63,10 @@ classdef KSSOLVToolbox < handle
             % 添加多个 Data Browser 组件
             this.projectBrowser = kssolv.ui.components.databrowser.ProjectBrowser();
             this.projectBrowser.addToAppContainer(this.AppContainer);
+            if isKSSOLVOnline()
+                this.filesBrowser = kssolv.ui.components.databrowser.FilesBrowser();
+                this.filesBrowser.addToAppContainer(this.AppContainer);
+            end
             infoBrowser = kssolv.ui.components.databrowser.InfoBrowser();
             infoBrowser.addToAppContainer(this.AppContainer);
             configBrowser = kssolv.ui.components.databrowser.ConfigBrowser();
@@ -60,6 +75,18 @@ classdef KSSOLVToolbox < handle
             this.runBrowser.addToAppContainer(this.AppContainer);
             commandWindow = kssolv.ui.components.databrowser.CommandWindow();
             commandWindow.addToAppContainer(this.AppContainer);
+            panelTags = ["ProjectBrowser", "InfoBrowser", "ConfigBrowser", ...
+                "RunBrowser", "CommandWindow"];
+            if isKSSOLVOnline(), panelTags(end+1) = "OnlineFilesBrowser"; end
+            for panelTag = panelTags
+                % Accordion mode ignored Opened for these FigurePanels;
+                % the native sidebar correctly uses it as panel membership.
+                panel = this.AppContainer.getPanel(panelTag);
+                panel.Opened = true;
+                panel.Closable = panelTag ~= "ProjectBrowser";
+            end
+            this.Sidebar = kssolv.ui.browser.Sidebar(this.AppContainer, ...
+                this.projectBrowser.Figure, panelTags);
             this.setPanelLayout();
             % 添加多个 Tab 组件
             homeTab = kssolv.ui.components.tab.HomeTab();
@@ -83,6 +110,8 @@ classdef KSSOLVToolbox < handle
 
             % 添加 Project 句柄对象的监听器
             kssolv.KSSOLVToolbox.createListener();
+            this.CrystalPrewarm = kssolv.ui.util.CrystalViewerPrewarm(this.projectBrowser.Figure);
+            kssolv.ui.util.DataStorage.setData('CrystalViewerPrewarm', this.CrystalPrewarm);
         end
 
         function delete(this)
@@ -91,11 +120,21 @@ classdef KSSOLVToolbox < handle
                 return
             end
             this.IsDeleting = true;
+            if ~isempty(this.CrystalPrewarm) && isvalid(this.CrystalPrewarm)
+                stored = kssolv.ui.util.DataStorage.getData('CrystalViewerPrewarm');
+                if isequal(stored, this.CrystalPrewarm)
+                    kssolv.ui.util.DataStorage.removeData('CrystalViewerPrewarm');
+                end
+                delete(this.CrystalPrewarm);
+            end
             if ~isempty(this.appStateListener) && ...
                     isvalid(this.appStateListener)
                 delete(this.appStateListener);
             end
             this.appStateListener = [];
+            if ~isempty(this.Sidebar) && isvalid(this.Sidebar)
+                delete(this.Sidebar);
+            end
             storedApp = ...
                 kssolv.ui.util.DataStorage.getData("KSSOLVToolbox");
             if ~isempty(storedApp) && isequal(storedApp, this)
@@ -129,6 +168,9 @@ classdef KSSOLVToolbox < handle
             if ~isempty(this.runBrowser) && isvalid(this.runBrowser)
                 delete(this.runBrowser);
             end
+            if ~isempty(this.filesBrowser) && isvalid(this.filesBrowser)
+                delete(this.filesBrowser);
+            end
             % During a user-initiated close the AppContainer owns its native
             % teardown. Deleting it again from its TERMINATED callback is a
             % re-entrant ViewModel destruction and can segfault MATLAB.
@@ -153,6 +195,17 @@ classdef KSSOLVToolbox < handle
             this.AppContainer.HostInBrowser = this.HostInBrowser;
             this.AppContainer.Busy = true;
 
+            sessionFile = string(getenv('KSSOLV_BROWSER_SESSION_FILE'));
+            if this.HostInBrowser && strlength(sessionFile) > 0
+                % A remote client cannot render until the proxy has its URL.
+                % In a container, failure to open a local browser is expected.
+                this.AppContainer.prepareBrowserView();
+                url = this.getNewUrl();
+                kssolv.ui.browser.BrowserSession.publish(sessionFile, url);
+                this.BrowserStartupPending = true;
+                return
+            end
+
             try
                 this.AppContainer.Visible = true;
                 waitfor(this.projectBrowser.Figure, 'FigureViewReady', true);
@@ -165,6 +218,26 @@ classdef KSSOLVToolbox < handle
             end
 
             this.AppContainer.Busy = false;
+        end
+
+        function published = processBrowserSessionRequests(this)
+            published = false;
+            sessionFile = string(getenv('KSSOLV_BROWSER_SESSION_FILE'));
+            if this.HostInBrowser && strlength(sessionFile) > 0
+                published = kssolv.ui.browser.BrowserSession.respond(sessionFile, @() this.getNewUrl());
+            end
+        end
+
+        function updateBrowserStartupState(this)
+            if ~this.BrowserStartupPending, return, end
+            home = kssolv.ui.util.DataStorage.getData('HomeTab');
+            filesReady = isempty(this.filesBrowser) || this.filesBrowser.Figure.FigureViewReady;
+            if this.AppContainer.State == matlab.ui.container.internal.appcontainer.AppState.RUNNING && ...
+                    this.projectBrowser.Figure.FigureViewReady && this.projectBrowser.IsClientReady && ...
+                    filesReady && home.IsBrowserReady
+                this.BrowserStartupPending = false;
+                this.AppContainer.Busy = false;
+            end
         end
 
         function waitUntilReady(this)
@@ -202,6 +275,9 @@ classdef KSSOLVToolbox < handle
                 return
             end
             this.IsShuttingDown = true;
+            if ~isempty(this.CrystalPrewarm) && isvalid(this.CrystalPrewarm)
+                this.CrystalPrewarm.shutdown();
+            end
             if ~isempty(this.modelingTab) && isvalid(this.modelingTab)
                 this.modelingTab.prepareForShutdown();
             end
@@ -217,7 +293,11 @@ classdef KSSOLVToolbox < handle
         function createListener()
             % 添加 Project 句柄对象的监听器
             project = kssolv.ui.util.DataStorage.getData('Project');
-            addlistener(project, 'isDirty', 'PostSet', @kssolv.KSSOLVToolbox.callbackProjectDirtyChanged);
+            previous = kssolv.ui.util.DataStorage.getData('ProjectDirtyListener');
+            if ~isempty(previous) && isvalid(previous), delete(previous); end
+            listener = addlistener(project, 'isDirty', 'PostSet', ...
+                @kssolv.KSSOLVToolbox.callbackProjectDirtyChanged);
+            kssolv.ui.util.DataStorage.setData('ProjectDirtyListener', listener);
         end
 
         function title = setAppContainerTitle(isDirty)
@@ -229,10 +309,19 @@ classdef KSSOLVToolbox < handle
             import kssolv.ui.util.DataStorage.*
 
             projectFilename = getData('ProjectFilename');
-            if projectFilename == ""
-                title = message('KSSOLV:toolbox:AppTitle');
+            if isKSSOLVOnline()
+                appTitle = "KSSOLV Toolbox Online";
             else
-                title = strcat(message('KSSOLV:toolbox:AppTitle'), " - ", projectFilename);
+                appTitle = message('KSSOLV:toolbox:AppTitle');
+            end
+            if projectFilename == ""
+                title = appTitle;
+            else
+                if isKSSOLVOnline()
+                    [~, name, ext] = fileparts(projectFilename);
+                    projectFilename = string(name) + ext;
+                end
+                title = strcat(appTitle, " - ", projectFilename);
             end
             if isDirty
                 title = strcat(title, '*');
@@ -251,35 +340,33 @@ classdef KSSOLVToolbox < handle
 
     methods (Access = private)
         function setPanelLayout(this)
-            % 调整 Data Browsers 的布局
-            % 折叠了两个 Panel
-            InfoBrowserPanel = this.AppContainer.getPanel('InfoBrowser');
-            InfoBrowserPanel.Collapsed = true;
-            RunBrowserPanel = this.AppContainer.getPanel('RunBrowser');
-            RunBrowserPanel.Collapsed = true;
-            % 折叠了右侧和底部的面板
+            % Native proportional heights seed the stacked sidebar layout.
+            % The splitter owns subsequent adjustments made by the user.
+            panelTags = ["ProjectBrowser", "InfoBrowser", "ConfigBrowser", "RunBrowser"];
+            portions = [0.75, 0.25, 0.75, 0.25];
+            for index = 1:numel(panelTags)
+                panel = this.AppContainer.getPanel(panelTags(index));
+                panel.PreferredHeight = portions(index);
+                panel.Resizable = true;
+                panel.Collapsed = panelTags(index) == "InfoBrowser";
+            end
             this.AppContainer.RightCollapsed = true;
             this.AppContainer.BottomCollapsed = true;
         end
 
         function url = getNewUrl(this)
             % 获取和 AppContainer 对应的浏览器访问网址
-            warning('off', 'MATLAB:structOnObject');
+            warningState = warning('off', 'MATLAB:structOnObject');
+            warningCleanup = onCleanup(@() warning(warningState));
             appContainer = struct(this.AppContainer);
 
             connector.ensureServiceOn;
             connector.newNonce;
 
-            if isdeployed
-                webPath = fullfile(matlabroot, 'mcr', 'toolbox', 'matlab', 'appcontainer', 'web');
-                path = connector.addStaticContentOnPath('AppContainerWebPath', webPath);
-                page = path + "/index.html";
-            else
-                page = "/toolbox/matlab/appcontainer/web/index.html";
-            end
+            page = this.AppContainer.getClientPage();
 
             % 由于 channel 可能已被打开, 使用 connector.applyNonce 重设 url
-            url = connector.getUrl(sprintf('%s?channel=%s&toolstripChannel=%s&id=%s&uuid=%s&UseMF0ForTS=true&waitForJavascriptDebugger=false', ...
+            url = connector.getUrl(sprintf('%s&channel=%s&toolstripChannel=%s&id=%s&uuid=%s&UseMF0ForTS=true&waitForJavascriptDebugger=false&websocket=on', ...
                 page, appContainer.ModelChannel, appContainer.ToolstripChannel, appContainer.Tag, appContainer.uuid));
             url = connector.applyNonce(url);
         end
@@ -339,8 +426,8 @@ classdef KSSOLVToolbox < handle
                 NoLabel = message('KSSOLV:dialogs:AppCanCloseDoNotSave');
                 CancelLabel = message('KSSOLV:dialogs:AppCanCloseCancel');
 
-                if isdeployed
-                    % 在独立应用程序里，模态对话框无法正常工作，因此需要使用非模态的对话框
+                if isdeployed || isKSSOLVOnline()
+                    % 独立应用和 Online 使用会话内的确认窗口。
                     confirmDialog = kssolv.ui.components.dialog.ConfirmDialog( ...
                         message('KSSOLV:dialogs:AppCanCloseMessage'), ...
                         message('KSSOLV:dialogs:AppCanCloseTitle'), ...
@@ -358,9 +445,14 @@ classdef KSSOLVToolbox < handle
 
                 switch selection
                     case YesLabel
+                        if kssolv.ui.browser.OnlineWorkspace.available()
+                            if ~kssolv.ui.util.DataStorage.getData('FilesBrowser').saveProject(false)
+                                return
+                            end
+                        else
                         if projectFilename == ""
                             % 如果尚未指定要保存的文件，则选择保存为 .ks 文件的路径
-                            [file,location] = uiputfile({'*.ks', 'KSSOLV Files (*.ks)'}, ...
+                            [file,location] = kssolv.ui.util.FileDialog.save({'*.ks', 'KSSOLV Files (*.ks)'}, ...
                                 message('KSSOLV:dialogs:SaveKSFileTitle'), 'untitled.ks');
                             if isequal(file, 0) || isequal(location, 0)
                                 % 用户点击了"取消"按钮
@@ -375,6 +467,11 @@ classdef KSSOLVToolbox < handle
                             registry.saveAllChangesToProject();
                         end
                         project.saveToKsFile(projectFilename);
+                        if ~kssolv.ui.util.FileDialog.download(projectFilename, true)
+                            project.isDirty = true;
+                            return
+                        end
+                        end
                     case NoLabel
                         % Project 文件不保存，结构文档草稿也一并放弃。
                         if hasStructureDrafts
@@ -393,9 +490,6 @@ classdef KSSOLVToolbox < handle
             % 当 AppContainer 状态改变时，执行相关的操作
             import matlab.ui.container.internal.appcontainer.*
             switch this.AppContainer.State
-                case AppState.RUNNING
-                    % 在 App 打开后进行一些操作，如折叠右侧面板
-                    this.AppContainer.RightCollapsed = true;
                 case AppState.TERMINATED
                     % 清除本地化管理器的类的实例
                     kssolv.ui.util.Localizer.clearInstance();

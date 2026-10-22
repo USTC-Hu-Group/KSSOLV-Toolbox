@@ -16,7 +16,7 @@ classdef WorkflowSnapshotBuilder
                 kssolv.services.workflow.codegeneration.CodeGenerator. ...
                 topologicalSort(workflow);
             emptyTask = struct("NodeId", "", "ClassName", "", ...
-                "Identifier", "", "Options", struct());
+                "Identifier", "", "Options", struct(), "Resources", struct());
             remoteTasks = repmat(emptyTask, 0, 1);
             localNodeIds = strings(0, 1);
             remoteNodeIds = strings(0, 1);
@@ -38,7 +38,8 @@ classdef WorkflowSnapshotBuilder
                         "NodeId", nodeId, ...
                         "ClassName", string(class(task)), ...
                         "Identifier", string(task.IDENTIFIER), ...
-                        "Options", task.getExecutionOptions()); %#ok<AGROW>
+                        "Options", task.getExecutionOptions(), ...
+                        "Resources", task.getExecutionResources()); %#ok<AGROW>
                     remoteNodeIds(end + 1, 1) = nodeId; %#ok<AGROW>
                     if kssolv.services.remote.execution.ExecutionTaskRegistry. ...
                             requiresLocalPresentation(task)
@@ -84,6 +85,8 @@ classdef WorkflowSnapshotBuilder
                 error("KSSOLV:Remote:InvalidWorkflowSnapshot", ...
                     "The remote workflow snapshot is invalid.");
             end
+            nscfOptions = struct();
+            inherited = kssolv.services.workflow.ExecutionResources.defaults();
             for index = 1:numel(snapshot.RemoteTasks)
                 task = snapshot.RemoteTasks(index);
                 if ~all(isfield(task, ...
@@ -97,6 +100,24 @@ classdef WorkflowSnapshotBuilder
                     error("KSSOLV:Remote:UnsupportedHeadlessTask", ...
                         "Task class %s is not registered for remote use.", ...
                         task.ClassName);
+                end
+                % Version 1 snapshots saved before resource controls are serial.
+                resources = kssolv.services.workflow.ExecutionResources.defaults();
+                if isfield(task, 'Resources')
+                    resources = task.Resources;
+                end
+                validationOptions = kssolv.services.workflow.ExecutionResources. ...
+                    effectiveOptions(task.ClassName, task.Options, nscfOptions);
+                kssolv.services.workflow.ExecutionResources. ...
+                    validate(resources, task.ClassName, validationOptions);
+                if strcmp(resources.ParallelType, 'Inherit')
+                    kssolv.services.workflow.ExecutionResources. ...
+                        validate(inherited, task.ClassName, validationOptions);
+                end
+                if string(task.ClassName) == ...
+                        "kssolv.services.workflow.module.computation.NSCFTask"
+                    nscfOptions = task.Options;
+                    inherited = resources;
                 end
             end
         end

@@ -14,7 +14,8 @@ classdef BandProcessing3DTask < kssolv.services.workflow.module.AbstractTask
         function this = setup(this)
             this.module = kssolv.services.workflow.module.ModuleType.Postprocessing;
             this.requiredTasks = ['SCFTask', 'NSCFTask'];
-            this.supportGPU = false;
+            this.supportGPU = true;
+            this.usedParallelType = 'Inherit';
             this.supportParallel = true;
         end
     end
@@ -33,16 +34,21 @@ classdef BandProcessing3DTask < kssolv.services.workflow.module.AbstractTask
 
             context = kssolv.services.workflow.module.postprocessing. ...
                 BandProcessing3DTask.executeWithOptions( ...
-                context, this.getExecutionOptions());
+                context, this.getExecutionOptions(), this.getExecutionResources());
         end
     end
 
     methods (Static)
-        function context = executeWithOptions(context, taskOptions)
+        function context = executeWithOptions(context, taskOptions, resources)
             arguments
                 context containers.Map
                 taskOptions (1, 1) struct
+                resources (1, 1) struct = kssolv.services.workflow.ExecutionResources.defaults()
             end
+            [NSCFOptions, resourceCleanup] = ...
+                kssolv.services.workflow.ExecutionResources.prepareNSCF( ...
+                context, 'kssolv.services.workflow.module.postprocessing.BandProcessing3DTask', ...
+                taskOptions, resources); %#ok<ASGLU>
 
             % 获取 UI 中设置的参数
             sliceGridSpacing = taskOptions.sliceGridSpacing;
@@ -65,9 +71,7 @@ classdef BandProcessing3DTask < kssolv.services.workflow.module.AbstractTask
 
             % 进行能带计算（不使用 HT 方法）
             crystal = copy(context("molecule"));
-            NSCFOptions = context("NSCFOptions");
             NSCFOptions.rho0 = context("H").rho;
-            NSCFOptions.enableParallelPool = true;
             context("NSCFOptions") = NSCFOptions;
 
             crystal.set('scfkpts', crystal.kpts, 'kpts', kPoints);

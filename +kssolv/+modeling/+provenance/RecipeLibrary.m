@@ -47,7 +47,7 @@ classdef RecipeLibrary
             end
         end
         function value=defaultDirectory()
-            value=fullfile(prefdir,"KSSOLV","modeling-recipes");
+            value=kssolv.util.preferenceDirectory("modeling-recipes");
         end
     end
     methods (Static,Access=private)

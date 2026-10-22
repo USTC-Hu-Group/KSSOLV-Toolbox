@@ -7,6 +7,7 @@ classdef FooterBar < handle
     properties
         statusBar % 组件的容器
         statusContext % 组件的状态上下文
+        resourceLabel % Online-only client-updated resource status
         statusLabel % 文字标签组件
     end
 
@@ -25,6 +26,9 @@ classdef FooterBar < handle
             this.statusContext = matlab.ui.container.internal.appcontainer.ContextDefinition();
             this.statusContext.Tag = 'FooterBarContext';
             this.statusContext.StatusComponentTags = {this.statusLabel.Tag};
+            if isKSSOLVOnline()
+                this.statusContext.StatusComponentTags{end+1} = this.resourceLabel.Tag;
+            end
         end
 
         function createComponents(this)
@@ -35,12 +39,19 @@ classdef FooterBar < handle
             this.statusLabel = matlab.ui.internal.statusbar.StatusLabel();
             this.statusLabel.Tag = 'StatusLabel';
             this.statusLabel.Region = 'right';
+            if isKSSOLVOnline()
+                this.resourceLabel = matlab.ui.internal.statusbar.StatusLabel();
+                this.resourceLabel.Tag = 'OnlineResources';
+                this.resourceLabel.Region = 'left';
+                this.resourceLabel.Text = 'CPU —  │  Memory —';
+            end
         end
 
         function addToAppContainer(this, appContainer)
             % 添加状态栏到 AppContainer，并处理上下文
             appContainer.add(this.statusBar);
             appContainer.add(this.statusLabel);
+            if isKSSOLVOnline(), appContainer.add(this.resourceLabel); end
             appContainer.Contexts = [appContainer.Contexts {this.statusContext}];
             appContainer.ActiveContexts = this.statusContext.Tag;
         end

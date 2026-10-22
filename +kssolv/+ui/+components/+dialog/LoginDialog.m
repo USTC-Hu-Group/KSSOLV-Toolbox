@@ -1,4 +1,4 @@
-classdef LoginDialog < controllib.ui.internal.dialog.AbstractDialog
+classdef LoginDialog < kssolv.ui.components.dialog.SessionDialog
     % LoginDialog 创建一个模态对话框，引导用户在外部浏览器中登录。
     %
     %   用法:
@@ -11,6 +11,10 @@ classdef LoginDialog < controllib.ui.internal.dialog.AbstractDialog
     properties (Access = public)
         InitialURL (1, 1) string = "https://id.gleamoe.com/login/built-in?orgChoiceMode=None"
         SuccessURL (1, 1) string
+    end
+
+    properties (Access = private)
+        LoginLink = []
     end
 
     events (NotifyAccess = public)
@@ -28,8 +32,15 @@ classdef LoginDialog < controllib.ui.internal.dialog.AbstractDialog
 
         % 重写 show 方法，在显示对话框的同时打开浏览器
         function show(this)
+            fig = this.getWidget();
+            fig.CloseRequestFcn = @(~, ~) this.onDialogCloseRequest();
             % 调用父类的show方法来显示UI
-            show@controllib.ui.internal.dialog.AbstractDialog(this);
+            show@kssolv.ui.components.dialog.SessionDialog(this);
+
+            if isKSSOLVOnline()
+                this.LoginLink.URL = this.InitialURL;
+                return
+            end
 
             % 使用系统的默认浏览器打开登录页面
             try
@@ -52,19 +63,29 @@ classdef LoginDialog < controllib.ui.internal.dialog.AbstractDialog
             % 设置窗口关闭时的回调
             fig.CloseRequestFcn = @(~,~) this.onDialogCloseRequest();
 
-            % 创建主网格布局 (2行, 1列)
-            gl = uigridlayout(fig, [2, 1]);
-            gl.RowHeight = {'1x', 'fit'};
-
-            % 提示标签 (位于主网格的第1行)
-            uilabel(gl, 'Text', ...
-                ['<html><p style="font-size:13px;">登录页面已在您的默认浏览器中打开。</p>' ...
-                '<p style="font-size:13px;">请在浏览器中完成登录后，返回此窗口并点击下方的"继续"按钮。</p></html>'], ...
-                'VerticalAlignment', 'center', 'HorizontalAlignment', 'center', 'Interpreter', 'html');
+            if isKSSOLVOnline()
+                gl = uigridlayout(fig, [3, 1], ...
+                    'RowHeight', {'1x', 'fit', 'fit'});
+                uilabel(gl, 'Text', ...
+                    '请通过下方链接登录，完成后返回并点击“我已登录，继续”。', ...
+                    'WordWrap', 'on', 'HorizontalAlignment', 'center');
+                this.LoginLink = uihyperlink(gl, ...
+                    'Text', '打开登录页面', 'URL', this.InitialURL);
+                this.LoginLink.Layout.Row = 2;
+                buttonRow = 3;
+            else
+                gl = uigridlayout(fig, [2, 1], ...
+                    'RowHeight', {'1x', 'fit'});
+                uilabel(gl, 'Text', ...
+                    ['<html><p style="font-size:13px;">登录页面已在您的默认浏览器中打开。</p>' ...
+                    '<p style="font-size:13px;">请在浏览器中完成登录后，返回此窗口并点击下方的"继续"按钮。</p></html>'], ...
+                    'VerticalAlignment', 'center', 'HorizontalAlignment', 'center', 'Interpreter', 'html');
+                buttonRow = 2;
+            end
 
             % 按钮面板
             buttonPanel = uipanel(gl);
-            buttonPanel.Layout.Row = 2;
+            buttonPanel.Layout.Row = buttonRow;
             buttonPanel.BorderType = 'none';
 
             % [关键] 在 Panel 内部也创建一个网格布局来管理按钮

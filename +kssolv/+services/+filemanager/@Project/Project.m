@@ -76,8 +76,21 @@ classdef Project < kssolv.services.filemanager.AbstractItem
                     'Specified file does not have a .ks extension');
             end
 
+            % Property setters must not rebuild saved tasks during loading.
+            previousLoading = kssolv.ui.util.DataStorage.getData('LoadingKsFile');
+            loadingCleanup = onCleanup(@() kssolv.ui.util.DataStorage.setData( ...
+                'LoadingKsFile', previousLoading));
+            kssolv.ui.util.DataStorage.setData('LoadingKsFile', true);
             try
-                load(fileName, "-mat", 'data');
+                contents = load(fileName, "-mat", 'data');
+                if ~isfield(contents, 'data') || ...
+                        ~isa(contents.data, 'kssolv.services.filemanager.Project') || ...
+                        ~isscalar(contents.data) || ~isvalid(contents.data)
+                    error('KSSOLV:FileManager:Project:InvalidData', ...
+                        'The file does not contain a valid KSSOLV project.');
+                end
+                data = contents.data;
+                kssolv.services.filemanager.internal.migrateWorkflowResources(data);
             catch ME
                 error('KSSOLV:FileManager:Project:FileLoadError', ...
                     'Error loading the Project file: %s', ME.message);

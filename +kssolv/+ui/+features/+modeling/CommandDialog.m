@@ -5,6 +5,7 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
         Parameters (1,1) struct = struct()
         Cancelled (1,1) logical = true
         Widgets (1,1) struct = struct()
+        Completed (1,1) logical = false
     end
 
     properties (Access = private)
@@ -22,6 +23,8 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
         HelpExpanded (1,1) logical = false
         HelpContentHeight (1,1) double = 0
         ActivePreview (1,1) logical = false
+        OnlineModal
+        ModalDestroyListener = []
     end
 
     methods
@@ -42,12 +45,35 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
 
             figure = this.getWidget();
             figure.CloseRequestFcn = @(~, ~)this.cancel();
-            figure.WindowStyle = "modal";
+            if ~isKSSOLVOnline(), figure.WindowStyle = "modal"; end
             figure.Resize = "off";
         end
 
         function [parameters, cancelled] = show(this, varargin)
             figure = this.getWidget();
+            if isKSSOLVOnline()
+                modal = kssolv.ui.browser.OnlineModal.create(this.Title, true, false);
+                cleanup = onCleanup(@()kssolv.ui.browser.OnlineModal.dispose(modal));
+                this.OnlineModal = modal;
+                this.UIFigure = this.OnlineModal.Figure;
+                this.UIFigure.Position(3:4) = figure.Position(3:4);
+                this.UIFigure.CloseRequestFcn = figure.CloseRequestFcn;
+                this.ModalDestroyListener = addlistener(this.UIFigure, ...
+                    'ObjectBeingDestroyed', @(~, ~)this.modalDestroyed());
+                children = figure.Children;
+                for index = 1:numel(children), children(index).Parent = this.UIFigure; end
+                delete(figure);
+                this.OnlineModal.show();
+                if ~kssolv.ui.browser.BrowserReconnectMonitor.waitFor(this, 'Completed', true)
+                    parameters = struct();
+                    cancelled = true;
+                    return
+                end
+                parameters = this.Parameters;
+                cancelled = this.Cancelled;
+                clear cleanup
+                return
+            end
             if isempty(varargin)
                 appContainer = ...
                     kssolv.ui.util.DataStorage.getData("AppContainer");
@@ -75,6 +101,10 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
                 this.IsClosing = true;
             end
             figure = this.getWidget();
+            if isKSSOLVOnline()
+                this.Completed = true;
+                return
+            end
             close@controllib.ui.internal.dialog.AbstractDialog(this);
             if isvalid(figure) && strcmp(figure.BeingDeleted, "off")
                 uiresume(figure);
@@ -621,7 +651,8 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
         function saveCurrentPreset(this)
             try
                 parameters=this.readParameters();
-                answer=inputdlg(kssolv.ui.util.Localizer.message( ...
+                answer=kssolv.ui.util.SessionPrompt.input( ...
+                    kssolv.ui.util.Localizer.message( ...
                     "KSSOLV:modeling:PresetNamePrompt"), ...
                     kssolv.ui.util.Localizer.message( ...
                     "KSSOLV:modeling:SavePreset"),1,{""});
@@ -898,6 +929,15 @@ classdef CommandDialog < controllib.ui.internal.dialog.AbstractDialog
                 this.Widgets.StatusLabel.Visible = "on";
                 this.updateDialogSize();
             end
+        end
+
+        function modalDestroyed(this)
+            if this.Completed, return; end
+            this.Parameters = struct();
+            this.Cancelled = true;
+            this.IsClosing = true;
+            this.Completed = true;
+            this.clearPreview();
         end
 
         function cancel(this)

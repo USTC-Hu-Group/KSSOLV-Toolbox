@@ -23,6 +23,10 @@ classdef ConfigBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser & ..
         inputCheckbox
         inputTable
         environmentLabelValue
+        parallelProcessCountValue
+        parallelThreadCountValue
+        taskOptionsListener
+        figureDeletionListener
         timeLimitValue
         outputSaveCheckbox
         outputPassCheckbox
@@ -36,6 +40,8 @@ classdef ConfigBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser & ..
             this = this@matlab.ui.internal.databrowser.AbstractDataBrowser('ConfigBrowser', title);
             % 自定义 widget 和 layout
             buildUI(this);
+            this.figureDeletionListener = addlistener(this.Figure, ...
+                'ObjectBeingDestroyed', @(~, ~) this.releaseTaskOptionsListeners());
             % 设定 FigurePanel 的 Tag
             this.Panel.Tag = 'ConfigBrowser';
             % 将该 Browser 放在界面右侧
@@ -44,7 +50,31 @@ classdef ConfigBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser & ..
             kssolv.ui.util.DataStorage.setData('ConfigBrowser', this);
         end
 
+        function configureNode(this, graph, nodeID)
+            arguments
+                this
+                graph kssolv.services.workflow.WorkflowGraph
+                nodeID (1, :) char
+            end
+            this.graph = graph;
+            this.nodeID = nodeID;
+            this.updateUI();
+        end
+
+        function delete(this)
+            % The task/options model survives browser and figure teardown.
+            % Source-owned listeners must not retain callbacks into this UI.
+            this.releaseTaskOptionsListeners();
+            if ~isempty(this.figureDeletionListener)
+                delete(this.figureDeletionListener);
+                this.figureDeletionListener = [];
+            end
+        end
+
         function updateUI(this)
+            % Transient widgets are absent after importing a project. Do not
+            % depend on an asynchronous canvas export to recreate them.
+            this.nodeData.task.resetOptionsUI();
             this.nodeIdValue.Text = this.nodeID;
             this.nodeLabelValue.Value = this.nodeData.label;
             this.nodeModuleValue.Value = strcat(char(this.nodeData.task.module), ' Module');
@@ -58,15 +88,21 @@ classdef ConfigBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser & ..
             end
 
             this.inputCheckbox.Value = this.nodeData.task.canAccessOtherTaskOutputs;
-            if ~this.nodeData.task.supportParallel
-                this.environmentLabelValue.Enable = false;
-            else
-                this.environmentLabelValue.Enable = true;
-                if this.nodeData.task.supportGPU
-                    this.environmentLabelValue.Items = {'None', 'GPU', 'Processes', 'Threads'};
-                else
-                    this.environmentLabelValue.Items = {'None', 'Processes', 'Threads'};
-                end
+            this.updateExecutionResourcesUI();
+            if ~isempty(this.taskOptionsListener)
+                delete(this.taskOptionsListener);
+            end
+            if ~isempty(this.nodeData.task.optionsUI)
+                this.taskOptionsListener = addlistener( ...
+                    this.nodeData.task.optionsUI, 'OptionsChanged', ...
+                    @(~, ~) this.updateExecutionResourcesUI());
+            end
+            [~, ~, sourceTask] = kssolv.services.workflow.ExecutionResources. ...
+                nodeOptions(this.graph, this.nodeID);
+            if ~isempty(sourceTask) && ~isempty(sourceTask.optionsUI)
+                this.taskOptionsListener(end + 1) = addlistener( ...
+                    sourceTask.optionsUI, 'OptionsChanged', ...
+                    @(~, ~) this.updateExecutionResourcesUI());
             end
             this.timeLimitValue.Value = this.nodeData.task.executionTimeLimit;
             this.outputSaveCheckbox.Value = this.nodeData.task.saveOutputToProjectResults;
@@ -195,8 +231,8 @@ classdef ConfigBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser & ..
 
             g3 = uigridlayout(accordionPanel3);
             g3.BackgroundColor = 'white';
-            g3.ColumnWidth = {80, '1x'};
-            g3.RowHeight = {'fit', 'fit'};
+            g3.ColumnWidth = {110, '1x'};
+            g3.RowHeight = {'fit', 'fit', 'fit', 'fit'};
 
             environmentLabelTooltip = message('KSSOLV:toolbox:ConfigBrowserExecutionResourcesPanelEnvironmentLabelTooltip');
             environmentLabel = uilabel(g3);
@@ -204,9 +240,31 @@ classdef ConfigBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser & ..
             environmentLabel.Text = message('KSSOLV:toolbox:ConfigBrowserExecutionResourcesPanelEnvironmentLabel');
             environmentLabel.Tooltip = environmentLabelTooltip;
             this.environmentLabelValue = uidropdown(g3);
-            this.environmentLabelValue.Items = {'None', 'GPU', 'Processes', 'Threads'};
+            this.environmentLabelValue.Tag = 'WorkflowParallelType';
+            this.environmentLabelValue.Items = {message('KSSOLV:toolbox:WorkflowExecutionSerial')};
+            this.environmentLabelValue.ItemsData = {'None'};
             this.environmentLabelValue.Tooltip = environmentLabelTooltip;
             this.environmentLabelValue.ValueChangedFcn = @(src, event) this.environmentSelectionChanged(src, event);
+
+            processLabel = uilabel(g3, 'HorizontalAlignment', 'right', ...
+                'Text', message('KSSOLV:toolbox:WorkflowExecutionProcesses'));
+            processLabel.Tooltip = message('KSSOLV:toolbox:WorkflowExecutionProcessesTooltip');
+            this.parallelProcessCountValue = uispinner(g3, ...
+                'Tag', 'WorkflowParallelProcessCount', 'Limits', [1 Inf], ...
+                'RoundFractionalValues', 'on', 'Value', 2, 'Enable', 'off');
+            this.parallelProcessCountValue.Tooltip = processLabel.Tooltip;
+            this.parallelProcessCountValue.ValueChangedFcn = ...
+                @(src, event) this.resourceCountChanged('parallelProcessCount', event.Value);
+
+            threadLabel = uilabel(g3, 'HorizontalAlignment', 'right', ...
+                'Text', message('KSSOLV:toolbox:WorkflowExecutionThreads'));
+            threadLabel.Tooltip = message('KSSOLV:toolbox:WorkflowExecutionThreadsTooltip');
+            this.parallelThreadCountValue = uispinner(g3, ...
+                'Tag', 'WorkflowParallelThreadCount', 'Limits', [1 Inf], ...
+                'RoundFractionalValues', 'on', 'Value', 1, 'Enable', 'off');
+            this.parallelThreadCountValue.Tooltip = threadLabel.Tooltip;
+            this.parallelThreadCountValue.ValueChangedFcn = ...
+                @(src, event) this.resourceCountChanged('parallelThreadCount', event.Value);
 
             timeLimitLabelTooltip = message('KSSOLV:toolbox:ConfigBrowserExecutionResourcesPanelTimeLimitLabelTooltip');
             timeLimitLabel = uilabel(g3);
@@ -238,10 +296,18 @@ classdef ConfigBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser & ..
 
             % 插入 Options Panel 和 Advanced Options Panel
             this.insertOptionsAccordionPanel();
+            kssolv.ui.browser.enableClientGridSizing(this.Figure);
         end
     end
 
     methods (Access = private)
+        function releaseTaskOptionsListeners(this)
+            if ~isempty(this.taskOptionsListener)
+                delete(this.taskOptionsListener);
+                this.taskOptionsListener = [];
+            end
+        end
+
         function nodeLabelChanged(this, ~, event)
             this.nodeData.label = event.Value;
             eventDataStruct = struct('nodeID', this.nodeID, 'newLabel', event.Value);
@@ -270,6 +336,64 @@ classdef ConfigBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser & ..
 
         function environmentSelectionChanged(this, ~, event)
             this.nodeData.task.usedParallelType = event.Value;
+            this.markResourcesDirty();
+            this.updateExecutionResourcesUI();
+        end
+
+        function resourceCountChanged(this, property, value)
+            this.nodeData.task.(property) = value;
+            this.markResourcesDirty();
+        end
+
+        function markResourcesDirty(~)
+            project = kssolv.ui.util.DataStorage.getData('Project');
+            if ~isempty(project)
+                project.isDirty = true;
+            end
+        end
+
+        function updateExecutionResourcesUI(this)
+            import kssolv.ui.util.Localizer.*
+            task = this.nodeData.task;
+            [taskOptions, inherited] = kssolv.services.workflow.ExecutionResources. ...
+                nodeOptions(this.graph, this.nodeID);
+            values = kssolv.services.workflow.ExecutionResources. ...
+                allowedTypes(class(task), taskOptions);
+            if ~ismember(inherited.ParallelType, values)
+                values(strcmp(values, 'Inherit')) = [];
+            end
+            labels = cell(size(values));
+            for index = 1:numel(values)
+                switch values{index}
+                    case 'None'
+                        key = 'WorkflowExecutionSerial';
+                    case 'Processes'
+                        key = 'WorkflowExecutionParallel';
+                    case 'GPU'
+                        key = 'WorkflowExecutionGPU';
+                    case 'Inherit'
+                        key = 'WorkflowExecutionInherit';
+                end
+                labels{index} = message(['KSSOLV:toolbox:' key]);
+            end
+            % Reset legacy choices or a GPU method that is no longer supported.
+            if ~ismember(task.usedParallelType, values)
+                task.usedParallelType = 'None';
+                this.markResourcesDirty();
+            end
+            this.environmentLabelValue.ItemsData = {};
+            this.environmentLabelValue.Items = labels;
+            this.environmentLabelValue.ItemsData = values;
+            this.environmentLabelValue.Value = task.usedParallelType;
+            this.environmentLabelValue.Enable = numel(values) > 1;
+            this.parallelProcessCountValue.Value = task.parallelProcessCount;
+            this.parallelThreadCountValue.Value = task.parallelThreadCount;
+            if strcmp(task.usedParallelType, 'Inherit')
+                this.parallelProcessCountValue.Value = inherited.ProcessCount;
+                this.parallelThreadCountValue.Value = inherited.ThreadCount;
+            end
+            this.parallelProcessCountValue.Enable = strcmp(task.usedParallelType, 'Processes');
+            this.parallelThreadCountValue.Enable = ismember(task.usedParallelType, {'Processes', 'GPU'});
         end
 
         function timeLimitSelectionChanged(this, ~, event)

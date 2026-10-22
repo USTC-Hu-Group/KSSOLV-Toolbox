@@ -1,0 +1,6 @@
+function [response, streamedText] = sendNativeRequest( ...
+        parameters, token, endpoint, timeout, streamFunction, transport)
+%SENDNATIVEREQUEST Compatibility name for saved callbacks and external callers.
+[response, streamedText] = kssolv.services.llm.online.internal.sendNativeRequest( ...
+    parameters, token, endpoint, timeout, streamFunction, transport);
+end

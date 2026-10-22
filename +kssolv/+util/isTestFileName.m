@@ -1,0 +1,9 @@
+function matches = isTestFileName(paths)
+%ISTESTFILENAME Identify test names without rejecting assets named "latest".
+[~, names] = fileparts(string(paths));
+lowerNames = lower(names);
+matches = startsWith(lowerNames, "test_") | ...
+    endsWith(lowerNames, ["_test", "_tests", ".test", ".tests"]) | ...
+    endsWith(names, ["Test", "Tests"]) | ...
+    ismember(lowerNames, ["test", "tests"]);
+end

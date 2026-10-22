@@ -62,7 +62,7 @@ classdef ProjectTemplateLibrary
         end
 
         function value=defaultDirectory()
-            value=fullfile(prefdir,"KSSOLV","modeling-project-templates");
+            value=kssolv.util.preferenceDirectory("modeling-project-templates");
         end
     end
 end

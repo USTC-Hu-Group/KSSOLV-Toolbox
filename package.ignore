@@ -34,6 +34,14 @@ buildfile.m
 buildInstaller.m
 examples
 scripts
+server
+frontend
+AGENTS.md
+docs/presentations
+docs/manual-research
+docs/manual-plan.zh-CN.md
+docs/kssolv-mcp-skills-development-plan.zh-CN.md
+docs/manual-zh
 
 **/*.mltbx
 Release
@@ -46,6 +54,7 @@ Release
 **/*Tests.*
 **/test_*.*
 **/*_test.*
+!**/+remote/+diagnostics/RemoteLoginTest.*
 **/doc/**/*
 +kssolv/**/docs/**/*
 

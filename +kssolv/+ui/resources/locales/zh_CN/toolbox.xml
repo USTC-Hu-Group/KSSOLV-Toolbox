@@ -141,7 +141,7 @@
         <entry key="ProjectBrowserTitle">项目浏览器</entry>
 
         <!-- Info Browser -->
-        <entry key="InfoBrowserTitle">信息</entry>
+        <entry key="InfoBrowserTitle">信息浏览器</entry>
 
         <!-- Config Browser -->
         <entry key="ConfigBrowserTitle">配置编辑器</entry>
@@ -159,7 +159,15 @@
         <entry key="ConfigBrowserInputPanelCheckboxText">使用上一节点的输出作为输入</entry>
         <entry key="ConfigBrowserExecutionResourcesPanelTitle">资源</entry>
         <entry key="ConfigBrowserExecutionResourcesPanelEnvironmentLabel">并行环境：</entry>
-        <entry key="ConfigBrowserExecutionResourcesPanelEnvironmentLabelTooltip">并行环境设置</entry>
+        <entry key="ConfigBrowserExecutionResourcesPanelEnvironmentLabelTooltip">按节点及算法选择串行、进程池并行或 GPU 对角化</entry>
+        <entry key="WorkflowExecutionInherit">继承 NSCF 配置</entry>
+        <entry key="WorkflowExecutionGPU">GPU（对角化）</entry>
+        <entry key="WorkflowExecutionSerial">串行</entry>
+        <entry key="WorkflowExecutionParallel">并行（进程池）</entry>
+        <entry key="WorkflowExecutionProcesses">最大进程数：</entry>
+        <entry key="WorkflowExecutionProcessesTooltip">并行计算 Worker 的最大并发数。已有并行池必须满足此限制。</entry>
+        <entry key="WorkflowExecutionThreads">线程/进程：</entry>
+        <entry key="WorkflowExecutionThreadsTooltip">每个计算进程的最大 CPU 计算线程数（GPU 内核线程由设备管理）。并行运行需要 Parallel Computing Toolbox；不使用线程型并行池。</entry>
         <entry key="ConfigBrowserExecutionResourcesPanelTimeLimitLabel">时间限制：</entry>
         <entry key="ConfigBrowserExecutionResourcesPanelTimeLimitLabelTooltip">运行时间限制</entry>
         <entry key="ConfigBrowserOutputPanelTitle">输出</entry>
@@ -175,7 +183,7 @@
         <entry key="VariableTableClearButtonTooltip">清除所有变量</entry>
 
         <!-- Run Browser -->
-        <entry key="RunBrowserTitle">模拟</entry>
+        <entry key="RunBrowserTitle">模拟浏览器</entry>
         <entry key="RunBrowserRunLabel">运行</entry>
         <entry key="RunBrowserRunButtonTooltip">运行模拟计算</entry>
         <entry key="RunBrowserStopLabel">停止</entry>
@@ -191,6 +199,8 @@
         <entry key="LLMServiceInitializationFailed">初始化 LLM 服务失败。</entry>
         <entry key="LLMConfigurationMissing">OpenAI 兼容服务配置不完整。请检查设置中的 API 基础地址和 API Key。</entry>
         <entry key="LLMAddonUnavailable">需要 4.9.0 或更高版本的 Large Language Models (LLMs) with MATLAB。请安装、升级或启用该附加功能后重试。</entry>
+        <entry key="LLMResponseModel">模型：%s</entry>
+        <entry key="LLMWaiting">正在等待 %s 回复…</entry>
         <entry key="LLMRequestFailed">LLM 请求失败。请检查服务设置和连接后重试。</entry>
 
         <!-- Document Group -->

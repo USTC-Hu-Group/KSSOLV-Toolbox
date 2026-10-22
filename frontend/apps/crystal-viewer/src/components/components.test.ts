@@ -500,6 +500,30 @@ describe('viewer controls', () => {
     expect(options.continuousMeasurement).toBe(true);
   });
 
+  it('keeps structure formats selectable across hover, click, and pointer travel', async () => {
+    const toolbar = mount(ViewerToolbar, {
+      props: {
+        settingsOpen: false,
+        crystal: true,
+        sceneAvailable: true,
+        structureExportFormats: [{ format: 'cif', label: 'CIF', extension: 'cif', detail: '.cif' }],
+      },
+    });
+    await toolbar.get('[aria-label="Export file"]').trigger('click');
+    const submenu = toolbar.get('.toolbar-export-submenu');
+    const trigger = submenu.get('button');
+    await submenu.trigger('mouseenter');
+    await trigger.trigger('click');
+
+    expect(trigger.attributes('aria-expanded')).toBe('true');
+    await submenu.trigger('mouseleave');
+    expect(toolbar.find('[aria-label="Structure file formats"]').exists()).toBe(true);
+    await toolbar.get('[aria-label="Structure file formats"] button').trigger('click');
+    expect(toolbar.emitted('exportStructure')).toEqual([['cif']]);
+    expect(toolbar.find('[aria-label="Structure file formats"]').exists()).toBe(false);
+    toolbar.unmount();
+  });
+
   it('renders deterministic element legend and toolbar commands', async () => {
     const legend = mount(ElementLegend, {
       props: { scene: createDebugScene(), colorMode: 'vesta' },
@@ -624,7 +648,7 @@ describe('viewer controls', () => {
     expect(structureExportButton.attributes('aria-expanded')).toBe('true');
     expect(toolbar.get('[aria-label="Structure file formats"]').text()).toContain('VASP POSCAR');
     await structureSubmenu.trigger('mouseleave');
-    expect(structureExportButton.attributes('aria-expanded')).toBe('false');
+    expect(structureExportButton.attributes('aria-expanded')).toBe('true');
     await structureExportButton.trigger('click');
     expect(structureExportButton.attributes('aria-expanded')).toBe('true');
     const cifButton = toolbar

@@ -33,6 +33,31 @@ analysis into a single project-based workspace:
   operations, run batch preparation tasks, and use versioned MATLAB APIs for
   scripted workflows.
 
+## Workflow compute resources
+
+Choose serial execution or a supported parallel environment in each node's
+configuration. SCF, NSCF, Band Calculation, Band Calculation 3D, and DOS support
+GPU diagonalization with `lobpcg`, `davidson`, `davidson2`, and `davpcg`. Other
+methods do not offer GPU execution. GPU kernel threads are device managed.
+NSCF, band, and DOS nodes also configure process pools with limits on workers
+and CPU computational threads per worker. HT interpolation disables these unused
+parallel paths; Band Calculation 3D calls NSCF directly and ignores the HT flag.
+Other nodes offer serial execution only; thread-worker pools are not enabled.
+
+The NSCF node stores parameters and resources; band and DOS nodes perform the
+calculations. New calculation nodes default to **Use NSCF settings**. They can
+also explicitly select serial, process-pool, or GPU execution; serial and process
+execution clear any inherited GPU flag. Existing workflows retain their saved
+serial choices; select inheritance explicitly when needed. Process pools are
+created and bounded when the calculation actually runs.
+
+Resource choices are saved with workflows and included in remote submissions.
+Parallel execution requires Parallel Computing Toolbox on the execution machine;
+GPU execution also requires a supported GPU. An existing pool that exceeds a
+node's limits causes an explicit error. Remote batch jobs must allocate a pool
+that fits those limits. After completion or failure, Toolbox closes pools it
+created and restores the previous CPU thread setting.
+
 ## Installation
 
 **KSSOLV Toolbox** requires **MATLAB® R2025a or later** when used in the

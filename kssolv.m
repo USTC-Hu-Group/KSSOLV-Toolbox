@@ -47,7 +47,7 @@ if ksFile == ""
 else
     kssolv.ui.util.DataStorage.setData('LoadingKsFile', true);
 
-    ksFile = fullfile(pwd, ksFile);
+    ksFile = kssolv.util.Platform.canonicalPath(ksFile);
     project = Project.loadKsFile(ksFile);
 end
 kssolv.ui.util.DataStorage.setData('Project', project);
@@ -63,7 +63,7 @@ end
 
 % 初始化图形用户界面
 app = kssolv.KSSOLVToolbox();
-app.HostInBrowser = hostInBrowser;
+app.HostInBrowser = hostInBrowser || isKSSOLVOnline();
 kssolv.ui.util.DataStorage.setData("KSSOLVToolbox", app);
 
 % 展示图形用户界面

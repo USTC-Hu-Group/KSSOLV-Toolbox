@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "test": "node --test WorkflowPersistence.test.mjs",
     "dev": "vite",
     "build": "vue-tsc && vite build && node ../../scripts/copy-workflow-assets.mjs",
     "preview": "vite preview",

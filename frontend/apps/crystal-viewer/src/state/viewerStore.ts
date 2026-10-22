@@ -190,6 +190,19 @@ export const useViewerStore = () => {
       ),
     ),
     setScene: acceptScene,
+    setInitialScene(payload: unknown): void {
+      let data = payload;
+      if (typeof data === 'string') {
+        try {
+          data = JSON.parse(data) as unknown;
+        } catch {
+          return;
+        }
+      }
+      if (typeof data === 'object' && data !== null && 'kssolvInitialScene' in data) {
+        acceptScene(data.kssolvInitialScene);
+      }
+    },
     setSelection(value?: SelectionInfo, gesture: { additive?: boolean } = {}): void {
       selection.value = value;
       if (!value) {

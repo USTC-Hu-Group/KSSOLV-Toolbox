@@ -6,6 +6,7 @@ classdef DisorderTest < matlab.unittest.TestCase
             parameters = kssolv.analysis.matgenlab.analysis. ...
                 get_warren_cowley_parameters(structure, 3.4, 0.3);
             testCase.verifyEqual(parameters("Mo|W"), -1, AbsTol=1e-14);
+            testCase.verifyEqual(parameters("W|Mo"), -1, AbsTol=1e-14);
             parameters = kssolv.analysis.matgenlab.analysis. ...
                 get_warren_cowley_parameters(structure, 4, 0.2);
             testCase.verifyEqual(parameters("Mo|Mo"), 1, AbsTol=1e-14);
@@ -19,6 +20,15 @@ classdef DisorderTest < matlab.unittest.TestCase
                 -0.9453125, AbsTol=1e-14);
             testCase.verifyEqual(parameters("Mo|W"), ...
                 parameters("W|Mo"), AbsTol=1e-14);
+        end
+
+        function emptyShellHasStableError(testCase)
+            structure = kssolv.analysis.matgenlab.core.Structure. ...
+                from_prototype("CsCl", {"Mo", "W"}, a=4);
+            testCase.verifyError(@() ...
+                kssolv.analysis.matgenlab.analysis. ...
+                get_warren_cowley_parameters(structure, 2, 0.01), ...
+                "KSSOLV:Matgenlab:Disorder:EmptyShell");
         end
     end
 end

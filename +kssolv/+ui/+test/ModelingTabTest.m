@@ -469,6 +469,7 @@ classdef ModelingTabTest < matlab.unittest.TestCase
             registry = kssolv.ui.features.modeling.SessionRegistry.getInstance();
             testCase.verifyEmpty(tabGroup.contains("ModelingTab"));
             testCase.verifyEqual(modeling.Profile, "crystal");
+            verifyDistinctRootControlTags(testCase, modeling.Tab);
             testCase.verifyEqual(string(modeling.Tab.Title), ...
                 string(kssolv.ui.util.Localizer.message( ...
                 "KSSOLV:modeling:CrystalModelingTab")));
@@ -708,6 +709,7 @@ classdef ModelingTabTest < matlab.unittest.TestCase
             testCase.verifyEqual( ...
                 registry.getCurrentDisplay(), moleculeDisplay);
             testCase.verifyEqual(modeling.Profile, "molecule");
+            verifyDistinctRootControlTags(testCase, modeling.Tab);
             testCase.verifyEqual(string(modeling.Tab.Title), ...
                 string(kssolv.ui.util.Localizer.message( ...
                 "KSSOLV:modeling:MoleculeModelingTab")));
@@ -785,4 +787,23 @@ classdef ModelingTabTest < matlab.unittest.TestCase
             end
         end
     end
+end
+
+function verifyDistinctRootControlTags(testCase, tab)
+tags = strings(1, 0);
+sections = tab.Children;
+for si = 1:numel(sections)
+    columns = sections(si).Children;
+    for ci = 1:numel(columns)
+        controls = columns(ci).Children;
+        for wi = 1:numel(controls)
+            control = controls(wi);
+            if isprop(control, 'Tag') && strlength(string(control.Tag)) > 0
+                tags(end + 1) = string(control.Tag); %#ok<AGROW>
+            end
+        end
+    end
+end
+testCase.verifyEqual(numel(unique(tags)), numel(tags), ...
+    'Top-level controls must be unambiguous in Online toolstrip navigation.');
 end

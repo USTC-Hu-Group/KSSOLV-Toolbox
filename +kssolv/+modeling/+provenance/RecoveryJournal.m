@@ -107,7 +107,7 @@ classdef RecoveryJournal < handle
             end
         end
         function value=defaultDirectory()
-            value=fullfile(prefdir,"KSSOLV","modeling-recovery");
+            value=kssolv.util.preferenceDirectory("modeling-recovery");
         end
     end
 end

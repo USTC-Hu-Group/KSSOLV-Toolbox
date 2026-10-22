@@ -10,11 +10,13 @@
     "build:workflow": "pnpm --filter @kssolv/workflow build",
     "build:crystal-viewer": "pnpm --filter @kssolv/crystal-viewer build",
     "build:volume-viewer": "pnpm --filter @kssolv/volume-viewer build",
+    "test:tree-table": "pnpm --filter @kssolv/tree-table test",
     "test:crystal-viewer": "pnpm --filter @kssolv/crystal-viewer test",
     "test:volume-viewer": "pnpm --filter @kssolv/volume-viewer test",
     "sync:runtime": "node scripts/sync-runtime.mjs",
     "verify:runtime": "node scripts/verify-runtime.mjs",
-    "deploy": "pnpm build && pnpm sync:runtime"
+    "deploy": "pnpm build && pnpm sync:runtime",
+    "test:browser": "node --test ../scripts/ui/tests/*.cjs"
   },
   "packageManager": "pnpm@11.17.0"
 }

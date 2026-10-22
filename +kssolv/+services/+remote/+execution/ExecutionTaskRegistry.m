@@ -31,7 +31,13 @@ classdef ExecutionTaskRegistry
             end
         end
 
-        function context = execute(taskClass, context, options)
+        function context = execute(taskClass, context, options, resources)
+            arguments
+                taskClass (1, 1) string
+                context containers.Map
+                options (1, 1) struct
+                resources (1, 1) struct = kssolv.services.workflow.ExecutionResources.defaults()
+            end
             if ~any(string(taskClass) == ...
                     kssolv.services.remote.execution.ExecutionTaskRegistry. ...
                     headlessTaskClasses())
@@ -41,7 +47,20 @@ classdef ExecutionTaskRegistry
             end
             functionHandle = str2func(string(taskClass) + ...
                 ".executeWithOptions");
-            context = functionHandle(context, options);
+            validationOptions = options;
+            if kssolv.services.workflow.ExecutionResources.usesNSCF(taskClass) && ...
+                    isKey(context, 'NSCFOptions')
+                validationOptions = kssolv.services.workflow.ExecutionResources. ...
+                    effectiveOptions(taskClass, options, context('NSCFOptions'));
+            end
+            resources = kssolv.services.workflow.ExecutionResources. ...
+                validate(resources, taskClass, validationOptions);
+            if kssolv.services.workflow.ExecutionResources.supportsProcessPool(taskClass) || ...
+                    taskClass == "kssolv.services.workflow.module.computation.SCFTask"
+                context = functionHandle(context, options, resources);
+            else
+                context = functionHandle(context, options);
+            end
         end
     end
 end

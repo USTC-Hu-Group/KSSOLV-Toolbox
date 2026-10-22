@@ -7,6 +7,20 @@ describe('viewer store event ordering', () => {
     vi.resetModules();
   });
 
+  it('accepts a validated initial scene from uihtml Data before bridge readiness', async () => {
+    const { useViewerStore } = await import('./viewerStore');
+    const store = useViewerStore();
+    const scene = createDebugScene();
+    store.setInitialScene(JSON.stringify({ kssolvInitialScene: scene }));
+    expect(store.status.ready).toBe(false);
+    expect(store.scene.value).toEqual(scene);
+    store.setInitialScene('unrelated legacy data');
+    expect(store.scene.value).toEqual(scene);
+    store.setInitialScene({ kssolvInitialScene: { schemaVersion: 'invalid' } });
+    expect(store.status.error).toContain('schemaVersion');
+    expect(store.scene.value).toEqual(scene);
+  });
+
   it('rejects stale scenes after a newer request begins', async () => {
     const { matlabBridge } = await import('../bridge/matlabBridge');
     const { useViewerStore } = await import('./viewerStore');

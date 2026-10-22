@@ -11,6 +11,7 @@
 
 # KSSOLV Toolbox Project files
 **/*.ks
+!+kssolv/+ui/+test/+fixtures/browser-namespace/pre-migration.ks
 !/ks.ks
 
 # Test Data Directory
@@ -48,6 +49,20 @@ frontend/apps/*/dist/
 /slides/
 /scripts/macos/tests/
 
+# Local manual authoring, research, and publication materials
+/docs/manual-research/
+/docs/manual-zh/
+/docs/manual-plan.zh-CN.md
+/docs/presentations/**/*.pdf
+/docs/presentations/**/*.zip
+
+# Local Docker investigation and one-off validation (keep deployment and regression tests)
+/scripts/docker/ONLINE_RESEARCH.zh-CN.md
+/scripts/docker/VALIDATION.zh-CN.md
+/scripts/docker/probe_runtime.py
+/scripts/docker/tests/test_image.py
+/scripts/docker/fixtures/session.py
+
 # Environment variable configurations
 .env
 .env.*
@@ -60,3 +75,4 @@ derived/
 # Python caches
 **/__pycache__/
 *.py[cod]
+/scripts/docker/ACCEPTANCE.zh-CN.md

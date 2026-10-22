@@ -1,0 +1,122 @@
+/* Extend the shared MathWorks-style dialog without changing Portal pages. */
+body{display:block;background:#fff;padding:24px}
+.admin-shell,html[lang=en] .admin-shell{width:min(1400px,100%);margin:0 auto}
+.admin-shell .mwDialogBody{padding:20px}
+.admin-shell:has(#console[hidden]){width:min(550px,100%);margin:10vh auto}
+#sign-in{max-width:440px;margin:auto}
+.console-header,.toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.console-header{justify-content:space-between}
+#tabs{overflow-x:auto;overflow-y:hidden;white-space:nowrap;min-height:32px}
+h2{margin:12px 0}
+.toolbar h2{margin-right:auto}
+#pod-filter{width:240px}
+.table-scroll{width:100%;overflow:auto;margin-bottom:20px}
+table{border-collapse:collapse;width:100%;background:#fff;font-variant-numeric:tabular-nums}
+th,td{border:1px solid #bfbfbf;text-align:left;padding:7px 9px;white-space:nowrap;vertical-align:middle}
+th{background:#eee;font-weight:700}
+tr:hover td{background:#e8f3fa}
+.table-scroll td:last-child{max-width:420px;white-space:normal;overflow-wrap:anywhere}
+.mono,pre{font-family:monospace;overflow-wrap:anywhere;white-space:pre-wrap}
+pre{max-height:300px;overflow:auto;background:#fff;border:1px solid #bfbfbf;padding:10px}
+.notice{background:#fff4df;color:#704717;border:1px solid #bfbfbf;padding:10px}
+.error{color:#a2142f}
+.status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:#8c8c8c}
+.status-dot.good{background:#228b45}.status-dot.bad{background:#d93025}
+select{font:inherit;background:#f5f5f5;color:#212121;border:1px solid #8c8c8c;border-radius:3px;padding:3px 28px 3px 8px;height:28px}
+select:not(#portal-language){appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='6'%3E%3Cpath d='M0 0h8L4 6z' fill='%23616161'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;background-size:8px 6px}
+.action-menu{box-sizing:border-box;width:120px;min-width:120px;max-width:120px}
+dialog.mwDialog{width:min(680px,calc(100vw - 32px))}
+dialog#monitor-dialog{width:min(1050px,calc(100vw - 32px));max-height:90dvh;overflow:auto}
+.close-button{min-width:24px;width:24px;min-height:24px;height:24px;padding:0;background:transparent;border-color:transparent;font-size:20px}
+#operation-fields{grid-template-columns:150px minmax(0,1fr)}
+#operation-fields label{white-space:normal}
+.chart{background:#fff;border:1px solid #bfbfbf;margin:12px 0;padding:10px}
+.chart svg{display:block;width:100%;height:180px}
+.chart-caption{display:flex;justify-content:space-between;color:#616161;font-size:12px}
+.table-scroll button{min-width:50px}
+.form-grid{max-width:750px}
+.muted{color:#616161}
+#user-filter{width:180px}
+#user-table{max-height:300px}#user-table th{position:sticky;top:0;z-index:1}
+#user-table .user-selector{background:transparent;border:0;border-radius:0;color:#0072bd;box-shadow:none;text-align:left;padding:2px 4px;min-width:0;height:auto;min-height:24px}
+#user-table .user-selector:hover{text-decoration:underline}
+#user-table .user-selector:focus-visible{outline:2px solid #0072bd;outline-offset:1px}
+#user-table tr:has(.user-selector[aria-pressed=true]) td{background:#e2f1fb}
+#user-table .user-selector[aria-pressed=true]{font-weight:700}
+.user-workspace{border:1px solid #bfbfbf;background:#fff;padding:14px 16px;margin-top:22px}
+.user-workspace .toolbar{border-bottom:1px solid #d9d9d9;padding-bottom:10px}
+.user-workspace .toolbar h2{margin-right:0}
+.workspace-owner{font-weight:700;margin-right:auto}
+.workspace-actions{display:flex;gap:8px;align-items:center}
+.action-button{box-sizing:border-box;width:120px;min-width:120px;max-width:120px}
+.workspace-info{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:6px 18px;margin:8px 0}
+.workspace-info:empty{display:none}.workspace-info dt{color:#616161}.workspace-info dd{margin:0;overflow-wrap:anywhere}
+.status-dot.warn{background:#d08a00}
+.usage-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid #bfbfbf;background:#f5f5f5;margin:12px 0}
+.usage-summary>div{padding:12px}.usage-summary>div+div{border-left:1px solid #bfbfbf}
+.usage-summary dt{color:#616161;font-size:12px}.usage-summary dd{margin:6px 0 0;font-weight:700}
+@media(max-width:650px){#user-filter{width:140px}.user-workspace{padding:10px}.workspace-owner{overflow-wrap:anywhere}.workspace-actions{width:100%;justify-content:flex-end}.usage-summary{grid-template-columns:1fr}.usage-summary>div+div{border-left:0;border-top:1px solid #bfbfbf}}
+.diagnostics{border:1px solid #bfbfbf;background:#fff;margin-top:12px;padding:8px}
+.diagnostics summary{cursor:default}.diagnostics pre{border:0}
+@media(max-width:650px){body{padding:10px}.admin-shell .mwDialogBody{padding:12px}.toolbar{gap:8px}nav button{padding:5px 10px}.console-header{align-items:flex-start}th,td{padding:6px}}
+/* Shell editor and execution history follow the shared light dialog theme. */
+.script-editor{border:1px solid #bfbfbf;padding:14px 16px;background:#fff;margin:18px 0 24px}
+.source-label{text-align:left;display:block;margin:16px 0 7px}
+.shell-source{box-sizing:border-box;width:100%;min-height:260px;resize:vertical;border:1px solid #8c8c8c;background:#fff;color:#212121;padding:10px;font:13px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;tab-size:2}
+.shell-source:focus{outline:2px solid #0072bd;outline-offset:1px}
+#script-version{font:12px monospace;overflow-wrap:anywhere;max-width:100%}
+#script-table td:nth-child(4){white-space:normal;min-width:180px;max-width:400px}
+#script-run-filter{max-width:300px}#script-runs-table{max-height:420px}
+#script-runs-table th{position:sticky;top:0;z-index:1}
+#script-schedule-fields{margin:16px 0}#script-schedule-fields[hidden]{display:none}
+#script-confirm-dialog,#script-result-dialog{width:min(950px,calc(100vw - 32px));max-height:90dvh;overflow:auto}
+#script-confirm-source,#script-result-snapshot{max-height:240px;font-size:13px;white-space:pre;overflow:auto}
+#script-output{height:280px;max-height:45dvh;font:13px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre;overflow:auto;color:#212121;background:#fff}
+#script-result-info dd{font-variant-numeric:tabular-nums}#script-log-download{margin-right:auto;color:#0072bd}
+#script-confirmation{display:block;width:min(400px,100%);margin-top:8px}
+#script-confirm-source{color:#212121;background:#fff}#legacy-scripts{margin-top:20px}
+#script-confirm-dialog>.mwDialogTitleBar,#script-result-dialog>.mwDialogTitleBar{position:sticky;top:0;z-index:2}
+html[lang=en] #scripts .action-button,html[lang=en] #script-result-dialog .action-button{width:170px;min-width:170px;max-width:170px}
+/* Keep page feedback near the active navigation and form, including sign-in. */
+#message{color:#212121;margin:0 0 12px}
+#message:not(:empty){background:#fff;border:1px solid #bfbfbf;padding:8px 10px}
+#message.error{color:#a2142f;border-left:3px solid #a2142f}
+#monitor-error:empty,#monitor-status:empty{display:none}
+#tabs [role=tab]:focus-visible{outline:2px solid #0076a8;outline-offset:-3px}
+/* Modal headers and action bars stay visible while their contents scroll. */
+dialog.mwDialog{max-height:90dvh;overflow:hidden}
+dialog.mwDialog[open]{display:flex;flex-direction:column}
+dialog.mwDialog>.mwDialogTitleBar{flex:0 0 auto;min-height:30px}
+dialog.mwDialog>form{display:flex;flex:1 1 auto;min-height:0;flex-direction:column}
+dialog.mwDialog .mwDialogBody{min-height:0;overflow:auto;flex:1 1 auto}
+dialog.mwDialog .mwDialogButtonBar{flex:0 0 auto;margin:0;border-top:1px solid #d9d9d9;padding:10px;flex-wrap:wrap}
+.mwDialogTitleBar h1,.mwDialogTitleBar h2{min-width:0;overflow-wrap:anywhere;line-height:1.3}
+dialog#monitor-dialog,#script-confirm-dialog,#script-result-dialog{overflow:hidden}
+#script-result-info{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 24px}
+#script-result-info>div{display:grid;grid-template-columns:100px minmax(0,1fr);gap:6px 14px;min-width:0}
+#script-result-info>div.wide{grid-column:1/-1}
+#script-output{height:clamp(140px,28dvh,280px);max-height:36dvh}
+.script-result-actions a{align-self:center}
+.mwDialogButtonBar{flex-wrap:wrap}
+.toolbar>input,.toolbar>select{min-width:0;max-width:100%}
+#script-version{min-width:0;flex:0 1 auto}
+.cluster-actions{border:1px solid #bfbfbf;border-left:3px solid #a2142f;background:#fff;padding:12px 14px;margin-top:24px}
+.cluster-actions h2{margin-top:0}.cluster-actions p{max-width:900px}
+button.danger{border-color:#a2142f;color:#a2142f}
+button.danger:hover:not(:disabled){border-color:#a2142f;background:#fff5f5}
+@media(max-width:650px){
+ .admin-shell .form-grid,dialog.mwDialog .form-grid,html[lang=en] .admin-shell .form-grid,html[lang=en] dialog.mwDialog .form-grid,#operation-fields{grid-template-columns:minmax(0,1fr);row-gap:4px}
+ .form-grid>label{text-align:left;line-height:1.5;margin-top:8px}
+ .form-grid>input,.form-grid>select{margin-bottom:4px}
+ #script-result-info{grid-template-columns:minmax(0,1fr)}
+ .workspace-actions{flex-wrap:wrap}
+ .script-editor{padding:10px}
+}
+
+#script-form-error:empty{display:none}
+.error{overflow-wrap:anywhere}#script-form-error{white-space:pre-wrap}
+
+select:focus-visible,pre:focus-visible{outline:2px solid #0076a8;outline-offset:1px}
+/* Tabs keep their text width; narrow layouts scroll instead of overlapping labels. */
+#tabs>[role=tab]{flex:0 0 auto}
+.chart-data{margin-top:12px}.chart-data summary{cursor:default}.chart-data .table-scroll{max-height:260px;margin:8px 0 0}

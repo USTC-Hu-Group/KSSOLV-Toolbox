@@ -5,6 +5,15 @@
     <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
     <title>Command Window UI</title>
     <script>
+        // uihtml may call setup before the body script and its controls exist.
+        // Retain the bridge, then initialize once the terminal is constructed.
+        function setup(component) {
+            window.__kssolvHTMLComponent = component;
+            if (window.initializeKssolvCommandWindow) {
+                window.initializeKssolvCommandWindow(component);
+            }
+        }
+
         const preventBrowserZoom = (event) => {
             if (event.type.startsWith("gesture") || event.ctrlKey || event.metaKey) {
                 event.preventDefault();
@@ -80,7 +89,7 @@
             flex: 1 1 auto;
             min-height: 0;
             display: grid;
-            grid-template-rows: minmax(0, 1fr) auto;
+            grid-template-rows: minmax(0, 1fr) auto auto;
             overflow: hidden;
         }
 
@@ -108,6 +117,9 @@
             margin: 0;
             line-height: 1;
         }
+
+        #llm-status { font-size: 12px; color: #616161; padding: 0 5px; }
+        #llm-status:empty { display: none; }
 
         #input-container {
             display: flex;
@@ -198,10 +210,11 @@
 <body>
 <div id="container">
     <div id="terminal"></div>
+    <div id="llm-status" role="status" aria-live="polite"></div>
     <div id="input-container">
         <span id="command-prompt">&gt;&gt;</span>
         <label for="command-input"></label>
-        <input autofocus id="command-input" type="text" autocomplete="off">
+        <input autofocus id="command-input" aria-label="Command" type="text" autocomplete="off" disabled placeholder="Connecting to MATLAB…">
         <div id="suggestions-container"></div>
     </div>
 </div>
@@ -219,6 +232,18 @@
     const suggestionsContainer = document.getElementById("suggestions-container");
     let autoScrolledUp = true;
     let remoteExecutionEnabled = false;
+    const preserveTranscript = document.documentElement.dataset.kssolvOnline === 'true';
+
+    function appendPrompt(command, remote = false) {
+        flushChatRender();
+        document.getElementById('llm-status').textContent = '';
+        if (terminal.textContent && !terminal.textContent.endsWith('\n')) {
+            terminal.appendChild(document.createTextNode('\n'));
+        }
+        terminal.appendChild(document.createTextNode(`${remote ? '[remote] ' : ''}>> ${command}\n`));
+        currentResponseContent = '';
+        responseContainer = null;
+    }
 
     // 查找数组中所有字符串的最长公共前缀
     function findLongestCommonPrefix(strings, currentInput) {
@@ -335,6 +360,7 @@
 
     // 处理键盘事件
     input.addEventListener("keydown", function (event) {
+        if (input.disabled) return;
         const isSuggestionsVisible = suggestionsContainer.style.display === 'block';
 
         if (event.key === "Tab") {
@@ -387,24 +413,25 @@
             let command = input.value.trim();
 
             if (command) {
+                if (preserveTranscript && MATLAB) {
+                    MATLAB.sendEventToMATLAB('TerminalCommand', {
+                        Command: command,
+                        Remote: remoteExecutionEnabled && !/^(?:\$|demo$)/.test(command),
+                    });
+                }
                 // 检查是否是特殊命令格式
                 const singleDollarMatch = command.match(/^\$\s*(.*)/);
                 const doubleDollarMatch = command.match(/^\$\$\s*(.*)/);
 
                 if (singleDollarMatch || doubleDollarMatch) {
-                    const actualCommand = singleDollarMatch ?
-                        singleDollarMatch[1] : doubleDollarMatch[1];
+                    const actualCommand = doubleDollarMatch ?
+                        doubleDollarMatch[1] : singleDollarMatch[1];
                     const useHistory = !doubleDollarMatch;
 
                     if (actualCommand) {
                         history.push(command);
                         historyIndex = history.length;
-                        if (terminal.innerHTML.length > 0 && !terminal.innerHTML.endsWith('\n')) {
-                            terminal.innerHTML += `\n`;
-                        }
-                        terminal.innerHTML += `>> ${command}\n`;
-                        currentResponseContent = '';
-                        responseContainer = null;
+                        appendPrompt(command);
                         sendUserPromptToMATLAB(actualCommand, useHistory);
                         input.value = "";
                         if (autoScrolledUp) {
@@ -417,7 +444,7 @@
                 history.push(command);
                 historyIndex = history.length;
 
-                if (/\bclc\b/i.test(command)) {
+                if (/^clc\s*;?$/i.test(command)) {
                     terminal.innerHTML = "";
                     input.value = "";
                     currentResponseContent = '';
@@ -426,7 +453,7 @@
                 }
 
                 if (command === "demo") {
-                    terminal.innerHTML += `>> ${command}\n`;
+                    appendPrompt(command);
                     input.value = "";
                     currentResponseContent = '';
                     responseContainer = null;
@@ -434,13 +461,7 @@
                     return;
                 }
 
-                if (terminal.innerHTML.length > 0 && !terminal.innerHTML.endsWith('\n')) {
-                    terminal.innerHTML += `\n`;
-                }
-                const remoteMarker = remoteExecutionEnabled ? '[remote] ' : '';
-                terminal.innerHTML += `${remoteMarker}>> ${command}\n`;
-                currentResponseContent = '';
-                responseContainer = null;
+                appendPrompt(command, remoteExecutionEnabled);
 
                 if (command === "dev" && !remoteExecutionEnabled) {
                     command = "kssolv.ui.debug.WebWindow.openDevTools()";
@@ -554,6 +575,7 @@
     // 发送用户提示词到 MATLAB
     function sendUserPromptToMATLAB(prompt, useHistory) {
         if (typeof MATLAB !== 'undefined') {
+            input.disabled = true;
             MATLAB.sendEventToMATLAB("UserPromptSubmitted", {
                 prompt: prompt,
                 useHistory: useHistory
@@ -564,7 +586,8 @@
     }
 
     // 设置 MATLAB 组件
-    function setup(htmlComponent) {
+    window.initializeKssolvCommandWindow = function (htmlComponent) {
+        if (MATLAB === htmlComponent) return;
         MATLAB = htmlComponent;
         window.__kssolvHTMLComponent = htmlComponent;
         window.__kssolvFlushHtmlErrors();
@@ -575,32 +598,77 @@
                 ? '[remote] >>'
                 : '>>';
         });
-        htmlComponent.addEventListener("DataChanged", () => {
-            references = MATLAB.Data.join(',');
-            references = references.split(',');
-            references = ['ANS', 'dev'].concat(references);
-        });
+        function updateReferences() {
+            const values = Array.isArray(htmlComponent.Data) ? htmlComponent.Data : [];
+            references = ['ANS', 'dev', ...values];
+        }
+        updateReferences();
+        htmlComponent.addEventListener("DataChanged", updateReferences);
         htmlComponent.addEventListener("TokensStreamed", tokensStreamedFromMATLABToHTML);
+        htmlComponent.addEventListener('LLMStatusChanged', event => {
+            document.getElementById('llm-status').textContent = event.Data.Text || '';
+            input.disabled = Boolean(event.Data.Busy);
+            if (!event.Data.Busy) flushChatRender();
+        });
+        if (preserveTranscript) {
+            htmlComponent.addEventListener('RestoreTranscript', restoreTranscript);
+            htmlComponent.sendEventToMATLAB('TerminalReady');
+        } else {
+            enableInput();
+        }
+    };
+    if (window.__kssolvHTMLComponent) {
+        window.initializeKssolvCommandWindow(window.__kssolvHTMLComponent);
+    }
+
+    function enableInput() {
+        input.disabled = false;
+        input.placeholder = '';
+        input.dataset.bridgeReady = 'true';
+    }
+
+    function restoreTranscript(event) {
+        flushChatRender();
+        const state = event.Data || {};
+        terminal.textContent = state.Truncated ? '[Earlier terminal output omitted]\n' : '';
+        currentResponseContent = '';
+        responseContainer = null;
+        isProcessingThink = false;
+        currentThinkContent = '';
+        thinkContainer = null;
+        history = Array.isArray(state.Commands) ? state.Commands.map(String) : [];
+        historyIndex = history.length;
+        for (const record of state.Records || []) {
+            if (record.Kind === 'prompt') appendPrompt(record.Data, record.Remote);
+            else if (record.Kind === 'result') resultFromMATLABToHTML({Data:record.Data});
+            else if (record.Kind === 'tokens') tokensStreamedFromMATLABToHTML({Data:record.Data});
+        }
+        remoteExecutionEnabled = Boolean(state.Remote);
+        commandPrompt.textContent = remoteExecutionEnabled ? '[remote] >>' : '>>';
+        flushChatRender();
+        terminal.scrollTop = terminal.scrollHeight;
+        enableInput();
     }
 
     // 处理 MATLAB 返回结果
     function resultFromMATLABToHTML(event) {
         if (event.Data) {
             terminal.innerHTML += event.Data + "\n";
-            document.querySelectorAll('#terminal a').forEach(link => {
-                link.addEventListener('click', function (e) {
-                    e.preventDefault();
-                    let command = this.getAttribute('href');
-                    if (command.startsWith('matlab:')) {
-                        sendCommandToMATLAB(command.replace('matlab:', ''));
-                    }
-                });
-            });
         }
         if (autoScrolledUp) {
             terminal.scrollTop = terminal.scrollHeight;
         }
     }
+
+    // Delegation also covers restored links, without registering them twice.
+    terminal.addEventListener('click', event => {
+        const link = event.target.closest?.('a');
+        const command = link?.getAttribute('href') || '';
+        if (command.startsWith('matlab:')) {
+            event.preventDefault();
+            sendCommandToMATLAB(command.slice('matlab:'.length));
+        }
+    });
 
     // 当前是否在处理思考内容
     let isProcessingThink = false;
@@ -624,6 +692,14 @@
             return '<pre><code class="hljs">' + md.utils.escapeHtml(str) + '</code></pre>';
         }
     });
+
+    let pendingChatRender = null;
+    function flushChatRender() {
+        if (pendingChatRender === null) return;
+        cancelAnimationFrame(pendingChatRender);
+        pendingChatRender = null;
+        renderResponse();
+    }
 
     // 处理 MATLAB 返回 tokens
     function tokensStreamedFromMATLABToHTML(event) {
@@ -714,7 +790,16 @@
         }
 
         currentResponseContent += content;
+        if (pendingChatRender === null) {
+            pendingChatRender = requestAnimationFrame(() => {
+                pendingChatRender = null;
+                renderResponse();
+            });
+        }
+    }
 
+    function renderResponse() {
+        if (!responseContainer) return;
         let processedContent = currentResponseContent;
         // 分别替换行内公式 (\(...\)) 和行间公式 (\[...\]) 为 $...$ 和 $$...$$
         processedContent = processedContent.replace(/\\\((.*?)\\\)/g, (match, formula) => {
@@ -744,8 +829,8 @@
             element.innerHTML = text;
         });
 
-        // 高亮代码块中的代码
-        hljs.highlightAll();
+        // markdown-it's highlight callback already handles this response's
+        // code blocks. Avoid rescanning every previous reply on every delta.
 
         if (autoScrolledUp) {
             terminal.scrollTop = terminal.scrollHeight;

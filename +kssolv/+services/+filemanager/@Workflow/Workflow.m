@@ -63,15 +63,19 @@ classdef Workflow < kssolv.services.filemanager.AbstractItem
 
         function set.graphJSON(this, newValue)
             this.graphJSON = newValue;
+            % Empty folders have no canvas. Loading must retain the saved
+            % graph and its task types/options rather than construct new tasks.
+            if strlength(newValue) == 0 || ...
+                    isequal(kssolv.ui.util.DataStorage.getData('LoadingKsFile'), true)
+                return
+            end
             thisGraph = this.get("graph");
             if isempty(thisGraph)
                 this.set("graph", kssolv.services.workflow.WorkflowGraph(jsondecode(newValue)));
                 return
             end
 
-            if ~strcmp(newValue, '') && ~isempty(thisGraph) && ~kssolv.ui.util.DataStorage.getData('LoadingKsFile')
-                thisGraph.updateFromJSON(jsondecode(newValue));
-            end
+            thisGraph.updateFromJSON(jsondecode(newValue));
         end
 
         function saveToWfFile(this, filename)
@@ -122,6 +126,10 @@ classdef Workflow < kssolv.services.filemanager.AbstractItem
                     'Specified file does not have a .wf extension');
             end
 
+            previousLoading = kssolv.ui.util.DataStorage.getData('LoadingKsFile');
+            loadingCleanup = onCleanup(@() kssolv.ui.util.DataStorage.setData( ...
+                'LoadingKsFile', previousLoading));
+            kssolv.ui.util.DataStorage.setData('LoadingKsFile', true);
             try
                 load(fileName, "-mat", 'data');
             catch ME
@@ -130,6 +138,7 @@ classdef Workflow < kssolv.services.filemanager.AbstractItem
             end
 
             data.parent = [];
+            kssolv.services.filemanager.internal.migrateWorkflowResources(data);
             if isTemplate
                 nodeIDs = keys(data.graph.Nodes);
                 for i = 1:numel(nodeIDs)

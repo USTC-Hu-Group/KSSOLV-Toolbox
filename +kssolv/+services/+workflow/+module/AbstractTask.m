@@ -15,7 +15,7 @@ classdef (Abstract) AbstractTask < matlab.mixin.SetGet
         requiredTasks = [] % 依赖的任务标识符
 
         supportGPU logical = false
-        supportParallel logical = true
+        supportParallel logical = false % Process-pool parallelism
     end
 
     properties
@@ -24,7 +24,9 @@ classdef (Abstract) AbstractTask < matlab.mixin.SetGet
         taskInput
         taskOutput
 
-        usedParallelType {mustBeMember(usedParallelType, {'None', 'GPU', 'Processes', 'Threads'})} = 'None'
+        usedParallelType {mustBeMember(usedParallelType, {'None', 'GPU', 'Processes', 'Threads', 'Inherit'})} = 'None'
+        parallelProcessCount (1, 1) double {mustBeInteger, mustBePositive, mustBeFinite} = 2
+        parallelThreadCount (1, 1) double {mustBeInteger, mustBePositive, mustBeFinite} = 1
         executionTimeLimit {mustBeMember(executionTimeLimit, {'No Limit', '30 minutes', '1 hour', '2 hours'})} = 'No Limit'
         canAccessOtherTaskOutputs logical = true
         canShareOutputWithOtherTasks logical = true
@@ -66,13 +68,21 @@ classdef (Abstract) AbstractTask < matlab.mixin.SetGet
         function value = getExecutionOptions(this)
             %GETEXECUTIONOPTIONS Return a serializable task option snapshot.
             if ~isempty(this.optionsUI)
-                value = this.optionsUI.options;
+                value = this.optionsUI.getOptionsSnapshot();
                 this.options = value;
             elseif isempty(this.options)
                 value = struct();
             else
                 value = this.options;
             end
+        end
+
+        function value = getExecutionResources(this)
+            value = struct('ParallelType', this.usedParallelType, ...
+                'ProcessCount', this.parallelProcessCount, ...
+                'ThreadCount', this.parallelThreadCount);
+            value = kssolv.services.workflow.ExecutionResources. ...
+                validate(value, class(this), this.getExecutionOptions());
         end
     end
 

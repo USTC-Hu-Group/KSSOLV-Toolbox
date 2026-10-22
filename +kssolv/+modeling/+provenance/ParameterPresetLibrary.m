@@ -78,7 +78,7 @@ classdef ParameterPresetLibrary
         end
 
         function value=defaultDirectory()
-            value=fullfile(prefdir,"KSSOLV","modeling-presets");
+            value=kssolv.util.preferenceDirectory("modeling-presets");
         end
     end
 end

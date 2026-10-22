@@ -36,7 +36,11 @@ classdef MoleculeDisplay < handle
         PendingImageExportPath string = ""
         PendingImageExportTempPath string = ""
         PendingImageExportNextChunk (1,1) double = 0
-        HTMLSourcePath string = ""
+        ViewerInitializationTimer = []
+        LoadingLabel = []
+        RecoveryPrompted (1,1) logical = false
+        InitialScenePending (1,1) logical = false
+        InitialConnectivityTimer = []
         ImageExportDestinationTimer = []
         BridgeEventSerial (1,1) double = 0
         PendingFullscreenExit (1,1) logical = false
@@ -130,48 +134,32 @@ classdef MoleculeDisplay < handle
             fig = document.Figure;
             this.DocumentCloseListener=addlistener(fig, ...
                 "ObjectBeingDestroyed",@(~,~)this.beginClose());
-            g = uigridlayout(fig);
+            g = uigridlayout(fig, 'Tag', 'KSSOLVFillFigure');
             g.Padding = 0;
             g.RowHeight = {'1x'};
             g.ColumnWidth = {'1x'};
-            htmlFile = fullfile(fileparts(mfilename('fullpath')), ...
-                'CrystalViewer', 'index.html');
-            runtimeManifest = ...
-                kssolv.ui.util.CrystalViewerRuntime.verify(string(htmlFile));
-            % uihtml/CEF can retain a local HTML document under the same path
-            % after Toolbox updates.  A unique source path guarantees that the
-            % current embedded viewer (including render progress UI) is loaded.
-            this.HTMLSourcePath = string(tempname) + ".html";
-            [copied, copyMessage] = copyfile(htmlFile, this.HTMLSourcePath, 'f');
-            if ~copied
-                error("KSSOLV:CrystalViewer:HTMLSource", ...
-                    "Unable to stage the crystal viewer: %s", copyMessage);
-            end
-            kssolv.ui.util.CrystalViewerRuntime.assertEntry( ...
-                this.HTMLSourcePath, string(runtimeManifest.entrySha256));
-            this.HTMLComponent = uihtml(g, "HTMLSource", this.HTMLSourcePath);
+            this.LoadingLabel = uilabel(g, 'Text', figOptions.Title + "…", ...
+                'HorizontalAlignment', 'center');
+            this.LoadingLabel.Layout.Row = 1;
+            this.LoadingLabel.Layout.Column = 1;
+            this.HTMLComponent = uihtml(g, 'Visible', 'off');
+            this.HTMLComponent.Layout.Row = 1;
+            this.HTMLComponent.Layout.Column = 1;
             this.HTMLComponent.HTMLEventReceivedFcn = @this.eventReceiver;
-            if isempty(this.ParsedModel)
-                this.ParsedModel = this.parseTextInput();
-                this.InitialModel = this.ParsedModel.copy();
-                if isa(this.ParsedModel, ...
-                        "kssolv.analysis.matgenlab.core.IMolecule")
-                    this.SceneOptions.algorithm = "Auto";
-                end
-            end
 
             % 添加到 App Container
             appContainer.add(document);
             kssolv.ui.features.modeling.SessionRegistry.getInstance().register( ...
                 document, this);
 
-            % 等待渲染完成
-            waitfor(document.Figure, 'FigureViewReady', true);
-            if isdeployed
-                % document 会异常地取消停靠（undocked），在渲染完成后需要重新停靠它
-                document.Docked = true;
-            end
-            this.promptForRecoveryDraft();
+            % Return to the double-click handler before parsing or starting
+            % CEF. The document tab can paint while the viewer initializes.
+            this.ViewerInitializationTimer = timer( ...
+                'Name', 'KSSOLV Crystal Viewer initialization', ...
+                'ExecutionMode', 'singleShot', 'StartDelay', 0.01, ...
+                'TimerFcn', @(~,~)this.initializeViewer());
+            start(this.ViewerInitializationTimer);
+            drawnow nocallbacks
         end
 
         function model = getModel(this)
@@ -590,9 +578,9 @@ classdef MoleculeDisplay < handle
             notify(this, "SelectionChanged");
             if ~isempty(this.HTMLComponent) && isvalid(this.HTMLComponent)
                 this.HTMLComponent.sendEventToHTMLSource( ...
-                    "viewer:command", struct( ...
+                    "viewer:command", jsonencode(struct( ...
                     "command", "select-sites", ...
-                    "siteIndices", zeroBased));
+                    "siteIndices", zeroBased)));
             end
 
         end
@@ -691,9 +679,9 @@ classdef MoleculeDisplay < handle
                 notify(this, "SelectionChanged");
             else
                 this.HTMLComponent.sendEventToHTMLSource( ...
-                    "viewer:command", struct( ...
+                    "viewer:command", jsonencode(struct( ...
                     "command", "select-sites", ...
-                    "siteIndices", zeroBased));
+                    "siteIndices", zeroBased)));
             end
         end
 
@@ -705,16 +693,9 @@ classdef MoleculeDisplay < handle
         end
 
         function delete(this)
-            %DELETE Remove the cache-busting viewer copy when the display closes.
+            %DELETE Stop pending work when the display closes.
             this.prepareForShutdown();
             this.cancelImageExportDestinationTimer();
-            if this.HTMLSourcePath ~= "" && isfile(this.HTMLSourcePath)
-                try
-                    delete(this.HTMLSourcePath);
-                catch
-                    % Temporary files are also reclaimed by the operating system.
-                end
-            end
         end
 
         function prepareForShutdown(this)
@@ -744,6 +725,80 @@ classdef MoleculeDisplay < handle
     end
 
     methods (Access = private)
+        function initializeViewer(this)
+            this.cancelViewerInitialization();
+            if this.IsClosing, return, end
+            try
+                if isempty(this.ParsedModel)
+                    this.ParsedModel = this.parseTextInput();
+                    this.InitialModel = this.ParsedModel.copy();
+                    if isa(this.ParsedModel, ...
+                            "kssolv.analysis.matgenlab.core.IMolecule")
+                        this.SceneOptions.algorithm = "Auto";
+                    end
+                    notify(this, "HistoryChanged");
+                end
+                htmlFile = fullfile(fileparts(mfilename('fullpath')), ...
+                    'CrystalViewer', 'index.html');
+                if isKSSOLVOnline()
+                    kssolv.ui.util.CrystalViewerRuntime.verify(string(htmlFile));
+                    source = htmlFile;
+                else
+                    source = kssolv.ui.util.CrystalViewerRuntime.prepare(string(htmlFile));
+                end
+                this.RequestSerial = this.RequestSerial + 1;
+                this.CurrentRequestId = "initial-" + string(this.RequestSerial) + "-" + ...
+                    string(matlab.lang.internal.uuid);
+                preview = kssolv.ui.scene.atomic.AtomicPreviewCache.build( ...
+                    this.ParsedModel, this.SceneOptions, this.CurrentRequestId);
+                this.HTMLComponent.Data = jsonencode(struct('kssolvInitialScene', ...
+                    kssolv.ui.scene.atomic.CrystalSceneSerializer.transportScene(preview)));
+                this.InitialScenePending = true;
+                % Install the event callback before assigning HTMLSource so
+                % an early one-shot viewer:ready event cannot be missed.
+                this.HTMLComponent.HTMLSource = ...
+                    kssolv.ui.browser.htmlSource(source, FillFigure=true);
+                this.HTMLComponent.Visible = 'on';
+            catch exception
+                if ~this.IsClosing && isvalid(this.LoadingLabel)
+                    this.HTMLComponent.Visible = 'off';
+                    this.LoadingLabel.Text = exception.message;
+                end
+                warning("KSSOLV:CrystalViewer:Initialization", ...
+                    "Unable to initialize the crystal viewer: %s", exception.message);
+            end
+        end
+
+        function cancelViewerInitialization(this)
+            pending = this.ViewerInitializationTimer;
+            this.ViewerInitializationTimer = [];
+            if ~isempty(pending) && isvalid(pending)
+                stop(pending);
+                delete(pending);
+            end
+        end
+
+        function finishInitialScene(this)
+            this.cancelInitialConnectivity();
+            if this.IsClosing, return, end
+            % The initial atoms have already been painted. Do not send a
+            % second identical preview or hold up that frame with analysis.
+            this.renderModel(this.ParsedModel, false, false);
+            if ~this.IsClosing && ~this.RecoveryPrompted
+                this.RecoveryPrompted = true;
+                this.promptForRecoveryDraft();
+            end
+        end
+
+        function cancelInitialConnectivity(this)
+            pending = this.InitialConnectivityTimer;
+            this.InitialConnectivityTimer = [];
+            if ~isempty(pending) && isvalid(pending)
+                stop(pending);
+                delete(pending);
+            end
+        end
+
         function commitModel(this, model)
             %COMMITMODEL Render first, then update the document-local draft.
             this.validateModel(model);
@@ -872,7 +927,7 @@ classdef MoleculeDisplay < handle
             laterLabel = message("KSSOLV:dialogs:RecoveryLater");
             prompt = sprintf(message("KSSOLV:dialogs:RecoveryMessage"), ...
                 string(snapshot.savedAt), double(snapshot.revision));
-            if isdeployed
+            if isdeployed || isKSSOLVOnline()
                 dialog = kssolv.ui.components.dialog.ConfirmDialog( ...
                     prompt, message("KSSOLV:dialogs:RecoveryTitle"), ...
                     "Options", {restoreLabel, discardLabel, laterLabel}, ...
@@ -884,9 +939,9 @@ classdef MoleculeDisplay < handle
                     "Options", {restoreLabel, discardLabel, laterLabel}, ...
                     "DefaultOption", 1, "CancelOption", 3);
             end
-            if selection == restoreLabel
+            if strcmp(selection, restoreLabel)
                 this.restoreRecoveryDraft();
-            elseif selection == discardLabel
+            elseif strcmp(selection, discardLabel)
                 this.discardRecoveryDraft();
             end
         end
@@ -903,7 +958,7 @@ classdef MoleculeDisplay < handle
             discardLabel = ...
                 message("KSSOLV:dialogs:StructureCanCloseDiscard");
             cancelLabel = message("KSSOLV:dialogs:StructureCanCloseCancel");
-            if isdeployed
+            if isdeployed || isKSSOLVOnline()
                 dialog = kssolv.ui.components.dialog.ConfirmDialog( ...
                     message("KSSOLV:dialogs:StructureCanCloseMessage"), ...
                     message("KSSOLV:dialogs:StructureCanCloseTitle"), ...
@@ -946,9 +1001,30 @@ classdef MoleculeDisplay < handle
             end
             switch string(event.HTMLEventName)
                 case "viewer:ready"
+                    if ~isempty(this.LoadingLabel) && isvalid(this.LoadingLabel)
+                        delete(this.LoadingLabel);
+                    end
+                    if isdeployed
+                        this.Document.Docked = true;
+                    end
                     this.sendViewerLocale();
-                    this.rebuildScene();
+                    if ~this.InitialScenePending
+                        this.rebuildScene();
+                    end
                     this.sendPendingSelection();
+                case "viewer:sceneRendered"
+                    data = event.HTMLEventData;
+                    if ischar(data) || isstring(data), data = jsondecode(data); end
+                    if this.InitialScenePending && isstruct(data) && ...
+                            isfield(data, 'requestId') && ...
+                            string(data.requestId) == this.CurrentRequestId
+                        this.InitialScenePending = false;
+                        this.InitialConnectivityTimer = timer( ...
+                            'Name', 'KSSOLV Crystal initial connectivity', ...
+                            'ExecutionMode', 'singleShot', 'StartDelay', 0.01, ...
+                            'TimerFcn', @(~,~)this.finishInitialScene());
+                        start(this.InitialConnectivityTimer);
+                    end
                 case "viewer:analysisRequested"
                     this.applyAnalysisRequest(event.HTMLEventData);
                 case "viewer:selection"
@@ -1355,11 +1431,12 @@ classdef MoleculeDisplay < handle
             this.renderModel(this.ParsedModel, false);
         end
 
-        function renderModel(this, model, throwOnFailure)
+        function renderModel(this, model, throwOnFailure, includePreview)
             arguments
                 this
                 model
                 throwOnFailure (1,1) logical = false
+                includePreview (1,1) logical = true
             end
             if this.IsClosing
                 if throwOnFailure
@@ -1419,7 +1496,7 @@ classdef MoleculeDisplay < handle
                 % Deliver an atoms-first frame before expensive connectivity
                 % for medium and large models. This keeps structure switching
                 % responsive while the exact cached scene is compiled.
-                if model.num_sites >= 1
+                if includePreview && model.num_sites >= 1
                     if isMolecule
                         preview = ...
                             kssolv.ui.scene.atomic.MoleculeSceneBuilder.build( ...
@@ -1504,9 +1581,9 @@ classdef MoleculeDisplay < handle
                 return
             end
             this.HTMLComponent.sendEventToHTMLSource( ...
-                "viewer:command", struct( ...
+                "viewer:command", jsonencode(struct( ...
                 "command", "select-sites", ...
-                "siteIndices", this.PendingSelectionSiteIndices));
+                "siteIndices", this.PendingSelectionSiteIndices)));
         end
 
         function sendViewerLocale(this)
@@ -1544,6 +1621,8 @@ classdef MoleculeDisplay < handle
         function beginClose(this)
             if this.IsClosing, return, end
             this.IsClosing=true;
+            this.cancelViewerInitialization();
+            this.cancelInitialConnectivity();
             this.RequestSerial=this.RequestSerial+1;
             this.CurrentRequestId="closed-"+ ...
                 string(matlab.lang.internal.uuid);
@@ -1575,13 +1654,14 @@ classdef MoleculeDisplay < handle
                     base, format, descriptor);
                 filter = kssolv.ui.scene.atomic.StructureExportCatalog. ...
                     fileFilter(format, descriptor);
-                [file, location] = uiputfile(filter, ...
+                [file, location] = kssolv.ui.util.FileDialog.save(filter, ...
                     "Export structure", char(defaultName));
                 if isequal(file, 0) || isequal(location, 0)
                     this.sendExportResult(format, "cancelled", "");
                     return
                 end
                 this.ParsedModel.to(fullfile(location, file), format);
+                kssolv.ui.util.FileDialog.download(fullfile(location, file));
                 this.sendExportResult(format, "success", "");
             catch exception
                 this.sendExportResult(format, "error", ...
@@ -1636,7 +1716,7 @@ classdef MoleculeDisplay < handle
                             "Unsupported image export format '%s'.", format);
                 end
                 this.clearPendingImageExport(true);
-                [file, location] = uiputfile(filter, ...
+                [file, location] = kssolv.ui.util.FileDialog.save(filter, ...
                     "Export rendered image", char(filename));
                 if isequal(file, 0) || isequal(location, 0)
                     this.scheduleImageExportDestination(requestId, ...
@@ -1716,6 +1796,7 @@ classdef MoleculeDisplay < handle
                         error("KSSOLV:CrystalViewer:ImageExportMove", ...
                             "Unable to finish the image export: %s", message);
                     end
+                    kssolv.ui.util.FileDialog.download(this.PendingImageExportPath);
                     this.clearPendingImageExport(false);
                 end
                 this.sendImageExportChunkResult( ...

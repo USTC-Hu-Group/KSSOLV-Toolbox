@@ -15,7 +15,7 @@ classdef ModelingJobsBrowser < handle
                 options.visible (1,1) logical=true
             end
             this.Directory=options.directory;
-            this.Figure=uifigure("Name", ...
+            this.Figure=kssolv.ui.util.DialogWindow.create("Name", ...
                 kssolv.ui.util.Localizer.message( ...
                 "KSSOLV:modeling:ModelingJobs"), ...
                 "Position",[200,200,760,380], ...
@@ -47,7 +47,7 @@ classdef ModelingJobsBrowser < handle
             this.refresh();
             if options.visible
                 kssolv.ui.util.DialogWindow.showCentered(this.Figure);
-            else
+            elseif ~isKSSOLVOnline()
                 movegui(this.Figure,"center");
             end
         end

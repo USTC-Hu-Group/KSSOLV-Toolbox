@@ -1,0 +1,270 @@
+[
+  {
+    "output": "images/cover-molecule.jpg",
+    "source": "docs/manual-zh/images/hd-pyridine-built-model.jpg",
+    "sha256": "d142043ad4e2358a714b1e22dccfdc5aa275d587cbbdbd8fa15e50f13992c48b",
+    "original_size": [
+      3024,
+      1758
+    ],
+    "crop_ltrb": [
+      720,
+      390,
+      2540,
+      1650
+    ],
+    "output_sha256": "313f5648053327316b2d81fea4c1f4d6abfbebd503a2d678cf1fe865499bbee1"
+  },
+  {
+    "output": "images/angle-edit.jpg",
+    "source": "docs/manual-zh/images/hd-ethanol-angle-measured150.jpg",
+    "sha256": "190a64f18a82a11bb688c5d8170a89360d8e29a033c4fe337462acf18a3e3337",
+    "original_size": [
+      3024,
+      1758
+    ],
+    "crop_ltrb": [
+      15,
+      305,
+      2855,
+      1735
+    ],
+    "layout_processing": "main.tex applies an additional right-edge trim of 650 graphicx units to remove unrelated edge controls; molecule and angle dialog are retained.",
+    "output_sha256": "9254ec4c87da32afdbae3d9d4dcd238d74637a1065f893adceb1acb9cab04a4d"
+  },
+  {
+    "output": "images/defect-model.jpg",
+    "source": "docs/manual-zh/images/latest-si-vacancy-result.png",
+    "sha256": "d72d82aaeb5651337e3cd24ef86a34e3a8d24b70af123aedafda4134d11a83ef",
+    "original_size": [
+      2400,
+      1666
+    ],
+    "crop_ltrb": [
+      620,
+      350,
+      2160,
+      1480
+    ],
+    "output_sha256": "5136c05c20cd18a48cd321f5578b065bc70bb460dea9f61d478930df1ae7cf52"
+  },
+  {
+    "output": "images/surface-oh.jpg",
+    "source": "docs/manual-zh/images/hd-pt111-oh-side.jpg",
+    "sha256": "7d7baff008e35b97a4996fa9b60ec2026aedadd1410a0c4af4da5958679ef3e5",
+    "original_size": [
+      3024,
+      1758
+    ],
+    "crop_ltrb": [
+      900,
+      300,
+      2550,
+      1680
+    ],
+    "output_sha256": "21e1139cb20aec397d078d05d39f989e5d2f4b00d7438bb9ed9af8706f72bba6"
+  },
+  {
+    "output": "images/twist-model.jpg",
+    "source": "docs/manual-zh/images/hd-online-twist-top.jpg",
+    "sha256": "c4f35e5907feb085b288ab3913033e890cb1341016766e7e2792b6ea6d5eafb6",
+    "original_size": [
+      3024,
+      1768
+    ],
+    "crop_ltrb": [
+      1360,
+      600,
+      2380,
+      1640
+    ],
+    "output_sha256": "3b4eaf9bf22e760dfbfcb07f97cd0e5674fd118723a9b034825fb757805e54ce"
+  },
+  {
+    "output": "images/polymer-chain.jpg",
+    "source": "docs/manual-zh/images/hd-polymer-block-model.jpg",
+    "sha256": "daee0e29a15898970d26596d852249ef1bf68707818606f19bd4e5926251c0e4",
+    "original_size": [
+      3024,
+      1758
+    ],
+    "crop_ltrb": [
+      150,
+      900,
+      2840,
+      1170
+    ],
+    "output_sha256": "06788f966f30d1e027f3087e40174191d36f8cb1dffe56a5c86d2ea44d725313"
+  },
+  {
+    "output": "images/volume-iso.jpg",
+    "source": "docs/manual-zh/images/hd-volume-total-clean150.jpg",
+    "sha256": "f94603fad7e50a90d0f7790c309cd03adee8b35cabb0ca29851c4fed0ef942ba",
+    "original_size": [
+      3024,
+      1758
+    ],
+    "crop_ltrb": [
+      600,
+      320,
+      2400,
+      1690
+    ],
+    "processing": "Crop includes the complete unit-cell outline, including its lower vertex.",
+    "output_sha256": "0e489b8ddc383c2979739a34ca29364005a11ddb12ab05ab8dd8de86bbe0200c"
+  },
+  {
+    "output": "images/volume-miller.jpg",
+    "source": "docs/manual-zh/images/hd-volume-miller110-model150.jpg",
+    "sha256": "6fe4db0fa12265075bc555c9fe9e1913eaf1912e747b5fa8997e6fed20ea83db",
+    "original_size": [
+      3024,
+      1758
+    ],
+    "crop_ltrb": [
+      600,
+      320,
+      2400,
+      1380
+    ],
+    "output_sha256": "f3ef7ecb7c1b0c28a14be4b0f0069ba5b8a7976be602c33a8507adfe89f31fa1"
+  },
+  {
+    "output": "images/volume-dvr.jpg",
+    "source": "docs/manual-zh/images/hd-volume-direct-clean150.jpg",
+    "sha256": "1104ec105f7eea1ff969843a932cebf7576e55fc909c7e39d1529cfba748c225",
+    "original_size": [
+      3024,
+      1758
+    ],
+    "crop_ltrb": [
+      600,
+      320,
+      2400,
+      1600
+    ],
+    "output_sha256": "14fb543fd2d97a2c16eb6ab8c91c2af0a566d6cd038f6077e96b50a36318dc1d"
+  },
+  {
+    "output": "images/scf-result.jpg",
+    "source": "docs/manual-zh/images/latest-h2-scf-result.png",
+    "sha256": "f4f79d87775a1e6b0b0b63cef4e177bf80cdd64d88964434e72c0f72dc41b622",
+    "original_size": [
+      2400,
+      1666
+    ],
+    "crop_ltrb": [
+      610,
+      365,
+      2325,
+      1595
+    ],
+    "output_sha256": "f33d80d0e13ac8c206fcc6f717bf71d627084229517b3f38fb2393ae4b205814"
+  },
+  {
+    "output": "images/startup-card.jpg",
+    "source": "docs/manual-zh/images/round11-desktop-startup-050.jpg",
+    "sha256": "b774ab3bfab98625c7a674566d83f20af850599d870c7d5f11079228e808edd9",
+    "original_size": [
+      1600,
+      988
+    ],
+    "crop_ltrb": null,
+    "output_sha256": "0c11241dc94ea21f507feb9aff0e17eb1fdbf97336c3c0cf87a53da3849440b0"
+  },
+  {
+    "output": "images/online-files.jpg",
+    "source": "docs/manual-zh/images/hd-online-silicon-files150.jpg",
+    "sha256": "0b7b74c5c1b26e204e2eed01ebd0e6949dbc8e1040ff3be1fc9629b9107c1e52",
+    "original_size": [
+      3024,
+      1758
+    ],
+    "crop_ltrb": [
+      0,
+      280,
+      2880,
+      1758
+    ],
+    "output_sha256": "dd18131d96410f1f0011401c47d139561b35da41fcffd48191d1cb8665f5fe2b"
+  },
+  {
+    "output": "images/modeling-ui.jpg",
+    "source": "assets/kssolv-crystal-modeling.png",
+    "sha256": "3ff181d47ad0ef1ca074f7df0b8a16f327f7873fa38ae10cec74af24d31d13c4",
+    "original_size": [
+      2624,
+      1888
+    ],
+    "crop_ltrb": [
+      110,
+      75,
+      2515,
+      1740
+    ],
+    "output_sha256": "34292f67f2c4afc100bc1c3480faad8cfea97a0eeaac77274edd5e93f70075b0"
+  },
+  {
+    "output": "images/workflow-graph.jpg",
+    "source": "assets/KSSOLV Toolbox GUI.png",
+    "sha256": "64e1752c929642ba409235e328c66d82818a7645f2e851d537adc72fbee2eb2f",
+    "original_size": [
+      2624,
+      1880
+    ],
+    "crop_ltrb": [
+      740,
+      430,
+      1870,
+      1290
+    ],
+    "output_sha256": "dbe1cee003bc2e397c867e6c414c86d12ba9efaac59d1a9db070f608daf492cd"
+  },
+  {
+    "output": "images/documentation-cover.png",
+    "source": [
+      "docs/manual-zh/manual-style.sty",
+      "docs/manual-zh/main.tex"
+    ],
+    "source_sha256": {
+      "docs/manual-zh/manual-style.sty": "b71da1c52c4d175d8fa8f56020b5b5454784979eb952fced664bf694239916f7",
+      "docs/manual-zh/main.tex": "5c08d282f5293d0df0281781f8598d75d42a2d8e1973663f28ded6e6db48da25"
+    },
+    "processing": "Existing manualcover rendered with XeLaTeX, PingFang font overrides only; original manual sources unchanged.",
+    "output_sha256": "8ba5ce8aa8fa45ea886f515f18deb055f8b77d18cd4927a625dedfe3ff5f7e06"
+  },
+  {
+    "output": "images/online-admin-users-crop.png",
+    "source": "Read-only screenshot of an already open browser tab: https://kssolv.glea.moe/online/admin",
+    "captured_date": "2026-10-22 Asia/Shanghai",
+    "source_sha256": "785a3b40ba94b3d57dc463f8eca1b8af7a618e605bbf0e6910dd640c76915293",
+    "original_size": [
+      1291,
+      711
+    ],
+    "crop_ltrb": [
+      20,
+      20,
+      1265,
+      412
+    ],
+    "output_sha256": "5968c8a0cdbb18b0703409593c24284193f1dfb4f3ed9e85532d0417a558fa78"
+  },
+  {
+    "output": "images/online-admin-cpu.png",
+    "source": "Read-only screenshot of an already open browser tab: https://kssolv.glea.moe/online/admin",
+    "captured_date": "2026-10-22 Asia/Shanghai",
+    "source_sha256": "c79a863d8a2a94eb65749305d372e06172694f10e05b7da8bd4453e54dd1b8ed",
+    "original_size": [
+      1291,
+      711
+    ],
+    "crop_ltrb": [
+      120,
+      35,
+      1170,
+      386
+    ],
+    "output_sha256": "d4b7d11c5ac121f8a9e6d737c0a768c333d2fc7def15dadf8f6d72d53e745de7"
+  }
+]

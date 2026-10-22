@@ -11,6 +11,10 @@ classdef HomeTab < handle
         Widgets   % 小组件
     end
 
+    properties (SetAccess = private)
+        IsBrowserReady (1,1) logical = false
+    end
+
     properties (Access = private)
         settingsDialog % 设置对话框
         updateDialog   % 检查更新对话框
@@ -19,6 +23,7 @@ classdef HomeTab < handle
         materialsProjectDialog % Materials Project 结构检索对话框
         remoteClusterManagerDialog % 远程集群配置窗口
         remoteJobsDialog % 远程作业窗口
+        BrowserActions = [] % Browser-owned protocol links in Online mode
     end
 
     methods
@@ -31,9 +36,51 @@ classdef HomeTab < handle
             buildTab(this);
             connectTab(this);
             setTabActivated(this);
+            if isKSSOLVOnline()
+                app = kssolv.ui.util.DataStorage.getData('AppContainer');
+                panel = app.getPanel('ProjectBrowser');
+                this.BrowserActions = uihtml(panel.Figure, 'Position', [0 0 1 1], ...
+                    'Data', struct('links', kssolv.ui.browser.onlineLinks()), ...
+                    'HTMLEventReceivedFcn', @(~,event)this.callbackBrowserShortcut(event), ...
+                    'HTMLSource', fileread(kssolv.ui.browser.resourcePath('online-actions.html')));
+            end
 
             % 将 HomeTab 保存到 DataStorage
             kssolv.ui.util.DataStorage.setData('HomeTab', this);
+        end
+    end
+
+    methods
+        function saveCurrentProject(this)
+            % Share the full project/draft save path with Quick Access Save.
+            this.callbackFileSaveButton();
+        end
+
+        function openSettings(this, account)
+            this.callbackEnvironmentSettingsButton();
+            if nargin > 1 && account, this.settingsDialog.selectAccountTab(); end
+        end
+
+        function requestOnlineAccountAction(this, action)
+            if isKSSOLVOnline() && ~isempty(this.BrowserActions)
+                this.BrowserActions.sendEventToHTMLSource('accountAction', struct('action', action));
+            end
+        end
+
+        function openWorkspaceFile(this, relative)
+            path = kssolv.ui.browser.OnlineWorkspace.resolve(relative);
+            [~,~,extension] = fileparts(path);
+            switch lower(extension)
+                case '.ks'
+                    this.callbackFileOpenButton([],[],path);
+                case '.wf'
+                    kssolv.ui.components.figuredocument.Workflow.loadWfFile(path);
+                otherwise
+                    imported = this.callbackImportStructureFromFile([],[],path);
+                    if imported == 0
+                        error('KSSOLV:Online:WorkspaceImport','This file could not be imported as a structure.');
+                    end
+            end
         end
     end
 
@@ -124,6 +171,13 @@ classdef HomeTab < handle
             this.Widgets.ProjectSection.ProjectVariableButton.Popup.getChildByIndex(1).Enabled = false;
             this.Widgets.EnvironmentSection.EnvironmentExtraButton.Popup.getChildByIndex(1).Enabled = false;
             this.Widgets.ResourceSection.ExamplesListItem.Enabled = false;
+            if isKSSOLVOnline()
+                this.Widgets.RunningSection.RunningStopButton.Description = ...
+                    'Stopping synchronous calculations is unavailable in Online sessions.';
+                this.Widgets.EnvironmentSection.EnvironmentParallelButton.Enabled = false;
+                this.Widgets.EnvironmentSection.EnvironmentParallelButton.Description = ...
+                    'Parallel configuration is unavailable in Online sessions.';
+            end
         end
     end
 
@@ -422,9 +476,36 @@ classdef HomeTab < handle
         end
 
         %% 回调函数
-        function callbackFileOpenButton(~, ~, ~)
+        function callbackBrowserShortcut(this, event)
+            if string(event.HTMLEventName) == "accountState"
+                this.IsBrowserReady = true;
+                qab = kssolv.ui.util.DataStorage.getData('QuickAccessBar');
+                if ~isempty(qab), qab.setOnlineAccount(event.HTMLEventData); end
+                return
+            elseif string(event.HTMLEventName) == "accountError"
+                qab = kssolv.ui.util.DataStorage.getData('QuickAccessBar');
+                if ~isempty(qab)
+                    qab.setOnlineAccount(kssolv.ui.util.DataStorage.getData('OnlineAccount'));
+                end
+                kssolv.ui.util.SessionPrompt.confirm([], ...
+                    string(event.HTMLEventData.message), 'Online', 'Options', {'Close'});
+                return
+            end
+            if string(event.HTMLEventName) ~= "shortcut", return, end
+            switch string(event.HTMLEventData.command)
+                case "open"
+                    this.callbackFileOpenButton([], []);
+                case "save"
+                    this.callbackFileSaveButton([], []);
+                case "saveAs"
+                    this.callbackSaveProjectAs([], []);
+            end
+        end
+
+        function callbackFileOpenButton(this, ~, ~, ksFile)
             import kssolv.ui.util.Localizer.*
-            [file, path] = uigetfile({'*.ks', 'KSSOLV Files (*.ks)'}, ...
+            if nargin < 4
+            [file, path] = kssolv.ui.util.FileDialog.open({'*.ks', 'KSSOLV Files (*.ks)'}, ...
                 message('KSSOLV:dialogs:OpenKSFileTitle'), 'MultiSelect', 'off');
             if isequal(file, 0)
                 % 用户点击了"取消"按钮
@@ -433,9 +514,24 @@ classdef HomeTab < handle
             end
 
             ksFile = fullfile(path, file);
+            end
             kssolv.ui.util.DataStorage.setData('LoadingKsFile', true);
-            project = kssolv.services.filemanager.Project.loadKsFile(ksFile);
-            kssolv.ui.util.DataStorage.setData('LoadingKsFile', false);
+            loadingCleanup = onCleanup(@() ...
+                kssolv.ui.util.DataStorage.setData('LoadingKsFile', false));
+            try
+                project = kssolv.services.filemanager.Project.loadKsFile(ksFile);
+            catch exception
+                clear loadingCleanup
+                if ~isKSSOLVOnline(), rethrow(exception), end
+                kssolv.ui.util.SessionPrompt.confirm([], exception.message, ...
+                    message('KSSOLV:dialogs:OpenKSFileTitle'), ...
+                    'Options', {'Close'}, 'Icon', 'error');
+                return
+            end
+            clear loadingCleanup
+            % Validate the replacement before asking to close the current
+            % project. A cancelled close keeps its documents and drafts.
+            if ~this.callbackFileCloseButton([], []), return, end
             kssolv.ui.util.DataStorage.setData('Project', project);
             kssolv.ui.util.DataStorage.setData('ProjectFilename', ksFile);
             kssolv.ui.util.DataStorage.getData('ProjectBrowser').reBuildUI();
@@ -447,6 +543,10 @@ classdef HomeTab < handle
 
         function callbackFileSaveButton(~, ~, ~)
             import kssolv.ui.util.Localizer.*
+            if kssolv.ui.browser.OnlineWorkspace.available()
+                kssolv.ui.util.DataStorage.getData('FilesBrowser').saveProject(false);
+                return
+            end
             project = kssolv.ui.util.DataStorage.getData('Project');
             registry = kssolv.ui.util.DataStorage.getData( ...
                 "ModelingSessionRegistry");
@@ -458,7 +558,7 @@ classdef HomeTab < handle
             ksFile = kssolv.ui.util.DataStorage.getData('ProjectFilename');
             if ksFile == ""
                 % ksFile 为空说明当前未打开某个 .ks 文件，需要选择保存为 .ks 文件的路径
-                [file, location] = uiputfile({'*.ks', 'KSSOLV Files (*.ks)'}, ...
+                [file, location] = kssolv.ui.util.FileDialog.save({'*.ks', 'KSSOLV Files (*.ks)'}, ...
                     message('KSSOLV:dialogs:SaveKSFileTitle'), 'untitled');
                 if isequal(file, 0) || isequal(location, 0)
                     % 用户点击了"取消"按钮
@@ -467,11 +567,15 @@ classdef HomeTab < handle
                 else
                     % 用户选择了具体的文件路径
                     ksFile = fullfile(location, file);
-                    kssolv.ui.util.DataStorage.setData('ProjectFilename', ksFile);
                     if hasStructureDrafts
                         registry.saveAllChangesToProject();
                     end
                     project.saveToKsFile(ksFile);
+                    [completed, ksFile] = kssolv.ui.util.FileDialog.downloadProject(project, ksFile);
+                    if completed
+                        kssolv.ui.util.DataStorage.setData('ProjectFilename', ksFile);
+                        kssolv.KSSOLVToolbox.setAppContainerTitle();
+                    end
                 end
                 kssolv.ui.util.DataStorage.getData('AppContainer').bringToFront();
             else
@@ -480,11 +584,20 @@ classdef HomeTab < handle
                     registry.saveAllChangesToProject();
                 end
                 project.saveToKsFile(ksFile);
+                [completed, ksFile] = kssolv.ui.util.FileDialog.downloadProject(project, ksFile);
+                if completed
+                    kssolv.ui.util.DataStorage.setData('ProjectFilename', ksFile);
+                    kssolv.KSSOLVToolbox.setAppContainerTitle();
+                end
             end
         end
 
         function callbackSaveProjectAs(~, ~, ~)
             import kssolv.ui.util.Localizer.*
+            if kssolv.ui.browser.OnlineWorkspace.available()
+                kssolv.ui.util.DataStorage.getData('FilesBrowser').saveProject(true);
+                return
+            end
 
             ksFile = kssolv.ui.util.DataStorage.getData('ProjectFilename');
             if ksFile == ""
@@ -494,7 +607,7 @@ classdef HomeTab < handle
             end
 
             % 打开对话框，需要选择另存为 .ks 文件的路径
-            [file, location] = uiputfile({'*.ks', 'KSSOLV Files (*.ks)'}, ...
+            [file, location] = kssolv.ui.util.FileDialog.save({'*.ks', 'KSSOLV Files (*.ks)'}, ...
                 message('KSSOLV:dialogs:SaveKSFileTitle'), filename);
             if isequal(file, 0) || isequal(location, 0)
                 % 用户点击了"取消"按钮
@@ -511,6 +624,8 @@ classdef HomeTab < handle
                     registry.saveAllChangesToProject();
                 end
                 project.saveToKsFile(ksFile);
+                [completed, ksFile] = kssolv.ui.util.FileDialog.downloadProject(project, ksFile);
+                if ~completed, return, end
 
                 % 更新标题栏
                 kssolv.ui.util.DataStorage.setData('ProjectFilename', ksFile);
@@ -519,8 +634,9 @@ classdef HomeTab < handle
             end
         end
 
-        function callbackFileCloseButton(~, ~, ~)
+        function closed = callbackFileCloseButton(~, ~, ~)
             import kssolv.ui.util.Localizer.*
+            closed = false;
             project = kssolv.ui.util.DataStorage.getData('Project');
             projectFilename = kssolv.ui.util.DataStorage.getData('ProjectFilename');
             appContainer = kssolv.ui.util.DataStorage.getData('AppContainer');
@@ -537,14 +653,16 @@ classdef HomeTab < handle
                 NoLabel = message('KSSOLV:dialogs:ProjectCanCloseDoNotSave');
                 CancelLabel = message('KSSOLV:dialogs:ProjectCanCloseCancel');
 
-                if isdeployed
-                    % 在独立应用程序里，模态对话框无法正常工作，因此需要使用非模态的对话框
+                if isdeployed || isKSSOLVOnline()
+                    % 独立应用和 Online 使用会话内的确认窗口。
                     confirmDialog = kssolv.ui.components.dialog.ConfirmDialog( ...
                         message('KSSOLV:dialogs:ProjectCanCloseMessage'), ...
                         message('KSSOLV:dialogs:ProjectCanCloseTitle'), ...
                         'Options', {YesLabel, NoLabel, CancelLabel}, ...
                         'DefaultOption', 1, 'CancelOption', 3);
+                    confirmCleanup = onCleanup(@()delete(confirmDialog));
                     selection = confirmDialog.show();
+                    clear confirmCleanup
                 else
                     % 普通情况下使用模态对话框
                     selection = uiconfirm(appContainer, ...
@@ -556,9 +674,14 @@ classdef HomeTab < handle
 
                 switch selection
                     case YesLabel
+                        if kssolv.ui.browser.OnlineWorkspace.available()
+                            if ~kssolv.ui.util.DataStorage.getData('FilesBrowser').saveProject(false)
+                                return
+                            end
+                        else
                         if projectFilename == ""
                             % 如果尚未指定要保存的文件，则选择保存为 .ks 文件的路径
-                            [file,location] = uiputfile({'*.ks', 'KSSOLV Files (*.ks)'}, ...
+                            [file,location] = kssolv.ui.util.FileDialog.save({'*.ks', 'KSSOLV Files (*.ks)'}, ...
                                 message('KSSOLV:dialogs:SaveKSFileTitle'), 'untitled.ks');
                             if isequal(file, 0) || isequal(location, 0)
                                 % 用户点击了"取消"按钮
@@ -571,6 +694,11 @@ classdef HomeTab < handle
                             registry.saveAllChangesToProject();
                         end
                         project.saveToKsFile(projectFilename);
+                        if ~kssolv.ui.util.FileDialog.download(projectFilename, true)
+                            project.isDirty = true;
+                            return
+                        end
+                        end
                     case NoLabel
                         if hasStructureDrafts
                             registry.discardAllChanges(false);
@@ -585,6 +713,9 @@ classdef HomeTab < handle
             for i = 1:numel(documents)
                 documents{i}.close();
             end
+            if ~isempty(registry) && isvalid(registry)
+                registry.clear();
+            end
 
             kssolv.ui.util.DataStorage.setData('Project', kssolv.services.filemanager.Project());
             kssolv.ui.util.DataStorage.setData('ProjectFilename', '');
@@ -593,9 +724,11 @@ classdef HomeTab < handle
             kssolv.KSSOLVToolbox.setAppContainerTitle();
             kssolv.KSSOLVToolbox.createListener();
             appContainer.bringToFront();
+            closed = true;
         end
 
-        function callbackImportStructureFromFile(~, ~, ~)
+        function importedFileCount = callbackImportStructureFromFile(~, ~, ~, paths)
+            importedFileCount = 0;
             project = kssolv.ui.util.DataStorage.getData('Project');
             for i = 1:length(project.children)
                 % 从当前 Project 的第二级节点中查找 Structure 节点
@@ -604,7 +737,8 @@ classdef HomeTab < handle
                 end
             end
             if ~isempty(item)
-                importedFileCount = item.importStructureFromFile();
+                if nargin < 4, importedFileCount = item.importStructureFromFile();
+                else, importedFileCount = item.importStructureFromFile(paths); end
                 if importedFileCount > 0
                     projectBrowser = kssolv.ui.util.DataStorage.getData('ProjectBrowser');
                     startIndex = numel(item.children) - importedFileCount + 1;
@@ -617,16 +751,11 @@ classdef HomeTab < handle
         end
 
         function callbackImportStructureFromMaterialsProject(this, ~, ~)
-            if isempty(this.materialsProjectDialog) || ...
-                    ~isvalid(this.materialsProjectDialog)
-                this.materialsProjectDialog = ...
-                    kssolv.ui.components.dialog.MaterialsProjectDialog( ...
-                    @(record, model) ...
-                    this.importMaterialsProjectStructure(record, model));
-            end
-            appContainer = ...
-                kssolv.ui.util.DataStorage.getData('AppContainer');
-            this.materialsProjectDialog.show(appContainer);
+            appContainer = kssolv.ui.util.DataStorage.getData('AppContainer');
+            this.materialsProjectDialog = kssolv.ui.components.dialog.SessionDialog.open( ...
+                @()kssolv.ui.components.dialog.MaterialsProjectDialog( ...
+                @(record, model)this.importMaterialsProjectStructure(record, model)), ...
+                this.materialsProjectDialog, 'Materials Project', appContainer);
         end
 
         function importMaterialsProjectStructure(~, record, model)
@@ -712,7 +841,7 @@ classdef HomeTab < handle
             import kssolv.ui.util.Localizer.*
 
             % 打开文件选取对话框
-            [file, path] = uigetfile({'*.wf', 'KSSOLV Workflow Files (*.wf)'}, ...
+            [file, path] = kssolv.ui.util.FileDialog.open({'*.wf', 'KSSOLV Workflow Files (*.wf)'}, ...
                 message('KSSOLV:dialogs:OpenWFFileTitle'), 'MultiSelect', 'off');
             if isequal(file, 0)
                 % 用户点击了"取消"按钮
@@ -738,7 +867,7 @@ classdef HomeTab < handle
             workflow = project.findChildrenItem(currentWorkflowDocument.Tag);
 
             % 选择保存为 .wf 文件的路径
-            [file,location] = uiputfile({'*.wf', 'KSSOLV Workflow Files (*.wf)'}, ...
+            [file,location] = kssolv.ui.util.FileDialog.save({'*.wf', 'KSSOLV Workflow Files (*.wf)'}, ...
                 message('KSSOLV:dialogs:SaveWFFileTitle'), 'untitled');
             if isequal(file, 0) || isequal(location, 0)
                 % 用户点击了"取消"按钮
@@ -747,6 +876,7 @@ classdef HomeTab < handle
                 % 用户选择了具体的文件路径
                 wfFile = fullfile(location, file);
                 workflow.saveToWfFile(wfFile);
+                kssolv.ui.util.FileDialog.download(wfFile);
             end
             kssolv.ui.util.DataStorage.getData('AppContainer').bringToFront();
         end
@@ -755,20 +885,28 @@ classdef HomeTab < handle
             projectBrowser = kssolv.ui.util.DataStorage.getData('ProjectBrowser');
             project = kssolv.ui.util.DataStorage.getData('Project');
             if ~isempty(projectBrowser.currentSelectedItem)
-                % 添加到 base 工作空间
                 item = project.findChildrenItem(projectBrowser.currentSelectedItem);
-                assignin('base', strrep(item.label, ' ', ''), item);
+                name = matlab.lang.makeValidName(strrep(item.label, ' ', ''));
+                if isKSSOLVOnline()
+                    commandWindow = kssolv.ui.util.DataStorage.getData('CommandWindow');
+                    workspace = commandWindow.Workspace;
+                    workspace.(name) = item;
+                else
+                    assignin('base', name, item);
+                end
             end
         end
 
-        function callbackRunningRunButton(this, ~, ~)
+        function completed = callbackRunningRunButton(this, ~, ~)
+            import kssolv.ui.util.Localizer.message
+            completed = false;
             project = kssolv.ui.util.DataStorage.getData('Project');
             runBrowser = kssolv.ui.util.DataStorage.getData('RunBrowser');
 
             this.Widgets.RunningSection.RunningRunButton.Enabled = false;
-            this.Widgets.RunningSection.RunningStopButton.Enabled = true;
+            this.Widgets.RunningSection.RunningStopButton.Enabled = ~isKSSOLVOnline();
             runBrowser.Widgets.ButtonPanel.RunButton.Enable = false;
-            runBrowser.Widgets.ButtonPanel.StopButton.Enable = true;
+            runBrowser.Widgets.ButtonPanel.StopButton.Enable = ~isKSSOLVOnline();
 
             % 增加换行以便利阅读
             runBrowser.addNewLineToOutputTextArea();
@@ -795,7 +933,15 @@ classdef HomeTab < handle
                         "KSSOLV:dialogs:RemoteSubmitted")) + newline), ...
                         record.LocalJobId);
                 end
+                completed = true;
             catch exception
+                if isKSSOLVOnline()
+                    fprintf(2, '%s\n', exception.message);
+                    kssolv.ui.util.SessionPrompt.confirm([], exception.message, ...
+                        message('KSSOLV:dialogs:ComputationFailedTitle'), ...
+                        'Options', {'Close'}, 'Icon', 'error');
+                    return
+                end
                 fprintf(2, char(string(message( ...
                     "KSSOLV:dialogs:RemoteSubmissionFailed")) + newline), ...
                     exception.message);
@@ -815,10 +961,10 @@ classdef HomeTab < handle
 
             % 计时并运行
             tStart = tic;
-            this.callbackRunningRunButton();
+            completed = this.callbackRunningRunButton();
             tEnd = toc(tStart);
 
-            if remoteSelected
+            if ~completed || remoteSelected
                 return
             end
 
@@ -838,13 +984,10 @@ classdef HomeTab < handle
         end
 
         function callbackEnvironmentSettingsButton(this, ~, ~)
-            if isempty(this.settingsDialog) || ~isvalid(this.settingsDialog)
-                this.settingsDialog = ...
-                    kssolv.ui.components.dialog.SettingsDialog();
-            end
-            appContainer = ...
-                kssolv.ui.util.DataStorage.getData('AppContainer');
-            this.settingsDialog.show(appContainer);
+            appContainer = kssolv.ui.util.DataStorage.getData('AppContainer');
+            this.settingsDialog = kssolv.ui.components.dialog.SessionDialog.open( ...
+                @()kssolv.ui.components.dialog.SettingsDialog(), ...
+                this.settingsDialog, 'Settings', appContainer);
         end
 
         function popup = createRemoteComputingPopup(this)
@@ -867,7 +1010,7 @@ classdef HomeTab < handle
                 "EnvironmentSection_RemoteCommandExecution";
             remoteCommand.ClosePopupOnClick = true;
             remoteCommand.ValueChangedFcn = @(~, ~) ...
-                this.toggleRemoteCommandExecution(remoteCommand);
+                this.runRemoteAction(@()this.toggleRemoteCommandExecution(remoteCommand));
             configure = ListItem( ...
                 message("KSSOLV:toolbox:ConfigureRemoteClustersListItemLabel"), ...
                 Icon("settings"));
@@ -879,7 +1022,19 @@ classdef HomeTab < handle
                 Icon("new_cloud"));
             testConnection.Tag = "EnvironmentSection_TestRemoteCluster";
             addlistener(testConnection, "ItemPushed", ...
-                @(~, ~) this.testSelectedRemoteCluster());
+                @(~, ~) this.runRemoteAction(@()this.testSelectedRemoteCluster()));
+            if isKSSOLVOnline()
+                store = kssolv.services.remote.config.RemoteConfigurationStore();
+                selected = kssolv.services.remote.config.RemoteSelectionStore().get(store);
+                available = strlength(selected) > 0;
+                testConnection.Enabled = available;
+                remoteCommand.Enabled = available;
+                if ~available
+                    detail = message('KSSOLV:dialogs:RemoteNoConfigurationSelected');
+                    testConnection.Description = detail;
+                    remoteCommand.Description = detail;
+                end
+            end
             jobs = ListItem( ...
                 message("KSSOLV:toolbox:RemoteJobsListItemLabel"), ...
                 Icon("parallel"));
@@ -991,7 +1146,8 @@ classdef HomeTab < handle
                     kssolv.ui.features.remote. ...
                     RemoteClusterManagerDialog();
             else
-                figure(this.remoteClusterManagerDialog.Figure);
+                kssolv.ui.util.DialogWindow.bringToFront( ...
+                    this.remoteClusterManagerDialog.Figure);
             end
         end
 
@@ -1003,7 +1159,18 @@ classdef HomeTab < handle
                     kssolv.ui.features.remote.RemoteJobsDialog();
             else
                 this.remoteJobsDialog.reloadFromStore();
-                figure(this.remoteJobsDialog.Figure);
+                kssolv.ui.util.DialogWindow.bringToFront( ...
+                    this.remoteJobsDialog.Figure);
+            end
+        end
+
+        function runRemoteAction(~, action)
+            try
+                action();
+            catch exception
+                if ~isKSSOLVOnline(), rethrow(exception), end
+                app = kssolv.ui.util.DataStorage.getData('AppContainer');
+                uialert(app, exception.message, 'Remote computing', 'Icon', 'error');
             end
         end
 
@@ -1044,54 +1211,54 @@ classdef HomeTab < handle
         end
 
         function callbackResourceDocumentationButton(~, ~, ~)
-            url = 'https://gleamore.feishu.cn/docx/O64DdiY7LoPykxxLWAJcr0oxnfd';
-            web(url);
+            kssolv.ui.features.documentation.openManual();
         end
 
         function callbackOpenOfficialSiteButton(~, ~, ~)
-            url = 'https://pwdft.com/prod/43.html';
+            if isKSSOLVOnline(), return, end
+            url = 'https://pwdft.com/prod/48.html';
             web(url);
         end
 
         function callbackCheckUpdateButton(this, ~, ~)
-            if isempty(this.updateDialog) || ~isvalid(this.updateDialog)
-                this.updateDialog = ...
-                    kssolv.ui.components.dialog.UpdateDialog();
-            end
-            appContainer = ...
-                kssolv.ui.util.DataStorage.getData('AppContainer');
-            this.updateDialog.show(appContainer);
+            appContainer = kssolv.ui.util.DataStorage.getData('AppContainer');
+            this.updateDialog = kssolv.ui.components.dialog.SessionDialog.open( ...
+                @()kssolv.ui.components.dialog.UpdateDialog(), ...
+                this.updateDialog, 'Check for Updates', appContainer);
         end
 
         function callbackOpenLogsButton(~, ~, ~)
             diaryService = kssolv.services.logs.Diary.getInstance(false);
-            kssolv.ui.util.openWithSystemDefault( ...
-                diaryService.getLogFile());
+            if isKSSOLVOnline()
+                kssolv.ui.browser.OnlineFileViewer.open( ...
+                    diaryService.getLogFile(), 'KSSOLV Toolbox Log');
+            else
+                kssolv.ui.util.openWithSystemDefault(diaryService.getLogFile());
+            end
         end
 
         function callbackCheckLicenseButton(this, ~, ~)
-            if isempty(this.licenseDialog) || ~isvalid(this.licenseDialog)
-                this.licenseDialog = ...
-                    kssolv.ui.components.dialog.LicenseDialog();
-            end
-            appContainer = ...
-                kssolv.ui.util.DataStorage.getData('AppContainer');
-            this.licenseDialog.show(appContainer);
+            appContainer = kssolv.ui.util.DataStorage.getData('AppContainer');
+            this.licenseDialog = kssolv.ui.components.dialog.SessionDialog.open( ...
+                @()kssolv.ui.components.dialog.LicenseDialog(), ...
+                this.licenseDialog, 'License', appContainer);
         end
 
         function callbackAboutUsButton(this, ~, ~)
-            if isempty(this.aboutDialog) || ~isvalid(this.aboutDialog)
-                this.aboutDialog = ...
-                    kssolv.ui.components.dialog.AboutDialog();
-            end
-            appContainer = ...
-                kssolv.ui.util.DataStorage.getData('AppContainer');
-            this.aboutDialog.show(appContainer);
+            appContainer = kssolv.ui.util.DataStorage.getData('AppContainer');
+            this.aboutDialog = kssolv.ui.components.dialog.SessionDialog.open( ...
+                @()kssolv.ui.components.dialog.AboutDialog(), ...
+                this.aboutDialog, 'About KSSOLV Toolbox', appContainer);
         end
 
         function callbackResourceSupportButton(~, ~, ~)
-            url = sprintf('mailto:%s?subject=%s V%s', KSSOLV_Toolbox.AuthorEmail, ...
-                "Request for Assistance with KSSOLV Toolbox", KSSOLV_Toolbox.Version);
+            % Online handles this click in the browser, preserving the user
+            % gesture needed to launch the local protocol handler.
+            if isKSSOLVOnline(), return, end
+            subject = sprintf('Request for Assistance with KSSOLV Toolbox V%s', ...
+                KSSOLV_Toolbox.Version);
+            url = ['mailto:', char(KSSOLV_Toolbox.AuthorEmail), '?subject=', ...
+                kssolv.ui.browser.OnlineFileTransfer.encodeFilename(subject)];
             web(url);
         end
 

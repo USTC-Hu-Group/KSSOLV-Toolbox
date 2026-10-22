@@ -468,6 +468,7 @@
     // MATLAB execute this setup function
     function setup(htmlComponent) {
       MATLAB = htmlComponent;
+      let clientReady = false;
       htmlComponent.addEventListener("DataChanged", dataFromMATLABToHTML);
       htmlComponent.addEventListener("updateTreeTableData", updateTreeTableData);
       htmlComponent.addEventListener("enableDebugLog", () => { debug = true; });
@@ -475,13 +476,23 @@
       htmlComponent.addEventListener("patchItem", patchItem);
       htmlComponent.addEventListener("deleteItem", deleteItem);
       handleBackspaceKey();
+      // DataChanged can precede listener registration in a remote Runtime.
+      if (typeof htmlComponent.Data === 'string' && htmlComponent.Data) {
+        dataFromMATLABToHTML();
+      }
 
       function dataFromMATLABToHTML(event) {
         const table = document.getElementById('tree-table');
         let text = htmlComponent.Data;
         tableData = [JSON.parse(text)];
-        buildTable(tableData, table.children[1]);
-        addResizableColumns();
+        const rows = table.children[1];
+        rows.replaceChildren();
+        buildTable(tableData, rows);
+        if (!clientReady) {
+          addResizableColumns();
+          clientReady = true;
+          htmlComponent.sendEventToMATLAB('ClientReady', {});
+        }
       }
 
       function updateTreeTableData(event) {

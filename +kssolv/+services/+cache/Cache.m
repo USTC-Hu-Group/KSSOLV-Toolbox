@@ -11,7 +11,7 @@ classdef Cache < handle
     %   版权 2025 合肥瀚海量子科技有限公司
 
     properties (Access = private, Constant)
-        CACHE_FILE = fullfile(userpath, 'KSSOLV_Toolbox', 'Cache.mat')
+        CACHE_FILE = fullfile(kssolv.util.userDataDirectory(), 'Cache.mat')
     end
 
     properties (Access = private)

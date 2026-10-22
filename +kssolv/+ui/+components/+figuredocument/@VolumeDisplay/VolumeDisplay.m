@@ -80,11 +80,14 @@ classdef VolumeDisplay < handle
             layout.Padding = 0;
             htmlFile = fullfile(fileparts(mfilename("fullpath")), ...
                 "VolumeViewer", "index.html");
-            this.HTMLComponent = uihtml(layout, HTMLSource = htmlFile);
+            this.HTMLComponent = uihtml(layout, HTMLSource = kssolv.ui.browser.htmlSource(htmlFile, FillFigure=true));
             this.HTMLComponent.HTMLEventReceivedFcn = ...
                 @this.eventReceiver;
             appContainer.add(document);
-            waitfor(document.Figure, "FigureViewReady", true);
+            if ~kssolv.ui.browser.BrowserReconnectMonitor.waitFor( ...
+                    document.Figure, 'FigureViewReady', true)
+                return
+            end
             if isdeployed, document.Docked = true; end
         end
     end

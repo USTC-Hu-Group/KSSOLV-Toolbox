@@ -1,6 +1,30 @@
 classdef NativeUtilitiesTest < matlab.unittest.TestCase
     %NATIVEUTILITIESTEST Digest vectors and legacy credential compatibility.
     methods (Test)
+        function onlinePreferencesUseExplicitPersistentDirectory(testCase)
+            fixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture());
+            originalMode = getenv('KSSOLV_ONLINE');
+            originalRoot = getenv('KSSOLV_USER_DATA_DIR');
+            cleanup = onCleanup(@() restoreDataEnvironment(originalMode, originalRoot)); %#ok<NASGU>
+            setenv('KSSOLV_ONLINE', 'true');
+            setenv('KSSOLV_USER_DATA_DIR', fixture.Folder);
+            testCase.verifyEqual(kssolv.util.userDataDirectory(), fixture.Folder);
+            values = struct('Locale', 'en_US', 'OpenAIModel', 'fixture-model');
+            kssolv.settings.Preferences.write(values);
+            testCase.verifyEqual(kssolv.settings.Preferences.read(), values);
+            testCase.verifyTrue(kssolv.settings.Preferences.has('OpenAIModel'));
+            testCase.verifyError(@() kssolv.settings.Preferences.write( ...
+                struct('OpenAIAPIKey', 'fixture-secret')), ...
+                'KSSOLV:Settings:InvalidPreferenceName');
+            kssolv.settings.EncryptedStore.writeOpenAIAPIKey('fixture-secret');
+            testCase.verifyEqual(kssolv.settings.EncryptedStore.readOpenAIAPIKey(), "fixture-secret");
+            file = fullfile(fixture.Folder, 'credentials', 'openai-api-key.json');
+            testCase.verifyFalse(contains(fileread(file), 'fixture-secret'));
+            testCase.verifyTrue(isfile(fullfile(fixture.Folder, 'preferences.json')));
+            setenv('KSSOLV_ONLINE', 'false');
+            testCase.verifyNotEqual(kssolv.util.userDataDirectory(), fixture.Folder);
+        end
+
         function digestVectors(testCase)
             testCase.verifyEqual(kssolv.util.Hash.text('abc'), ...
                 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
@@ -106,6 +130,19 @@ classdef NativeUtilitiesTest < matlab.unittest.TestCase
             testCase.verifyEqual(kssolv.settings.EncryptedStore.readOpenAIAPIKey(),"");
         end
 
+        function applicationDataSupportsEmptyUserpath(testCase)
+            fixture = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture());
+            original = userpath;
+            cleanup = onCleanup(@()userpath(original)); %#ok<NASGU>
+            userpath(fixture.Folder);
+            testCase.verifyEqual(kssolv.util.userDataDirectory(), ...
+                fullfile(fixture.Folder, 'KSSOLV_Toolbox'));
+            userpath('clear');
+            testCase.verifyEmpty(userpath);
+            testCase.verifyEqual(kssolv.util.userDataDirectory(), ...
+                fullfile(prefdir, 'KSSOLV_Toolbox'));
+        end
+
         function environmentAndPaths(testCase)
             name = 'KSSOLV_NATIVE_ENV_TEST'; original = getenv(name);
             cleanup = onCleanup(@()setenv(name,original)); %#ok<NASGU>
@@ -147,4 +184,9 @@ end
 function writeBytes(file,bytes)
 handle = fopen(file,'wb'); cleanup = onCleanup(@()fclose(handle)); %#ok<NASGU>
 fwrite(handle,bytes,'uint8');
+end
+
+function restoreDataEnvironment(mode, root)
+setenv('KSSOLV_ONLINE', mode);
+setenv('KSSOLV_USER_DATA_DIR', root);
 end

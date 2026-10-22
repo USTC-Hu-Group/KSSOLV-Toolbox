@@ -9,6 +9,7 @@ classdef AbstractChatBot < kssolv.services.llm.internal.tools
 
     properties
         bot (1, 1) % 对话机器人对象
+        responseModel (1, 1) string = "" % Model ID returned by the service.
         modelName (1, 1) string % 所使用的 LLM 模型的名称
         modelCapabilities (:, 1) cell % 所使用的大语言模型的能力，例如支持函数调用等
         systemPrompt (1, 1) string % 系统提示词
@@ -18,6 +19,7 @@ classdef AbstractChatBot < kssolv.services.llm.internal.tools
 
     properties (Access = protected)
         chatType % "ollamaChat" 或 "openAIChat"
+        Configuration % Snapshot used to create this client, including its in-memory credential.
     end
 
     methods (Abstract, Access = protected)
@@ -34,6 +36,8 @@ classdef AbstractChatBot < kssolv.services.llm.internal.tools
                 streamFunction (1, 1) function_handle = @(token) fprintf("%s\n", token)
             end
 
+            this.Configuration = kssolv.services.llm.internal.chatConfiguration();
+            this.Configuration.Model = modelName;
             this.chatType = chatType;
             this.modelName = modelName;
             this.systemPrompt = systemPrompt;
@@ -63,22 +67,16 @@ classdef AbstractChatBot < kssolv.services.llm.internal.tools
                     'The Large Language Models with MATLAB Add-On is unavailable.');
             end
 
-            % 将本次用户的 prompt 保存到历史消息中
+            % 仅在整个回合成功后提交历史，失败时保留最后一个完整回合。
             if useHistoryMessages
-                this.messageHistory = addUserMessage(this.messageHistory, promptHistory);
-                promptHistory = this.messageHistory;
+                promptHistory = addUserMessage(this.messageHistory, promptHistory);
             else
                 tempMessageHistory = addUserMessage(messageHistory(), promptHistory); %#ok<CPROPLC>
                 promptHistory = tempMessageHistory;
             end
 
-            try
-                % 携带所有历史消息获取 LLM 的响应消息
-                [~, message, response] = generate(this.bot, promptHistory, MaxNumTokens=Inf);
-            catch ME
-                buildChatBot(this);
-                [~, message, response] = generate(this.bot, promptHistory, MaxNumTokens=Inf);
-            end
+            % 流式请求可能已经显示部分内容，不能在同一输出中静默重试。
+            [message, response] = this.generateResponse(promptHistory);
 
             % 将 LLM 的响应消息保存到历史消息中
             promptHistory = addResponseMessage(promptHistory, message);
@@ -114,8 +112,7 @@ classdef AbstractChatBot < kssolv.services.llm.internal.tools
                             functionId, functionCall.function.name, functionResult);
                     end
 
-                    [~, message, ~] = generate(this.bot, promptHistory, ...
-                        MaxNumTokens=Inf);
+                    message = this.generateResponse(promptHistory);
                     promptHistory = addResponseMessage(promptHistory, message);
                 end
             end
@@ -123,6 +120,20 @@ classdef AbstractChatBot < kssolv.services.llm.internal.tools
             if useHistoryMessages
                 this.messageHistory = promptHistory;
             end
+        end
+
+        function current = matchesSettings(this)
+            current = isequal(this.Configuration, ...
+                kssolv.services.llm.internal.chatConfiguration());
+        end
+
+        function setStreamFunction(this, callback)
+            arguments
+                this
+                callback (1,1) function_handle
+            end
+            this.streamFunction = callback;
+            this.buildChatBot();
         end
 
         function showMessageHistory(this, filterThinkContent)
@@ -170,21 +181,21 @@ classdef AbstractChatBot < kssolv.services.llm.internal.tools
                 return
             end
 
-            % 探测 OpenAI 兼容模型的能力。
-            settings = kssolv.settings.Settings.load();
-            if strlength(settings.OpenAIAPIKey) == 0
-                error("KSSOLV:LLM:NonExistOpenAIAPIKey", "OPENAI_API_KEY is not set, unable to get model information from OpenAI style agent.");
-            end
+            % Send tools with the actual request. A separate "Hi" completion
+            % delays the first visible reply and can itself trigger reasoning.
+            this.modelCapabilities = {'tools'};
+        end
+    end
 
-            try
-                % 能力探测失败不应阻止基础聊天客户端初始化。
-                tempBot = ...
-                    kssolv.services.llm.online.ChatBot.createClient( ...
-                    this.systemPrompt, this.modelName, [], this.toolsList);
-                generate(tempBot, "Hi", MaxNumTokens=Inf);
-                this.modelCapabilities = {'tools'};
-            catch
-                this.modelCapabilities = {};
+    methods (Access = private)
+        function [message, response] = generateResponse(this, history)
+            this.responseModel = "";
+            [~, message, response] = generate(this.bot, history, MaxNumTokens=Inf);
+            if isstruct(response.Body.Data) && isfield(response.Body.Data,'model')
+                this.responseModel = string(response.Body.Data.model);
+            end
+            if strcmp(this.chatType, 'openAIChat')
+                kssolv.services.llm.internal.validateStreamResponse(response);
             end
         end
     end

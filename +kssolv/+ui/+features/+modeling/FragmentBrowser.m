@@ -20,7 +20,7 @@ classdef FragmentBrowser < handle
                 options.StorePath string = ""
             end
             this.AttachCallback = attachCallback;
-            this.Figure = uifigure( ...
+            this.Figure = kssolv.ui.util.DialogWindow.create( ...
                 "Name", message("FragmentBrowser"), ...
                 "Position", [100, 100, 900, 554], ...
                 "Visible", "off");
@@ -29,7 +29,7 @@ classdef FragmentBrowser < handle
             this.runAction(@()this.refresh(), true);
             if options.Visible
                 kssolv.ui.util.DialogWindow.showCentered(this.Figure);
-            else
+            elseif ~isKSSOLVOnline()
                 movegui(this.Figure, "center");
             end
         end
@@ -277,7 +277,7 @@ classdef FragmentBrowser < handle
         end
 
         function importLibrary(this)
-            [name, folder] = uigetfile("*.json", ...
+            [name, folder] = kssolv.ui.util.FileDialog.open("*.json", ...
                 message("ImportFragmentLibrary"));
             if isequal(name, 0), return, end
             kssolv.modeling.fragments.FragmentLibrary.importStore( ...
@@ -287,13 +287,14 @@ classdef FragmentBrowser < handle
         end
 
         function exportLibrary(this)
-            [name, folder] = uiputfile("*.json", ...
+            [name, folder] = kssolv.ui.util.FileDialog.save("*.json", ...
                 message("ExportFragmentLibrary"), ...
                 "kssolv-fragments.json");
             if isequal(name, 0), return, end
             kssolv.modeling.fragments.FragmentLibrary.exportStore( ...
                 fullfile(folder, name), ...
                 storePath = string(this.Widgets.StorePath));
+            kssolv.ui.util.FileDialog.download(fullfile(folder, name));
         end
 
         function runAction(this,action,resetOnFailure)

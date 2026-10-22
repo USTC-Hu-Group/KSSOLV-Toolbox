@@ -50,7 +50,19 @@ def write(resources, output, requirements, version, application_license):
     shutil.copyfile(application_license, resources / license_file)
     if mode != "none":
         runtime_license(resources, requirements)
-        license_file = "RuntimeLicense.txt"
+        # PackageKit has one agreement page. Keep the application terms first,
+        # and disclose the vendor terms before prepare-runtime's silent install.
+        license_file = "InstallerLicense.txt"
+        (resources / license_file).write_text(
+            "KSSOLV TOOLBOX LICENSE\n\n"
+            + application_license.read_text(encoding="utf-8")
+            + "\n\n" + "=" * 72 + "\n"
+            + "THIRD-PARTY MATLAB RUNTIME LICENSE\n\n"
+            + "The following terms apply to MATLAB Runtime. This package installs "
+            "Runtime only if a compatible installation is not already available. "
+            "These terms do not replace the KSSOLV Toolbox license above.\n\n"
+            + (resources / "RuntimeLicense.txt").read_text(encoding="utf-8"),
+            encoding="utf-8")
     ET.SubElement(root, "license", file=license_file, **{"mime-type": "text/plain"})
     outline = ET.SubElement(root, "choices-outline")
     components = []

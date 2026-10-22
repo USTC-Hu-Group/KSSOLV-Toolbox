@@ -84,7 +84,9 @@ classdef Environment
 
             envFilePath = fullfile(KSSOLV_Toolbox.RootDirectory, '.env');
             if ~isdeployed && isfile(envFilePath)
-                loadenv(envFilePath);
+                % Explicit launch variables must win, including local Online
+                % + HostInBrowser validation with a desktop .env present.
+                loadenv(envFilePath, OverwriteEnvironmentVariable=false);
             end
             isEnvironmentLoaded = true;
         end

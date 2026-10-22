@@ -15,7 +15,7 @@ classdef SCFTask < kssolv.services.workflow.module.AbstractTask
             this.module = kssolv.services.workflow.module.ModuleType.Computation;
             this.requiredTasks = 'BuildMoleculeTask';
             this.supportGPU = true;
-            this.supportParallel = true;
+            this.supportParallel = false;
         end
     end
 
@@ -33,23 +33,31 @@ classdef SCFTask < kssolv.services.workflow.module.AbstractTask
 
             context = kssolv.services.workflow.module.computation. ...
                 SCFTask.executeWithOptions( ...
-                context, this.getExecutionOptions());
+                context, this.getExecutionOptions(), this.getExecutionResources());
         end
     end
 
     methods (Static)
-        function context = executeWithOptions(context, taskOptions)
+        function context = executeWithOptions(context, taskOptions, resources)
             arguments
                 context containers.Map
                 taskOptions (1, 1) struct
+                resources (1, 1) struct = kssolv.services.workflow.ExecutionResources.defaults()
             end
+            [resourceCleanup, ~] = kssolv.services.workflow.ExecutionResources.prepare( ...
+                resources, 'kssolv.services.workflow.module.computation.SCFTask', ...
+                taskOptions); %#ok<ASGLU>
 
             SCFOptions = options.SCF();
             fields = fieldnames(taskOptions);
             for i = 1:length(fields)
                 fieldName = fields{i};
+                if ismember(fieldName, {'enableGPU', 'enableParallelPool'})
+                    continue
+                end
                 SCFOptions.(fieldName) = taskOptions.(fieldName);
             end
+            SCFOptions.enableGPU = strcmp(resources.ParallelType, 'GPU');
 
             [molecule, H, X, info] = scf(context("molecule"), SCFOptions);
 

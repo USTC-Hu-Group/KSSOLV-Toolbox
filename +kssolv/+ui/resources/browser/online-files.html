@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>KSSOLV Toolbox Online files</title>
+<style>
+:root{color-scheme:light}html,body{height:100%;margin:0;background:#f5f5f5}
+body{box-sizing:border-box;display:flex;flex-direction:column;gap:10px;padding:14px 16px;font:13px "Helvetica Neue",Helvetica,Arial,"Microsoft YaHei",sans-serif;color:#212121;background:#f5f5f5}
+[hidden]{display:none!important}h2{display:none}p{margin:0}input,button,#download{font:inherit}
+button,#download{box-sizing:border-box;padding:5px 12px;cursor:default;border:1px solid #8c8c8c;border-radius:3px;color:#212121;background:#f0f0f0;text-decoration:none}
+button:hover:not(:disabled),#download:hover{background:#fff;border-color:#616161}
+button:active:not(:disabled),#download:active{background:#d9d9d9}
+button:focus-visible,#download:focus-visible,input:focus-visible{outline:2px solid #0076a8;outline-offset:1px}
+button:disabled{opacity:.6}input{padding:5px;color:#212121;background:#fff;border:1px solid #8c8c8c;border-radius:2px}#status{flex:1;min-height:18px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}
+#progress{display:flex;align-items:center;gap:10px}progress{flex:1;min-width:0;height:10px;appearance:none;border:1px solid #bfbfbf;border-radius:3px;overflow:hidden;background:#e6e6e6;accent-color:#0076a8}
+progress::-webkit-progress-bar{background:#e6e6e6}progress::-webkit-progress-value{background:#0076a8}progress::-moz-progress-bar{background:#0076a8}
+#percentage{font-variant-numeric:tabular-nums;min-width:3em;text-align:right}
+small{font-size:11px;color:#616161}.actions{display:flex;justify-content:flex-end;align-items:center;gap:8px}
+</style>
+</head><body>
+<h2 id="title">KSSOLV Toolbox Online</h2>
+<p id="description"></p><input id="files" type="file" hidden>
+<input id="filename" aria-label="Filename" hidden>
+<p id="status" role="status"></p>
+<div id="progress" hidden><progress id="bar" max="100" value="0" aria-label="File transfer progress"></progress><span id="percentage">0%</span></div>
+<small id="limits" hidden></small>
+<div class="actions"><button id="copy" hidden>Copy image</button><button id="action" disabled>Loading…</button><a id="download" hidden>Download</a><button id="cancel">Cancel</button>
+<button id="finish" hidden>Finish</button></div>
+<script>
+function setup(html) {
+  const $ = id => document.getElementById(id);
+  let options, pending, downloadURL, downloadAbort, writable, preparedData;
+  let disposed = false;
+  let transferred = 0;
+  const host = window.parent || window;
+  const nativeSave = typeof host.showSaveFilePicker === 'function';
+  const nativeOpen = typeof host.showOpenFilePicker === 'function';
+  let clipboardService;
+  const bounded = (operation, ms) => new Promise((resolve,reject) => {
+    const timeout=setTimeout(()=>reject(new Error('Clipboard operation timed out. Please try again.')),ms);
+    Promise.resolve(operation).then(value=>{clearTimeout(timeout);resolve(value);},error=>{clearTimeout(timeout);reject(error);});
+  });
+  // Reuse the installed MathWorks browser writer when its AMD module is
+  // available. Do not use ClipboardService's local-cache success fallback:
+  // it does not mean the user's system clipboard was updated.
+  async function officialClipboardWriter() {
+    if(clipboardService!==undefined) return clipboardService;
+    clipboardService=null;
+    if(typeof host.require!=='function') return null;
+    try {
+      clipboardService=await bounded(new Promise((resolve,reject)=>
+        host.require(['mw-clipboard/client/NavigatorService'], module=>resolve(module.default||module),reject)),1500);
+    } catch { clipboardService=null; }
+    return clipboardService;
+  }
+  async function copyPrepared() {
+    if(!preparedData || disposed) return;
+    const prepared=preparedData;
+    const button=$('copy'); button.disabled=true;
+    try {
+      const vector=options.clipboardMode==='vector';
+      const Clipboard=host.ClipboardItem;
+      const data={};
+      if(vector) {
+        const svg=await prepared.text();
+        data['text/plain']=new Blob([svg],{type:'text/plain'});
+        if(Clipboard?.supports?.('image/svg+xml')) data['image/svg+xml']=new Blob([svg],{type:'image/svg+xml'});
+      } else data['image/png']=new Blob([prepared],{type:'image/png'});
+      const writer=await officialClipboardWriter();
+      if(disposed || prepared!==preparedData) return;
+      if(writer && typeof host.DataTransfer==='function' && typeof host.File==='function') {
+        const transfer=new host.DataTransfer();
+        for(const [type,blob] of Object.entries(data)) {
+          if(type.startsWith('text/')) transfer.setData(type,await blob.text());
+          else transfer.items.add(new host.File([blob],options.filename,{type}));
+        }
+        if(disposed || prepared!==preparedData) return;
+        await bounded(writer.write(transfer),5000);
+      } else {
+        if(!Clipboard || !host.navigator?.clipboard?.write) throw new Error('This browser does not support copying images. Use Download instead.');
+        await bounded(host.navigator.clipboard.write([new Clipboard(data)]),5000);
+      }
+      if(disposed) return;
+      $('status').textContent=vector && !data['image/svg+xml']
+        ? 'SVG source copied. Use Download to save a vector image for other applications.' : 'Copied to clipboard.';
+      $('cancel').textContent='Close';
+    } catch(error) {
+      if(!disposed) fail('Could not copy ('+error.message+'). Click Copy to try again, or use Download.');
+    } finally { if(!disposed) button.disabled=false; }
+  }
+  const send = (name, data = {}) => html.sendEventToMATLAB(name, data);
+  const bytesLabel = bytes => (bytes / (1024 * 1024)).toFixed(2) + ' MiB';
+  const progress = (label, done, total, complete = false) => {
+    const percent = complete ? 100 : Math.min(99, total ? Math.floor(done * 100 / total) : 0);
+    $('progress').hidden = false;
+    $('bar').value = percent;
+    $('percentage').textContent = percent + '%';
+    $('status').textContent = `${label} ${bytesLabel(done)} / ${bytesLabel(total)}`;
+    document.body.setAttribute('aria-busy', String(!complete));
+  };
+  const fail = error => {
+    $('status').textContent = String(error); $('action').disabled = false;
+    $('cancel').disabled = false;
+    document.body.setAttribute('aria-busy', 'false');
+  };
+  const base64 = bytes => { let result = ''; for (const byte of bytes) result += String.fromCharCode(byte); return btoa(result); };
+  const clearDownload = () => {
+    if (downloadAbort) downloadAbort.abort();
+    downloadAbort = null;
+    if (writable) { writable.abort().catch(() => {}); writable = null; }
+    $('download').hidden = true;
+    $('download').removeAttribute('href');
+    if (downloadURL) URL.revokeObjectURL(downloadURL);
+    downloadURL = null;
+    preparedData = null;
+    if($('copy')) $('copy').hidden=true;
+  };
+  const prepareDownload = () => {
+    clearDownload();
+    $('finish').hidden = true;
+    $('action').hidden = false;
+    $('action').disabled = true;
+    $('action').textContent = 'Preparing download…';
+    progress('Preparing download…', 0, options.fileBytes);
+    send('requestDownload');
+  };
+  const pickerOptions = () => {
+    const extensions = (options.accept || '').split(',').filter(x => /^\.[a-z0-9]{1,16}$/i.test(x));
+    const result = {id:'kssolv-files'};
+    if (extensions.length) result.types = [{description:options.title, accept:{'application/octet-stream':extensions}}];
+    return result;
+  };
+  const pickerFailure = (error, label) => {
+    if (error.name === 'AbortError') { send('cancel'); return; }
+    $('action').hidden = false; $('action').disabled = false;
+    $('action').textContent = label;
+    $('status').textContent = error.name === 'SecurityError'
+      ? 'Select a file to continue.' : String(error.message || error);
+  };
+  async function pickOpen() {
+    $('action').disabled = true;
+    try {
+      const handles = await host.showOpenFilePicker({...pickerOptions(), multiple:options.multiple});
+      await uploadFiles(await Promise.all(handles.map(handle => handle.getFile())));
+    } catch (error) { pickerFailure(error, 'Choose file…'); }
+  }
+  async function savePrepared() {
+    if (!preparedData || disposed) return;
+    const data = preparedData;
+    $('action').disabled = true;
+    try {
+      // The picker itself truncates an existing target. Never show it until
+      // transport and byte-count validation have completed successfully.
+      const handle = await host.showSaveFilePicker({...pickerOptions(), suggestedName:options.filename});
+      $('cancel').disabled = true;
+      $('status').textContent = 'Finishing save…';
+      writable = await handle.createWritable();
+      await writable.write(data);
+      await writable.close();
+      writable = null;
+      progress('Saved', options.fileBytes, options.fileBytes, true);
+      if (!disposed) send('nativeDownloadComplete', {name:handle.name});
+    } catch (error) {
+      if (writable) { await writable.abort().catch(() => {}); writable = null; }
+      $('cancel').disabled = false;
+      if (error.name === 'AbortError') { send('cancel'); return; }
+      $('action').hidden = false; $('action').disabled = false;
+      $('action').textContent = 'Save as…';
+      if (error.name === 'SecurityError') $('status').textContent = 'Ready to save. Click Save as… to choose a destination.';
+      else fail('Could not save file (' + error.message + '). Choose another destination or use Browser download.');
+    }
+  }
+  html.addEventListener('configure', event => {
+    options = event.Data; $('title').textContent = options.title;
+    $('action').disabled = false;
+    if (options.mode === 'open') {
+      $('description').textContent = 'Choose a file to open.';
+      $('limits').hidden = false;
+      $('limits').textContent = `Maximum ${bytesLabel(options.maxFileBytes)} per file, ${bytesLabel(options.maxTotalBytes)} per upload.`;
+      $('files').multiple = options.multiple; $('files').accept = options.accept;
+      if (nativeOpen) { $('action').hidden = true; pickOpen(); }
+      else {
+        $('files').hidden = false; $('action').hidden = true;
+        $('files').click();
+      }
+    } else if (options.mode === 'save') {
+      $('description').textContent = 'Choose where to save the file.';
+      if (nativeSave) { send('save', {name:options.filename}); }
+      else {
+        $('filename').hidden = false; $('filename').value = options.filename;
+        $('action').textContent = 'Save';
+      }
+    } else {
+      $('download').textContent = 'Download ' + options.filename;
+      $('download').download = options.filename;
+      $('description').textContent = options.filename;
+      prepareDownload();
+    }
+  });
+  html.addEventListener('downloadURL', async event => {
+    if (disposed || options.mode !== 'download') return;
+    // Connector URLs expire and can only be consumed once. Fetch immediately,
+    // then stream to the chosen file or retain bounded data for a download link.
+    if (downloadAbort) downloadAbort.abort();
+    const controller = new AbortController();
+    downloadAbort = controller;
+    try {
+      const response = await fetch(event.Data.url, {
+        credentials: 'same-origin', cache: 'no-store', signal: controller.signal
+      });
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      $('action').hidden = true;
+      const chunks = [];
+      let received = 0;
+      if (disposed || controller !== downloadAbort) return;
+      const accept = async chunk => {
+        received += chunk.byteLength;
+        if (received > options.maxFileBytes || received > options.fileBytes)
+          throw new Error('Incomplete file received');
+        // At most maxFileBytes are retained. No destination is touched while
+        // transport can still fail or the user can cancel the transfer.
+        chunks.push(chunk);
+        progress('Downloading…', received, options.fileBytes);
+      };
+      if (response.body) {
+        const reader = response.body.getReader();
+        try {
+          while (true) {
+            const {done, value} = await reader.read();
+            if (done) break;
+            if (disposed || controller !== downloadAbort) { await reader.cancel(); return; }
+            await accept(value);
+          }
+        } finally { reader.releaseLock(); }
+      } else {
+        // Fetch implementations without ReadableStream expose only completion.
+        await accept(new Uint8Array(await response.arrayBuffer()));
+      }
+      if (received !== options.fileBytes) throw new Error('Incomplete file received');
+      if (disposed || controller !== downloadAbort) return;
+      preparedData = new Blob(chunks);
+      downloadURL = URL.createObjectURL(preparedData);
+      progress('Ready to download', received, options.fileBytes, true);
+      $('download').href = downloadURL;
+      $('download').hidden = false;
+      if(options.clipboardMode) {
+        $('action').hidden=true;
+        $('copy').hidden=false;
+        $('copy').textContent=options.clipboardMode==='vector'?'Copy SVG':'Copy image';
+        await copyPrepared();
+        return;
+      }
+      $('action').hidden = !nativeSave;
+      $('action').disabled = false;
+      $('action').textContent = 'Save as…';
+      if (nativeSave) {
+        $('download').textContent = 'Browser download';
+        await savePrepared();
+      }
+      // Both saving paths use complete, verified data and never reuse a nonce.
+    } catch (error) {
+      if (disposed || controller !== downloadAbort) return;
+      controller.abort();
+      if (writable) { await writable.abort().catch(() => {}); writable = null; }
+      $('action').hidden = false; $('action').disabled = false;
+      $('action').textContent = 'Retry download';
+      fail('Could not prepare download (' + error.message + '). Click Retry download to try again.');
+    }
+  });
+  window.addEventListener('pagehide', () => { disposed = true; clearDownload(); });
+  html.addEventListener('ack', () => { if (pending) { const resolve = pending.resolve; pending = null; resolve(); } });
+  html.addEventListener('failure', event => {
+    fail(event.Data);
+    if (options.mode === 'download') $('action').textContent = nativeSave && preparedData ? 'Save as…' : 'Retry download';
+    if (pending) { const reject = pending.reject; pending = null; reject(new Error(event.Data)); }
+  });
+  $('cancel').onclick = () => {
+    disposed = true;
+    clearDownload();
+    if (pending) { const reject = pending.reject; pending = null; reject(new Error('Transfer cancelled.')); }
+    send('cancel');
+  };
+  $('finish').onclick = () => send('downloadConfirmed');
+  if($('copy')) $('copy').onclick=copyPrepared;
+  // The same prepared Blob remains valid for repeated user-clicked downloads.
+  $('download').onclick = () => {
+    if (options.requireConfirmation) {
+      $('finish').hidden = false;
+      $('status').textContent = 'Wait for your browser to finish saving the file, then click Finish to continue closing. Cancel keeps the project open.';
+    } else {
+      $('status').textContent = 'Download requested. You can close this window.';
+    }
+  };
+  $('action').onclick = async () => {
+    if (options.mode === 'download') {
+      if (nativeSave && preparedData) await savePrepared();
+      else prepareDownload();
+    } else if (options.mode === 'save') {
+      if (nativeSave) send('save', {name:options.filename});
+      else send('save', {name:$('filename').value});
+    } else if (nativeOpen) await pickOpen();
+    else $('files').click();
+  };
+  $('files').onchange = () => uploadFiles([...$('files').files]);
+  $('files').oncancel = () => send('cancel');
+  async function uploadFiles(files) {
+    try {
+      if (!files.length) throw new Error('Choose at least one file.');
+      if (files.length > 100 || files.some(f => f.size > options.maxFileBytes) ||
+          files.reduce((sum, f) => sum + f.size, 0) > options.maxTotalBytes) throw new Error('Upload exceeds the transfer limit.');
+      $('action').disabled = true;
+      const total = files.reduce((sum, f) => sum + f.size, 0);
+      transferred = 0;
+      progress('Uploading…', 0, total);
+      for (const file of files) {
+        let index = 0;
+        for (let offset = 0; offset < file.size || offset === 0; offset += 128 * 1024) {
+          const end = Math.min(file.size, offset + 128 * 1024);
+          const bytes = new Uint8Array(await file.slice(offset, end).arrayBuffer());
+          await new Promise((resolve, reject) => { pending = {resolve, reject}; send('upload', {name:file.name, index:index++, final:end === file.size, bytes:base64(bytes)}); });
+          transferred += bytes.byteLength;
+          progress('Uploading ' + file.name, transferred, total);
+          if (end === file.size) break;
+        }
+      }
+      progress('Upload complete', transferred, total, true);
+      send('complete');
+    } catch (error) {
+      if (disposed) return;
+      fail(error.message);
+      if (nativeOpen) { $('action').hidden = false; $('action').textContent = 'Choose file…'; }
+    }
+  }
+  send('ready');
+}
+</script></body></html>

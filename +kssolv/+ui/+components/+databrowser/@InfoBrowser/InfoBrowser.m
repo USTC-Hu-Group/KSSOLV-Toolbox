@@ -45,7 +45,7 @@ classdef InfoBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser
             g.ColumnWidth = {'1x'};
 
             htmlFile = fullfile(fileparts(mfilename('fullpath')), 'html', 'index.html');
-            h = uihtml(g, "HTMLSource", htmlFile);
+            h = uihtml(g, "HTMLSource", kssolv.ui.browser.htmlSource(htmlFile, FillFigure=true));
             this.Widgets.html = h;
 
             % 接收从 HTML 组件触发的事件
@@ -109,6 +109,9 @@ classdef InfoBrowser < matlab.ui.internal.databrowser.AbstractDataBrowser
                 return
             end
             name = event.AffectedObject.currentSelectedItem;
+            if isempty(name) || ~isscalar(string(name)) || strlength(string(name)) == 0
+                return
+            end
             item = project.findChildrenItem(name);
             if ~isempty(item)
                 this.Widgets.html.Data = item.encode();

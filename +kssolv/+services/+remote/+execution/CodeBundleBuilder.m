@@ -54,6 +54,11 @@ classdef CodeBundleBuilder < handle
                     servicesRoot = fullfile(packageRoot, "+services");
                     mkdir(servicesRoot);
                     serviceFolders = ["+remote", "+workflow"];
+                    % Carry the relocated HTTP base class with its util alias.
+                    % Older installed toolboxes keep the full class in util.
+                    if isfolder(fullfile(sourceRoot, '+kssolv', '+services', '+http'))
+                        serviceFolders(end+1) = "+http";
+                    end
                     for folder = serviceFolders
                         this.copyTree(fullfile(sourceRoot, "+kssolv", ...
                             "+services", folder), ...

@@ -158,7 +158,7 @@ classdef ModelingJobStore
         end
 
         function value=defaultDirectory()
-            value=fullfile(prefdir,"KSSOLV","modeling-jobs");
+            value=kssolv.util.preferenceDirectory("modeling-jobs");
         end
     end
 end

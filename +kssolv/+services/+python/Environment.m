@@ -17,7 +17,7 @@ classdef Environment < handle
 
     properties (Constant)
         % 虚拟环境绝对路径
-        virtualEnvironmentPath (1, :) char = fullfile(userpath, 'KSSOLV_Toolbox', 'python', 'venv')
+        virtualEnvironmentPath (1, :) char = fullfile(kssolv.util.userDataDirectory(), 'python', 'venv')
     end
 
     properties (Access = private)

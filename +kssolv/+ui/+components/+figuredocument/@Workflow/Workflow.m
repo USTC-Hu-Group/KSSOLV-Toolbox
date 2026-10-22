@@ -68,7 +68,7 @@ classdef Workflow < handle
             g.RowHeight = {'1x'};
             g.ColumnWidth = {'1x'};
             htmlFile = fullfile(fileparts(mfilename('fullpath')), 'workflow', 'index.html');
-            this.HTMLComponent = uihtml(g, "HTMLSource", htmlFile);
+            this.HTMLComponent = uihtml(g, "HTMLSource", kssolv.ui.browser.htmlSource(htmlFile, FillFigure=true));
 
             % 将画布数据保存在 html 组件中
             this.HTMLComponent.Data = this.graphJSON;
@@ -80,7 +80,10 @@ classdef Workflow < handle
             appContainer.add(document);
 
             % 等待渲染完成
-            waitfor(document.Figure, 'FigureViewReady', true);
+            if ~kssolv.ui.browser.BrowserReconnectMonitor.waitFor( ...
+                    document.Figure, 'FigureViewReady', true)
+                return
+            end
             if isdeployed
                 % document 会异常地取消停靠（undocked），在渲染完成后需要重新停靠它
                 document.Docked = true;
@@ -113,9 +116,7 @@ classdef Workflow < handle
 
             if AppContainer.RightCollapsed
                 % 若右侧面板已被折叠，则打开右侧面板
-                ConfigBrowser.nodeID = nodeID;
-                ConfigBrowser.graph = workflowItem.graph;
-                ConfigBrowser.updateUI();
+                ConfigBrowser.configureNode(workflowItem.graph, nodeID);
                 pause(0.5);
 
                 AppContainer.RightCollapsed = false;
@@ -124,9 +125,7 @@ classdef Workflow < handle
                 this.HTMLComponent.sendEventToHTMLSource('workflowZoomToFit');
             else
                 % 若右侧面板已被打开，则不处理折叠
-                ConfigBrowser.nodeID = event.HTMLEventData;
-                ConfigBrowser.graph = workflowItem.graph;
-                ConfigBrowser.updateUI();
+                ConfigBrowser.configureNode(workflowItem.graph, nodeID);
             end
         end
 

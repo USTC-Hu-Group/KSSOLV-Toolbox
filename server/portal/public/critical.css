@@ -1,0 +1,9 @@
+/* Render before the application script and full stylesheet have arrived. */
+body.booting{margin:0;background:#d9d9d9}
+body.booting>main,body.booting>#tenant-workspace{visibility:hidden}
+#page-loading{display:none}
+body.booting>#page-loading{position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;background:#d9d9d9}
+.page-loading-box{width:88px;height:68px;display:flex;align-items:center;justify-content:center;background:#fff;border:0;border-radius:4px;box-shadow:0 1px 3px #0004}
+.page-loading-spinner{display:block;width:48px;height:48px;box-sizing:border-box;border:7px solid #b3b3b3;border-right-color:#268de0;border-radius:50%;animation:page-loading-spin 1.3s linear infinite}
+@keyframes page-loading-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.page-loading-spinner{animation:none}}

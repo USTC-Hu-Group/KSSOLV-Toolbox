@@ -115,6 +115,7 @@
         <entry key="SaveWFFileTitle">Select File for Save As</entry>
 
         <!-- HomeTab: callbackRunAndTime -->
+        <entry key="ComputationFailedTitle">Calculation failed</entry>
         <entry key="RunTimeUsed">Time Used: </entry>
         <entry key="RunTimeUsedUnit">seconds</entry>
 
@@ -375,5 +376,47 @@
         <entry key="RemoteCommandWaiting">Remote command is running; waiting for results…</entry>
         <entry key="RemoteCommandFinished">Remote command completed.</entry>
         <entry key="RemoteCommandFailed">Remote command failed: %s</entry>
+        <entry key="OnlineAccountTab">Account</entry>
+        <entry key="OnlineAccountLogin">Log in</entry>
+        <entry key="OnlineAccountSettings">Settings</entry>
+        <entry key="OnlineAccountSignOut">Sign out</entry>
+        <entry key="OnlineAccountClose">Close</entry>
+        <entry key="OnlineAccountCancel">Cancel</entry>
+        <entry key="OnlineAccountUsername">Username</entry>
+        <entry key="OnlineAccountStatus">Connection</entry>
+        <entry key="OnlineAccountIdle">Release after inactivity</entry>
+        <entry key="OnlineAccountConnected">Connected</entry>
+        <entry key="OnlineAccountNotConnected">Not logged in</entry>
+        <entry key="OnlineAccountIdleMinutes">%d minutes</entry>
+        <entry key="OnlineAccountReconnect">Reconnect</entry>
+        <entry key="OnlineAccountSignOutNote">Sign out and release this workspace? Save your project first. Unsaved changes will be lost.</entry>
+        <entry key="OnlineAccountUnavailable">This instance is not connected to an Online account service. Sign in through your cluster entry page.</entry>
+        <entry key="OnlineAccountRetentionNote">Closing the page keeps this workspace until its inactivity limit. Return to the same entry page to reconnect. Signing out releases the instance immediately; save your project before leaving.</entry>
+        <entry key="FilesActions">Files actions</entry>
+        <entry key="FilesSortDescending">Sort names descending</entry>
+        <entry key="FilesSortAscending">Sort names ascending</entry>
+        <entry key="FilesItemCount">%d items</entry>
+        <entry key="FilesRefreshPartial">Some folders could not be refreshed.</entry>
+        <entry key="FilesRoot">Online</entry>
+        <entry key="OnlineResourceMemory">Memory</entry>
+        <entry key="OnlineResourceHost">Host</entry>
+        <entry key="OpenPanelsTitle">Open Panels</entry>
+        <entry key="FilesTitle">Files</entry>
+        <entry key="FilesImport">Import</entry>
+        <entry key="FilesUpload">Upload</entry>
+        <entry key="FilesDownload">Download</entry>
+        <entry key="FilesSaveProject">Save project to Files</entry>
+        <entry key="FilesNewFolder">New folder</entry>
+        <entry key="FilesRefresh">Refresh</entry>
+        <entry key="FilesUnavailable">Persistent Files is unavailable in this deployment.</entry>
+        <entry key="FilesFilename">Name</entry>
+        <entry key="FilesSaved">Saved to Files.</entry>
+        <entry key="FilesTruncated">Showing the first 1,000 entries.</entry>
+        <entry key="FilesAll">All files</entry>
+        <entry key="FilesReplace">Replace</entry>
+        <entry key="FilesExists">A file with this name already exists. Replace it?</entry>
+        <entry key="OnlineAccountMyAccount">My Account</entry>
+        <entry key="OnlineAccountExit">Exit KSSOLV Toolbox</entry>
+        <entry key="OnlineAccountExitNote">Return to the entry page? Your workspace stays running until its inactivity limit. Keep this tab open to return to the same interface; closing or refreshing the page rebuilds it.</entry>
     </message>
 </rsccat>

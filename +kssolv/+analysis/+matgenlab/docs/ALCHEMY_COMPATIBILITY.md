@@ -12,8 +12,8 @@ from `dev/matgenlab/inventory/api.csv`.
 | `pymatgen.alchemy.transmuters` | 3 | 12 | 0 | 1 | 16/16 |
 | **Total** | **11** | **38** | **2** | **1** | **52/52** |
 
-`AlchemyInventoryTest` resolves all 52 rows to concrete MATLAB classes,
-methods, properties, or functions. Behavioral tests cover every class and the
+`AlchemyFiltersTest`, `AlchemyMaterialsTest`, and `AlchemyTransmutersTest`
+cover every class and the
 stateful paths: strict/non-strict species matching, proximity checks,
 duplicate/existing matching, charge and distance filtering, transformation
 history, one-to-many branching, undo/redo, filter provenance, StructureNL,

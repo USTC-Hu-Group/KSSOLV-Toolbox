@@ -104,6 +104,7 @@ const heroRetainedFrameUrl = ref('');
 const structureExporting = ref(false);
 const structureExportFormats = ref<StructureExportFormat[]>([]);
 const structureExportError = ref('');
+const rendererStartupError = ref('');
 const atomHover = shallowRef<AtomHoverInfo>();
 const activeMeasurement = shallowRef<MeasurementRecord>();
 const progressMeasurement = shallowRef<ReturnType<typeof measurementProgressAnnotation>>();
@@ -1612,6 +1613,14 @@ const reportSceneRendered = (scene: AtomicSceneSpec, startedAt: number): void =>
 };
 
 const handleShortcut = (event: KeyboardEvent): void => {
+  // The help dialog owns keyboard input until it is dismissed.
+  if (shortcutHelpOpen.value) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      shortcutHelpOpen.value = false;
+    }
+    return;
+  }
   const editableTarget =
     event.target instanceof HTMLElement &&
     event.target.matches('input, select, textarea, button, [role="textbox"]');
@@ -1741,6 +1750,7 @@ onMounted(async () => {
       reportSceneRendered(scene, startedAt);
     }
   } catch (error) {
+    rendererStartupError.value = error instanceof Error ? error.message : String(error);
     matlabBridge.emit('viewer:error', {
       requestId: store.scene.value?.requestId ?? '',
       code: 'RENDERER_INIT',
@@ -1821,7 +1831,9 @@ const removeCommandListener = matlabBridge.on('viewer:command', (payload) => {
     if (camera) renderer.value?.setCameraSnapshot(camera);
   }
   if (command === 'select-sites') {
-    const siteIndices = (payload as { siteIndices?: unknown }).siteIndices;
+    // uihtml serializes a single MATLAB numeric index as a scalar.
+    const received = (payload as { siteIndices?: unknown }).siteIndices;
+    const siteIndices = typeof received === 'number' ? [received] : received;
     if (
       Array.isArray(siteIndices) &&
       siteIndices.every((index) => Number.isInteger(index) && Number(index) >= 0)
@@ -2332,6 +2344,11 @@ onBeforeUnmount(() => {
 
     <div v-else-if="modelingError" class="error-banner" role="alert">
       {{ modelingError }}
+    </div>
+
+    <div v-else-if="rendererStartupError" class="error-banner" role="alert">
+      {{ viewerLocale === 'zh-CN' ? '三维视图不可用：' : '3D view unavailable:' }}
+      {{ rendererStartupError }}
     </div>
 
     <div v-if="statistics && store.options.showStatistics" class="performance-badge">

@@ -304,8 +304,8 @@ classdef ModelingTab < handle
                     kssolv.ui.features.modeling.ModelingJobsBrowser();
             else
                 this.JobsWindow.refresh();
-                this.JobsWindow.Figure.Visible="on";
-                figure(this.JobsWindow.Figure);
+                kssolv.ui.util.DialogWindow.bringToFront( ...
+                    this.JobsWindow.Figure);
             end
         end
 
@@ -317,8 +317,8 @@ classdef ModelingTab < handle
                     kssolv.ui.features.modeling.ModelingLibraryBrowser();
             else
                 this.LibraryWindow.refresh();
-                this.LibraryWindow.Figure.Visible="on";
-                figure(this.LibraryWindow.Figure);
+                kssolv.ui.util.DialogWindow.bringToFront( ...
+                    this.LibraryWindow.Figure);
             end
         end
 
@@ -368,6 +368,7 @@ classdef ModelingTab < handle
             geometryButton = this.createCategoryDropDown( ...
                 "GeometryEditor", "GeometryEditorTooltip", ...
                 "molecule_builder");
+            geometryButton.Tag = "ModelingCategory_molecule_geometry";
             geometryButton.Popup = this.createGroupedPopup([
                 this.popupGroup("MoleculeGeometryGroup", [ ...
                 "measure_geometry", "set_distance", "set_angle", ...
@@ -480,6 +481,7 @@ classdef ModelingTab < handle
             transformButton = this.createCategoryDropDown( ...
                 "ComponentTransform", "ComponentTransformTooltip", ...
                 "atomic_editor");
+            transformButton.Tag = "ModelingCategory_component_transform";
             transformButton.Popup = this.createGroupedPopup( ...
                 this.popupGroup("PositionTransformGroup", [ ...
                 "center_atoms", "move_atoms", "mirror_atoms", ...
@@ -1290,8 +1292,8 @@ classdef ModelingTab < handle
             this.FragmentBrowserHostIndices = reshape(double(indices), 1, []);
             if ~isempty(this.FragmentBrowserWindow) && ...
                     isvalid(this.FragmentBrowserWindow)
-                this.FragmentBrowserWindow.Figure.Visible = "on";
-                figure(this.FragmentBrowserWindow.Figure);
+                kssolv.ui.util.DialogWindow.bringToFront( ...
+                    this.FragmentBrowserWindow.Figure);
                 return
             end
             this.FragmentBrowserWindow = ...

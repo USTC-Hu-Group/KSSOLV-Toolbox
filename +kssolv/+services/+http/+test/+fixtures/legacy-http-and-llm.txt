@@ -1,0 +1,10 @@
+Generated before the transport namespace move, using MATLAB R2026b -nojvm.
+The MAT file contains the original kssolv.util.HTTPJSONRequest class layout
+(before the compatibility subclass existed), and named handles to the old
+online.sendNativeRequest, online.sendRequest and
+ExecutionResources.migrateLegacyChoices entry points.
+
+The request was never started. It uses https://fixture.invalid/v1/models,
+the non-secret header "Bearer fixture-only", @jsonencode and no callback.
+NamespaceCompatibilityTest loads this fixed fixture and exercises the real
+transport lifecycle, callbacks and a second save/load after completion.

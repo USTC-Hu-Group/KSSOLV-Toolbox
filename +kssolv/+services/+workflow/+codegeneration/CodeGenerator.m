@@ -53,6 +53,7 @@ classdef CodeGenerator < handle
                 % 执行当前节点的任务
                 changeNodeStatus(nodeID, 'running');
                 try
+                    node.task.getExecutionResources();
                     % executeTask 将当前节点的输出存储到上下文中，供其子节点后续使用
                     context = node.task.executeTask(context, input);
                 catch ME
@@ -110,6 +111,7 @@ classdef CodeGenerator < handle
                 node = workflow.Nodes(char(nodeId));
                 changeNodeStatus(char(nodeId), 'running');
                 try
+                    node.task.getExecutionResources();
                     if isa(node.task, ...
                             "kssolv.services.workflow.module." + ...
                             "visualization.DOSTask")

@@ -182,15 +182,6 @@ const openStructureExportMenu = (): void => {
   void nextTick(positionStructureExportMenu);
 };
 
-const toggleStructureExportMenu = (): void => {
-  if (!props.structureExportFormats.length || props.structureExporting) return;
-  if (structureExportMenuOpen.value) {
-    structureExportMenuOpen.value = false;
-  } else {
-    openStructureExportMenu();
-  }
-};
-
 const repositionOpenStructureExportMenu = (): void => {
   if (structureExportMenuOpen.value) positionStructureExportMenu();
 };
@@ -525,11 +516,7 @@ const closeFileMenuOnFocusOut = (event: FocusEvent): void => {
         role="menu"
         aria-label="File exports"
       >
-        <div
-          class="toolbar-export-submenu"
-          @mouseenter="openStructureExportMenu"
-          @mouseleave="structureExportMenuOpen = false"
-        >
+        <div class="toolbar-export-submenu" @mouseenter="openStructureExportMenu">
           <button
             ref="structureExportTrigger"
             class="toolbar-export-option toolbar-export-submenu-trigger"
@@ -538,7 +525,7 @@ const closeFileMenuOnFocusOut = (event: FocusEvent): void => {
             aria-haspopup="menu"
             :aria-expanded="structureExportMenuOpen"
             :disabled="!structureExportFormats.length || structureExporting"
-            @click.stop="toggleStructureExportMenu"
+            @click.stop="openStructureExportMenu"
           >
             <strong>Structure file <span class="submenu-arrow" aria-hidden="true">‹</span></strong>
             <span>

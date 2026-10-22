@@ -2,6 +2,40 @@ classdef CrystalViewerRuntime
     %CRYSTALVIEWERRUNTIME Verify the embedded viewer build identity.
 
     methods (Static)
+        function source = prepare(entryPath)
+            % Reuse a content-addressed URL so CEF can reuse its code cache.
+            % A changed build always gets a new URL, including after updates.
+            manifest = kssolv.ui.util.CrystalViewerRuntime.verify(entryPath);
+            directory = fullfile(string(tempdir), 'KSSOLVToolbox', 'CrystalViewer');
+            if ~isfolder(directory)
+                [created, message] = mkdir(directory);
+                if ~created
+                    error("KSSOLV:CrystalViewer:HTMLSource", ...
+                        "Unable to create the viewer cache: %s", message);
+                end
+            end
+            source = fullfile(directory, string(manifest.entrySha256) + ".html");
+            if ~isfile(source)
+                staged = string(tempname(directory)) + ".html";
+                cleanup = onCleanup(@()deleteIfPresent(staged));
+                [copied, message] = copyfile(entryPath, staged);
+                if ~copied
+                    error("KSSOLV:CrystalViewer:HTMLSource", ...
+                        "Unable to stage the crystal viewer: %s", message);
+                end
+                kssolv.ui.util.CrystalViewerRuntime.assertEntry( ...
+                    staged, string(manifest.entrySha256));
+                [moved, message] = movefile(staged, source, 'f');
+                if ~moved
+                    error("KSSOLV:CrystalViewer:HTMLSource", ...
+                        "Unable to publish the viewer cache: %s", message);
+                end
+                clear cleanup
+            end
+            kssolv.ui.util.CrystalViewerRuntime.assertEntry( ...
+                source, string(manifest.entrySha256));
+        end
+
         function manifest = verify(entryPath)
             arguments
                 entryPath (1,1) string
@@ -61,15 +95,15 @@ classdef CrystalViewerRuntime
             arguments
                 path (1,1) string
             end
-            file = fopen(path, "rb");
-            if file < 0
+            if ~isfile(path)
                 error("KSSOLV:CrystalViewer:RuntimeRead", ...
                     "Cannot read CrystalViewer runtime file: %s", path);
             end
-            cleanup = onCleanup(@()fclose(file));
-            bytes = fread(file, Inf, "*uint8");
-            clear cleanup
-            value = string(kssolv.util.Hash.bytes(bytes));
+            value = string(kssolv.util.Hash.file(path));
         end
     end
+end
+
+function deleteIfPresent(path)
+if isfile(path), delete(path); end
 end

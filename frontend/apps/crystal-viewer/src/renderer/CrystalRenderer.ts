@@ -562,19 +562,16 @@ export class CrystalRenderer {
     this.cellLayer =
       scene.kind === 'crystal' ? new CellLayer(scene, themes[this.options.theme]) : undefined;
     this.cellLayer?.setVisible(this.options.showUnitCell && !this.heroShotActive);
-    this.polyhedronLayer = new PolyhedronLayer(scene, this.options, themes[this.options.theme]);
-    this.magmomLayer = new MagmomLayer(scene, this.options);
     this.crystal.add(this.atomLayer.mesh, this.bondLayer.mesh);
     if (this.cellLayer) this.crystal.add(this.cellLayer.lines);
-    if (this.polyhedronLayer.mesh) this.crystal.add(this.polyhedronLayer.group);
-    if (this.magmomLayer.mesh) this.crystal.add(this.magmomLayer.mesh);
+    this.ensureOptionalLayers();
     const premiumShadows =
       this.options.theme === 'gleamoe-premiror' && this.options.renderMode === 'quality';
     this.atomLayer.mesh.castShadow = premiumShadows;
     this.atomLayer.mesh.receiveShadow = premiumShadows;
     this.bondLayer.mesh.castShadow = premiumShadows;
     this.bondLayer.mesh.receiveShadow = premiumShadows;
-    if (this.polyhedronLayer.mesh) {
+    if (this.polyhedronLayer?.mesh) {
       this.polyhedronLayer.mesh.castShadow = premiumShadows;
       this.polyhedronLayer.mesh.receiveShadow = premiumShadows;
     }
@@ -661,10 +658,33 @@ export class CrystalRenderer {
     this.atomLayer?.updateVisibility(this.options);
     this.bondLayer?.updateVisibility(this.options);
     this.cellLayer?.setVisible(this.options.showUnitCell && !this.heroShotActive);
+    this.ensureOptionalLayers();
     this.polyhedronLayer?.updateVisibility(this.options);
     this.magmomLayer?.setVisible(this.options.showMagmoms);
     this.reconcileSelection();
     this.requestRender();
+  }
+
+  private ensureOptionalLayers(): void {
+    if (!this.sceneSpec) return;
+    if (this.options.showPolyhedra && !this.polyhedronLayer) {
+      this.polyhedronLayer = new PolyhedronLayer(
+        this.sceneSpec,
+        this.options,
+        themes[this.options.theme],
+      );
+      if (this.polyhedronLayer.mesh) {
+        const shadows =
+          this.options.theme === 'gleamoe-premiror' && this.options.renderMode === 'quality';
+        this.polyhedronLayer.mesh.castShadow = shadows;
+        this.polyhedronLayer.mesh.receiveShadow = shadows;
+        this.crystal.add(this.polyhedronLayer.group);
+      }
+    }
+    if (this.options.showMagmoms && !this.magmomLayer) {
+      this.magmomLayer = new MagmomLayer(this.sceneSpec, this.options);
+      if (this.magmomLayer.mesh) this.crystal.add(this.magmomLayer.mesh);
+    }
   }
 
   setMeasurementAnnotations(annotations: MeasurementAnnotation[]): void {
@@ -1424,6 +1444,14 @@ export class CrystalRenderer {
           label: 'Compositing cinematic details…',
           detail: 'Adding glass polyhedra, labels, and overlays',
         });
+        // Convergence updates the accumulation texture, while the interactive
+        // compositor may still hold a faded or earlier frame. Present the final
+        // texture explicitly before overlays, preview completion, and encoding.
+        this.renderer.setRenderTarget(null);
+        this.renderer.setScissorTest(false);
+        this.renderer.setViewport(0, 0, size.x, size.y);
+        this.renderer.clear(true, true, true);
+        this.gleamoePathTracer.renderFinal();
         this.renderGleamoeOverlays();
       } else {
         onProgress?.({
@@ -1825,18 +1853,23 @@ export class CrystalRenderer {
       // rotation is handled below from relative deltas so Pointer Lock can
       // continue beyond the physical viewport edge.
       this.controls.noRotate = true;
-      const lockRequest = this.canvas.requestPointerLock?.();
-      if (lockRequest) {
-        void lockRequest
-          .catch(() => undefined)
-          .then(() => {
-            if (!this.mouseRotating && document.pointerLockElement === this.canvas) {
-              document.exitPointerLock();
-            }
-          });
-      }
     }
   };
+
+  private requestPointerLockForDrag(): void {
+    // Entering and leaving Pointer Lock during a simple click can consume
+    // Chrome's click event. Lock only after a real rotation drag starts.
+    const lockRequest = this.canvas.requestPointerLock?.();
+    if (lockRequest) {
+      void lockRequest
+        .catch(() => undefined)
+        .then(() => {
+          if (!this.mouseRotating && document.pointerLockElement === this.canvas) {
+            document.exitPointerLock();
+          }
+        });
+    }
+  }
 
   private readonly handlePointerMove = (event: PointerEvent): void => {
     if (event.buttons !== 0) {
@@ -1870,8 +1903,12 @@ export class CrystalRenderer {
         if (deltaX !== 0 || deltaY !== 0) {
           this.pointerTravel += Math.hypot(deltaX, deltaY);
           this.rotateCameraByPointerDelta(deltaX, deltaY);
-          if (this.pointerTravel >= viewerInteractionProfile.dragThresholdPixels) {
+          if (
+            !this.suppressNextClick &&
+            this.pointerTravel >= viewerInteractionProfile.dragThresholdPixels
+          ) {
             this.suppressNextClick = true;
+            this.requestPointerLockForDrag();
           }
         }
         return;
@@ -2421,11 +2458,14 @@ export class CrystalRenderer {
     // over the converged path-traced atoms and leaves only the galaxy. Keep the
     // accumulated color buffer and draw transparent overlays on top instead.
     this.scene.background = null;
-    this.renderer.render(this.scene, this.camera);
-    this.scene.background = background;
-    hiddenObjects.forEach((object, index) => {
-      object.visible = visibility[index];
-    });
+    try {
+      this.renderer.render(this.scene, this.camera);
+    } finally {
+      this.scene.background = background;
+      hiddenObjects.forEach((object, index) => {
+        object.visible = visibility[index];
+      });
+    }
   }
 
   private requestRender(): void {

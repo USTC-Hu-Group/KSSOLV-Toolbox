@@ -1,0 +1,16 @@
+function configuration = chatConfiguration(settings)
+%CHATCONFIGURATION Capture only the values that define a chat connection.
+arguments
+    settings (1,1) struct = kssolv.settings.Settings.load()
+end
+if strcmpi(settings.LLMType, "OpenAICompatible")
+    configuration = struct('Type', "OpenAICompatible", ...
+        'Endpoint', string(settings.OpenAIBaseURL), ...
+        'Model', string(settings.OpenAIModel), ...
+        'APIKey', string(settings.OpenAIAPIKey));
+else
+    configuration = struct('Type', "Ollama", ...
+        'Endpoint', string(settings.OllamaServerURL), ...
+        'Model', string(settings.OllamaModel), 'APIKey', "");
+end
+end

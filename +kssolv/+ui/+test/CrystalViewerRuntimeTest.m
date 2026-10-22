@@ -58,6 +58,34 @@ classdef CrystalViewerRuntimeTest < matlab.unittest.TestCase
             testCase.verifyNotEmpty(strfind(html, "viewer:bootstrap"), ...
                 "The early CEF bootstrap diagnostic event is missing.");
         end
+
+        function reusesStagedBuildAndChangesPathForNewContent(testCase)
+            directory = string(tempname);
+            mkdir(directory);
+            testCase.addTeardown(@()rmdir(directory, "s"));
+            entry = fullfile(directory, "index.html");
+            manifest = struct("schemaVersion", 1, ...
+                "application", "crystal-viewer", "applicationVersion", "test", ...
+                "sourceRevision", "test", "builtAtUtc", "test", ...
+                "entryFile", "index.html", "entrySha256", "");
+            paths = strings(1, 2);
+            for index = 1:2
+                writeBytes(entry, unicode2native("viewer-build-" + string(index), "UTF-8"));
+                manifest.entrySha256 = kssolv.ui.util.CrystalViewerRuntime.sha256(entry);
+                writeBytes(fullfile(directory, "build-manifest.json"), ...
+                    unicode2native(jsonencode(manifest), "UTF-8"));
+                paths(index) = kssolv.ui.util.CrystalViewerRuntime.prepare(entry);
+                testCase.verifyEqual( ...
+                    kssolv.ui.util.CrystalViewerRuntime.prepare(entry), paths(index));
+                testCase.verifyEqual(fileread(paths(index)), fileread(entry));
+            end
+            testCase.verifyNotEqual(paths(1), paths(2));
+            writeBytes(paths(2), uint8('tampered staged runtime'));
+            testCase.addTeardown(@()delete(paths(2)));
+            testCase.verifyError( ...
+                @()kssolv.ui.util.CrystalViewerRuntime.prepare(entry), ...
+                "KSSOLV:CrystalViewer:RuntimeHashMismatch");
+        end
     end
 end
 

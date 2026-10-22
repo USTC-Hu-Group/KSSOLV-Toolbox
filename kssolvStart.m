@@ -40,14 +40,37 @@ catch exception
             mkdir(KSSOLV_Toolbox.LogsDirectory);
         end
     end
+    if strlength(getenv('KSSOLV_BROWSER_SESSION_FILE')) > 0
+        % The container supervisor must see startup failure as a process failure.
+        rethrow(exception);
+    end
     disp(exception.message);
     writelines(exception.message, fullfile(KSSOLV_Toolbox.LogsDirectory, "kssolvStart.log"), "WriteMode", "append");
     return
 end
 
+browserEntryPublished = false;
+reconnectState = [];
+restoreDocuments = false;
+sessionFile = string(getenv('KSSOLV_BROWSER_SESSION_FILE'));
+reconnectMonitor = [];
+if isKSSOLVOnline() && strlength(sessionFile) > 0
+    reconnectMonitor = kssolv.ui.browser.BrowserReconnectMonitor(sessionFile);
+end
+monitorCleanup = onCleanup(@()deleteMonitor(reconnectMonitor));
 while true
     pause(0.5);
     if ~isvalid(app)
+        if ~isempty(reconnectState)
+            try
+                app = kssolv.ui.browser.OnlineReconnectState.create(reconnectState);
+                restoreDocuments = true;
+            catch exception
+                warning('KSSOLV:Online:ReconnectFailed', ...
+                    'Interface reconstruction failed (%s); retrying.', exception.identifier);
+                continue
+            end
+        else
         if nargout == 0
             clear app
         end
@@ -57,6 +80,50 @@ while true
         else
             return
         end
+        end
+    end
+    reconnectPending = false;
+    if ~isempty(reconnectMonitor)
+        reconnectMonitor.poll();
+        reconnectPending = reconnectMonitor.Pending;
+    end
+    if reconnectPending && browserEntryPublished
+        try
+            nextState = kssolv.ui.browser.OnlineReconnectState.capture(app);
+            if restoreDocuments
+                % Another client can leave while restoration is waiting for
+                % its first document. Retain tabs not yet recreated as well.
+                nextState.Documents = unique([reconnectState.Documents(:); ...
+                    nextState.Documents(:)], 'stable').';
+                nextState.Selected = reconnectState.Selected;
+            end
+            reconnectState = nextState;
+            reconnectMonitor.disarm();
+            browserEntryPublished = false;
+            delete(app);
+            app = kssolv.ui.browser.OnlineReconnectState.create(reconnectState);
+            restoreDocuments = true;
+        catch exception
+            warning('KSSOLV:Online:ReconnectFailed', ...
+                'Interface reconstruction failed (%s); retrying.', exception.identifier);
+            continue
+        end
+    end
+    if app.processBrowserSessionRequests()
+        browserEntryPublished = true;
+        if ~isempty(reconnectMonitor), reconnectMonitor.arm(); end
+    end
+    if restoreDocuments && ...
+            kssolv.ui.browser.OnlineReconnectState.restoreWhenReady(app, reconnectState)
+        restoreDocuments = false;
+        reconnectState = [];
+    end
+    if ~restoreDocuments
+        app.updateBrowserStartupState();
     end
 end
+end
+
+function deleteMonitor(monitor)
+if ~isempty(monitor) && isvalid(monitor), delete(monitor); end
 end

@@ -73,6 +73,9 @@ const mount = (): void => {
 window.setup = (htmlComponent: MatlabHtmlComponent): void => {
   window.MATLAB = htmlComponent;
   matlabBridge.attach(htmlComponent);
+  // uihtml exposes Data synchronously during setup. Queue the atoms-first
+  // scene before mounting, without waiting for a MATLAB ready round trip.
+  if (!mounted) useViewerStore().setInitialScene(htmlComponent.Data);
   mount();
 };
 

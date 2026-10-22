@@ -1,0 +1,383 @@
+<!doctype html>
+<html><head><meta charset="utf-8"></head><body><script>
+function setup(component) {
+    'use strict';
+    const host = window.parent;
+    const slot = '__kssolvSidebar';
+    host[slot]?.dispose();
+    const entries = new Map();
+    let container, gallery, actions, builder, previousActions, previousBuilder, timer;
+    let disposed = false, ready = false;
+    let reportedCount = -1;
+    let Dialogs, Buttons, previousOpenGallery;
+    // Use the Toolbox locale instead of the browser's OS/Dojo locale.
+    host.require(['mw-dialogs/Dialogs', 'mw-dialogs/ButtonEnum'], (D, B) => {
+        if (!disposed) { Dialogs = D; Buttons = B; }
+    });
+    function openGallery() {
+        if (gallery._dialogOpened || !gallery._galleryPopulated) return;
+        const close = {...Buttons.CLOSE, label: component.Data.closeLabel};
+        gallery._dialog = Dialogs.createDialog({
+            title: component.Data.galleryTitle, dialogType: Dialogs.MODELESS,
+            closeOnEscape: true, closable: true, draggable: true, resizable: false,
+            className: 'mwPanelsGalleryDialog', 'data-test-id': 'mwPanelsGalleryDialog',
+            content: gallery._galleryPanelWidget.domNode, buttons: [close]
+        });
+        gallery._dialog._closeNode?.setAttribute('aria-label', component.Data.closeLabel);
+        gallery._dialog._closeNode?.setAttribute('title', component.Data.closeLabel);
+        gallery._dialogOpened = true;
+        gallery._dialog.on('close', () => { delete gallery._dialogOpened; });
+        gallery._dialog.addButtonEventListener(close, function() {}, true);
+    }
+    function showGallery(event) {
+        if (!Dialogs || !gallery || !gallery._galleryPopulated) return;
+        // MATLAB binds its method to the body's listener in the constructor.
+        // A later method replacement cannot replace that cached function.
+        event.stopImmediatePropagation();
+        openGallery();
+    }
+    host.document.addEventListener('showpanelsgallery', showGallery, true);
+    function initializeDocumentHeader() {
+        const documents = container._documentContainer;
+        if (documents && !documents.__kssolvHeaderInitialized) {
+            documents.set('headerStyle', 'hover');
+            documents.__kssolvHeaderInitialized = true;
+        }
+    }
+    // Native splitters listen to mousemove on the AppContainer document.
+    // Capture the pointer at its handle so crossing a uihtml/renderer iframe
+    // cannot interrupt that stream. MATLAB remains responsible for sizing,
+    // collapse thresholds, min/max sizes, and committing the final layout.
+    let resizePointer;
+    const frames = new Map();
+    function endResize(event) {
+        if (!resizePointer || (event?.pointerId !== undefined && event.pointerId !== resizePointer.id)) return;
+        const {handle, id} = resizePointer;
+        resizePointer = null;
+        if (handle.hasPointerCapture(id)) handle.releasePointerCapture(id);
+        for (const [frame, value] of frames) {
+            if (value) frame.style.setProperty('pointer-events', value[0], value[1]);
+            else frame.style.removeProperty('pointer-events');
+        }
+        frames.clear();
+    }
+    function beginResize(event) {
+        if (event.button !== 0 || resizePointer) return;
+        const handle = event.composedPath().find(node => node.matches?.(
+            '.splitterH,.splitterV,.accordionContainer > .splitter,.edgeCoverH,.edgeCoverV'));
+        // RootUIContainer is a controller and need not expose domNode.
+        // Use the page's real, stable DOM root; native layout can recreate
+        // splitter handles during a drag.
+        const capture = host.document.getElementById('uiroot') || host.document.documentElement;
+        if (!handle || !capture?.contains(handle)) return;
+        capture.setPointerCapture(event.pointerId);
+        resizePointer = {handle: capture, id: event.pointerId, type: event.pointerType || 'mouse'};
+        function shield(root) {
+            for (const frame of root.querySelectorAll('iframe,object')) {
+                const value = frame.style.getPropertyValue('pointer-events');
+                frames.set(frame, value ? [value, frame.style.getPropertyPriority('pointer-events')] : null);
+                frame.style.setProperty('pointer-events', 'none', 'important');
+            }
+            for (const node of root.querySelectorAll('*')) {
+                if (node.shadowRoot) shield(node.shadowRoot);
+            }
+        }
+        shield(host.document);
+    }
+    function cancelResize() {
+        if (!resizePointer) return;
+        // Dojo uses pointer events in modern browsers. Its pointerdown handler
+        // prevents compatibility mouse events, so mouseup is not guaranteed.
+        const {handle, id, type} = resizePointer;
+        resizePointer = null;
+        handle.dispatchEvent(new host.PointerEvent('pointerup', {
+            bubbles: true, pointerId: id, pointerType: type, button: 0, buttons: 0
+        }));
+        host.document.dispatchEvent(new host.MouseEvent('mouseup', {bubbles: true}));
+        resizePointer = {handle, id, type};
+        endResize();
+    }
+    if (component.Data.online) {
+        host.document.addEventListener('pointerdown', beginResize, true);
+        host.document.addEventListener('pointerup', endResize);
+        host.document.addEventListener('mouseup', endResize);
+        host.document.addEventListener('lostpointercapture', cancelResize, true);
+        host.document.addEventListener('pointercancel', cancelResize, true);
+        host.addEventListener('blur', cancelResize);
+    }
+    const initialPanels = component.Data.panels;
+    // IDs from MATLAB's /ui/icons/registry.json, shared by Desktop and Runtime.
+    const icons = {
+        ProjectBrowser: 'projectsSB', OnlineFilesBrowser: 'filesSB',
+        InfoBrowser: 'infoMonoUI',
+        CommandWindow: 'commandWindowSB'
+    };
+    // Original pixel-grid drawings for catalog gaps: a wireframe gear and a
+    // 20px Information glyph. Outline play has no unfilled catalog variant.
+    // Match MATLAB's 1px strokes and theme colours.
+    const stroke = 'var(--mw-sidebar-icon-stroke, #616161)';
+    const fill = 'var(--mw-sidebar-icon-fill, #ffffff)';
+    function gearBody(size, outline = stroke, background = fill) {
+        const centre = size / 2, outer = centre - 1.5, inner = outer - 2.5;
+        const points = [];
+        const snap = value => Math.round(value * 2) / 2;
+        for (let tooth = 0; tooth < 8; tooth++) {
+            for (const [angle, radius] of [[-22.5, inner], [-15, inner],
+                [-7.5, outer], [7.5, outer], [15, inner], [22.5, inner]]) {
+                const radians = (tooth * 45 + angle) * Math.PI / 180;
+                points.push([snap(centre + radius * Math.cos(radians)),
+                    snap(centre + radius * Math.sin(radians))]);
+            }
+        }
+        return '<path d="M' + points.map(point => point.join(' ')).join('L') +
+            'Z" fill="' + background + '" stroke="' + outline +
+            '" stroke-width="1" stroke-linejoin="round"/>' +
+            '<circle cx="' + centre + '" cy="' + centre + '" r="' +
+            (size === 20 ? 2.5 : 3.5) + '" fill="' + background +
+            '" stroke="' + outline + '" stroke-width="1"/>';
+    }
+    function playBody(size, outline = stroke) {
+        const left = size === 20 ? 4.5 : 5.5;
+        const right = size === 20 ? 16.5 : 20.5;
+        return '<path d="M' + left + ' 2.5L' + right + ' ' + size / 2 +
+            'L' + left + ' ' + (size - 2.5) +
+            'Z" fill="none" stroke="' + outline +
+            '" stroke-width="1" stroke-linejoin="round"/>';
+    }
+    const informationBody = '<circle cx="10" cy="10" r="8.5" fill="' + fill +
+        '" stroke="' + stroke + '" stroke-width="1"/>' +
+        '<path d="M9 9h2v6H9z" fill="' + stroke + '"/>' +
+        '<circle cx="10" cy="6" r="1" fill="' + stroke + '"/>';
+    function panelTag(properties) {
+        return (initialPanels.find(panel => panel.tag === properties.panelId) ||
+            initialPanels.find(panel => panel.title === properties.title))?.tag;
+    }
+    function iconFor(properties) {
+        const tag = panelTag(properties);
+        if (tag === 'ConfigBrowser' || tag === 'RunBrowser') {
+            // Native gallery and drag APIs accept SVG data URLs. Resolve theme
+            // colours because an SVG image cannot inherit its parent's CSS.
+            const theme = host.getComputedStyle?.(container.domNode || host.document.documentElement);
+            const colour = theme?.getPropertyValue('--mw-icon-object-primary').trim() || '#616161';
+            const background = theme?.getPropertyValue('--mw-icon-object-secondary').trim() || '#ffffff';
+            return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
+                '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">' +
+                (tag === 'ConfigBrowser' ? gearBody(24, colour, background) : playBody(24, colour)) + '</svg>');
+        }
+        return icons[tag] || properties.icon || 'genericSB';
+    }
+    function remove(entry) {
+        gallery._removeGalleryItem(entry.tag);
+        actions.removeAction(entry.actionId);
+    }
+    function paintButtons(root) {
+        for (const button of root.querySelectorAll('mw-sidebar-button')) {
+            const entry = entries.get(button.controls);
+            if (!entry) continue;
+            if (button.icon !== entry.icon) {
+                button.icon = entry.icon;
+                // The native drag controller loads its icon only on connection.
+                // Reconnect the same button to refresh its cached avatar while
+                // retaining native focus, keyboard, selection and drag behavior.
+                const parent = button.parentNode, next = button.nextSibling;
+                button.remove();
+                parent.insertBefore(button, next);
+            }
+            const icon = button.shadowRoot?.querySelector('#icon20');
+            if (!icon) continue;
+            const tag = entry.panelTag;
+            if (!['InfoBrowser', 'ConfigBrowser', 'RunBrowser'].includes(tag)) continue;
+            // Keep a real 20px native hit/drag-image slot. CSS transforms make
+            // the 24px source's strokes fractional and can blur the glyph.
+            icon.style.width = '20px';
+            icon.style.height = '20px';
+            icon.style.flex = '0 0 20px';
+            icon.style.transform = 'none';
+            icon.style.transformOrigin = '';
+            const custom = tag === 'ConfigBrowser' || tag === 'RunBrowser';
+            const id = custom ? 'genericSB' : entry.icon;
+            const size = custom ? 20 : 24;
+            if (icon.icon?.id !== id || icon.icon?.width !== size) {
+                icon.icon = {id, width: size, height: size};
+            }
+            const svg = icon.shadowRoot?.querySelector('svg');
+            if (!svg) continue;
+            svg.setAttribute('width', '20');
+            svg.setAttribute('height', '20');
+            svg.setAttribute('viewBox', '0 0 20 20');
+            if (!svg.querySelector('[data-kssolv-sidebar-vector]')) {
+                // Replace only this renderer's drawing. Catalog assets, the
+                // gallery and the native drag controller stay independent.
+                svg.innerHTML = '<g data-kssolv-sidebar-vector="' + tag + '">' +
+                    (tag === 'ConfigBrowser' ? gearBody(20) :
+                        tag === 'RunBrowser' ? playBody(20) : informationBody) + '</g>';
+            }
+        }
+        for (const element of root.querySelectorAll('*')) {
+            if (element.shadowRoot) paintButtons(element.shadowRoot);
+        }
+    }
+    function initializeLayout() {
+        if (container.__kssolvSidebarLayoutInitialized) return;
+        const layout = container.get('panelLayout');
+        for (const [region, tags] of [
+            ['left', ['ProjectBrowser', 'InfoBrowser']],
+            ['right', ['ConfigBrowser', 'RunBrowser']]
+        ]) {
+            const state = layout[region];
+            const grouped = new Set(tags);
+            // Preserve other drawers, including the Online Files browser.
+            const others = (state.children || []).map(group => ({...group,
+                children: group.children.filter(panel => !grouped.has(panel.id))
+            })).filter(group => group.children.length);
+            state.children = [{id: 'kssolv.' + region + '.browsers',
+                children: tags.map((id, index) => ({id, collapsed: id === 'InfoBrowser',
+                    portion: index === 0 ? 0.75 : 0.25}))}, ...others];
+            state.collapsed = region === 'right';
+        }
+        container.set('panelLayout', layout);
+        container.selectPanel('ProjectBrowser');
+        container.selectPanel('ConfigBrowser');
+        container.set('isRightCollapsed', true);
+        container.set('isBottomCollapsed', true);
+        container.__kssolvSidebarLayoutInitialized = true;
+    }
+    let resourceRequest, nextResourceUpdate = 0;
+    async function refreshResources() {
+        if (!component.Data.online || !host.fetch || resourceRequest || Date.now() < nextResourceUpdate) return;
+        let label;
+        try { label = container.uiBuilder.widgetByTag?.('OnlineResources'); }
+        catch (error) { return; } // Footer peers can arrive after panels on cold start.
+        if (!label) return;
+        const controller = new host.AbortController();
+        resourceRequest = controller;
+        const timeout = host.setTimeout(() => controller.abort(), 3000);
+        try {
+            const reply = await host.fetch('/_kssolv/resources', {
+                credentials: 'same-origin', cache: 'no-store', signal: controller.signal
+            });
+            if (!reply.ok) throw Error('Resource service unavailable');
+            const usage = await reply.json();
+            if (disposed) return;
+            if (!usage.available || Date.now() / 1000 - usage.sampledAt > 10) throw Error('Stale resource sample');
+            const percent = Number.isFinite(usage.cpuPercent) ? usage.cpuPercent.toFixed(1) + '%' : '—';
+            const gib = bytes => (bytes / 1073741824).toFixed(1);
+            const usedCores = Number.isFinite(usage.cpuPercent) ? (usage.cpuPercent * usage.cpuCores / 100).toFixed(2) : '—';
+            const scope = usage.scope === 'pod' ? '' : component.Data.hostLabel + '  ';
+            label.set('text', `${scope}CPU ${percent} (${usedCores}/${usage.cpuCores} cores)  │  ` +
+                `${component.Data.memoryLabel} ${gib(usage.memoryUsedBytes)} / ${gib(usage.memoryTotalBytes)} GiB`);
+        } catch (error) {
+            if (!disposed) label.set('text', `CPU —  │  ${component.Data.memoryLabel} —`);
+        } finally {
+            host.clearTimeout(timeout);
+            resourceRequest = null;
+            nextResourceUpdate = Date.now() + 2000;
+        }
+    }
+    function refresh() {
+        if (disposed) return;
+        try {
+            container = host.uiroot?.peer?._rootUIContainer;
+            gallery = container?._panelsGalleryManager;
+            if (!gallery) return;
+            const panels = container.getPanels();
+            // RUNNING can precede FigurePanel peer registration on cold start.
+            if (!ready && panels.length < initialPanels.length) return;
+            if (!actions) {
+                // A Toolstrip-backed service is ActAsClient: addAction is
+                // forbidden there. UIBuilder also creates actions for its
+                // gallery widgets, so both services need a local instance.
+                actions = new container.actionService.constructor();
+                previousActions = gallery._actionService;
+                previousBuilder = gallery._uiBuilder;
+                builder = new container.uiBuilder.constructor({
+                    channel: '/kssolv/sidebar/' + container.id,
+                    actionService: actions, isMATLABDriven: false,
+                    openWithViewModel: true, qabAuthoringMode: 'default',
+                    preserveQABBackground: true
+                });
+                gallery._uiBuilder = builder;
+                gallery._actionService = actions;
+            }
+            if (!gallery._galleryPopulated) gallery._populateGallery([]);
+            const current = new Set(panels.map(panel => panel.widget.id));
+            for (const [id, entry] of entries) {
+                if (!current.has(id)) { remove(entry); entries.delete(id); }
+            }
+            for (const {widget, properties} of panels) {
+                const id = widget.id, title = properties.title, icon = iconFor(properties);
+                const old = entries.get(id);
+                if (old?.title === title && old.icon === icon) continue;
+                if (old) remove(old);
+                const tag = 'kssolv.sidebar.gallery.' + id;
+                const actionId = 'kssolv.sidebar.open.' + id;
+                actions.addAction({id: actionId, enabled: true,
+                    callback: () => container.selectPanel(properties.panelId || id)});
+                gallery._addGalleryItem({tag, text: title,
+                    icon: icon.startsWith('data:') ? icon : {id: icon, width: 24, height: 24}, actionId});
+                // Supply the same source icon when a move recreates rail buttons.
+                properties.set('icon', icon);
+                widget.icon = icon;
+                widget.domNode.icon = icon;
+                entries.set(id, {tag, actionId, title, icon, panelTag: panelTag(properties)});
+            }
+            if (Dialogs && !previousOpenGallery) {
+                previousOpenGallery = gallery.openPanelsGalleryDialog;
+                gallery.openPanelsGalleryDialog = openGallery;
+            }
+            initializeLayout();
+            initializeDocumentHeader();
+            refreshResources();
+            paintButtons(host.document);
+            ready = true;
+            if (reportedCount !== panels.length) {
+                reportedCount = panels.length;
+                component.sendEventToMATLAB('SidebarReady', {panelCount: panels.length});
+            }
+        } catch (error) {
+            dispose();
+            component.sendEventToMATLAB('SidebarError', {message: error.message});
+        }
+    }
+    function dispose() {
+        if (disposed) return;
+        disposed = true;
+        host.clearInterval(timer);
+        resourceRequest?.abort();
+        cancelResize();
+        host.document.removeEventListener('pointerdown', beginResize, true);
+        host.document.removeEventListener('pointerup', endResize);
+        host.document.removeEventListener('mouseup', endResize);
+        host.document.removeEventListener('lostpointercapture', cancelResize, true);
+        host.document.removeEventListener('showpanelsgallery', showGallery, true);
+        host.document.removeEventListener('pointercancel', cancelResize, true);
+        host.removeEventListener('blur', cancelResize);
+        if (previousOpenGallery && gallery?.openPanelsGalleryDialog === openGallery) {
+            gallery.openPanelsGalleryDialog = previousOpenGallery;
+        }
+        if (gallery && container && !gallery._destroyed) {
+            for (const entry of entries.values()) remove(entry);
+            if (builder && gallery._uiBuilder === builder && !gallery._destroyed) {
+                gallery._dialog?.close();
+                if (gallery._galleryPanelId) builder.destroy(gallery._galleryPanelId);
+                gallery._galleryCreated = false;
+                gallery._galleryPopulated = false;
+                delete gallery._galleryPanelWidget;
+                delete gallery._galleryPanelId;
+                delete gallery._galleryCategoryId;
+                gallery._uiBuilder = previousBuilder;
+                gallery._actionService = previousActions;
+            }
+        }
+        builder?.cleanup();
+        actions?.destroy();
+        entries.clear();
+        window.removeEventListener('unload', dispose);
+        if (host[slot]?.dispose === dispose) delete host[slot];
+    }
+    host[slot] = {dispose};
+    window.addEventListener('unload', dispose, {once: true});
+    timer = host.setInterval(refresh, 500);
+    refresh();
+}
+</script></body></html>

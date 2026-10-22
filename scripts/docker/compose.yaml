@@ -1,0 +1,19 @@
+services:
+  kssolv:
+    image: kssolv-toolbox:local
+    platform: linux/amd64
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      AGREE_TO_MATLAB_RUNTIME_LICENSE: "yes"
+    volumes:
+      - kssolv-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,size=4g,mode=1777
+    shm_size: 512m
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    stop_grace_period: 20s
+volumes:
+  kssolv-data:

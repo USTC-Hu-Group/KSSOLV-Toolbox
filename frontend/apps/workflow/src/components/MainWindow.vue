@@ -526,7 +526,7 @@
 
     // 当 MATLAB 向工作流画布传递新的数据时
     const dataFromMATLABToHTML = () => {
-      graph.fromJSON(JSON.parse(MATLAB.Data));
+      graph.fromJSON(JSON.parse(MATLAB.Data || '[]'));
     };
 
     if (typeof MATLAB !== 'undefined') {
@@ -575,8 +575,6 @@
       });
     });
 
-    graph.on('history:change', graphExportToJSON);
-
     // 初始化节点/边
     const init = (data: Cell.Metadata[]) => {
       const cells: Cell[] = [];
@@ -588,7 +586,15 @@
       graph.resetCells(cells);
     };
 
-    init(dagData);
+    // uihtml supplies its initial Data before DataChanged listeners exist.
+    // Restore it before history exports can overwrite the saved workflow.
+    if (typeof MATLAB !== 'undefined') {
+      dataFromMATLABToHTML();
+    } else {
+      init(dagData);
+    }
+    graph.on('history:change', graphExportToJSON);
+    graphExportToJSON();
     graph.centerContent();
     graph.zoomToFit({ padding: 10, maxScale: 1.2 });
 

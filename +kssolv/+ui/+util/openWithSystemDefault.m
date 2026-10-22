@@ -11,6 +11,15 @@ if ~isfile(filePath) && ~isfolder(filePath)
         "The path does not exist: %s", filePath);
 end
 
+if isKSSOLVOnline()
+    if isfolder(filePath)
+        error("KSSOLV:UI:OnlineFile:Folder", ...
+            "Choose an individual file to view in the Online session.");
+    end
+    kssolv.ui.browser.OnlineFileViewer.open(filePath);
+    return
+end
+
 if ispc
     winopen(char(filePath));
     return

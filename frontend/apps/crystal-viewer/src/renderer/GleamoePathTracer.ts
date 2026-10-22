@@ -6,6 +6,7 @@ import {
   FrontSide,
   Mesh,
   MeshPhysicalMaterial,
+  NoBlending,
   RectAreaLight,
   Scene,
   SphereGeometry,
@@ -15,6 +16,7 @@ import {
   type OrthographicCamera,
   type WebGLRenderer,
 } from 'three';
+import { FullScreenQuad } from 'three/examples/jsm/postprocessing/Pass.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { DenoiseMaterial, GradientEquirectTexture, WebGLPathTracer } from 'three-gpu-pathtracer';
 
@@ -103,6 +105,7 @@ export class GleamoePathTracer {
     kSigma: 1,
     threshold: 0.5,
   });
+  private readonly finalQuad = new FullScreenQuad(this.denoiseMaterial);
   private environment?: GradientEquirectTexture;
   private readonly geometries = new Set<BufferGeometry>();
   private readonly materials = new Set<Material>();
@@ -117,11 +120,11 @@ export class GleamoePathTracer {
   private suspended = false;
 
   constructor(
-    renderer: WebGLRenderer,
+    private readonly tracerRenderer: WebGLRenderer,
     private readonly camera: OrthographicCamera,
     rasterizePreview?: () => void,
   ) {
-    this.tracer = new WebGLPathTracer(renderer);
+    this.tracer = new WebGLPathTracer(tracerRenderer);
     this.tracer.rasterizeScene = true;
     this.tracer.dynamicLowRes = false;
     this.tracer.renderDelay = 80;
@@ -363,6 +366,23 @@ export class GleamoePathTracer {
     if (this.ready) this.tracer.renderSample();
   }
 
+  /** Present the completed accumulation without the interactive fade or another sample. */
+  renderFinal(): void {
+    if (!this.ready) return;
+    const renderer = this.tracerRenderer;
+    const previousAutoClear = renderer.autoClear;
+    this.denoiseMaterial.map = this.tracer.target.texture;
+    this.denoiseMaterial.opacity = 1;
+    this.denoiseMaterial.transparent = false;
+    this.denoiseMaterial.blending = NoBlending;
+    renderer.autoClear = false;
+    try {
+      this.finalQuad.render(renderer);
+    } finally {
+      renderer.autoClear = previousAutoClear;
+    }
+  }
+
   updateCamera(): void {
     if (!this.ready) return;
     this.tracer.updateCamera();
@@ -428,6 +448,7 @@ export class GleamoePathTracer {
 
   dispose(): void {
     this.disposeScene(true);
+    this.finalQuad.dispose();
     this.denoiseMaterial.dispose();
     this.tracer.dispose();
   }

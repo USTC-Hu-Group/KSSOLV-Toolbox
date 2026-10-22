@@ -10,17 +10,11 @@ if ~isfile(runtime)
         "Build and sync the Crystal Viewer runtime before benchmarking.");
 end
 
-% Match MoleculeDisplay's cache-busting source staging.  More importantly,
+% Match MoleculeDisplay's content-addressed source staging. More importantly,
 % register the MATLAB callback before assigning HTMLSource: the optimized
 % viewer can emit its one-shot viewer:ready event before a callback assigned
 % after construction has become active.
-stagedRuntime = string(tempname) + ".html";
-[copied, copyMessage] = copyfile(runtime, stagedRuntime, "f");
-if ~copied
-    error("KSSOLV:CrystalViewer:HTMLSource", ...
-        "Unable to stage the benchmark viewer: %s", copyMessage);
-end
-runtimeCleanup = onCleanup(@()deleteIfPresent(stagedRuntime)); %#ok<NASGU>
+stagedRuntime = kssolv.ui.util.CrystalViewerRuntime.prepare(string(runtime));
 
 ready = false;
 rendered = containers.Map("KeyType", "char", "ValueType", "any");
@@ -165,10 +159,6 @@ end
 
 function deleteIfValid(value)
 if ~isempty(value) && isvalid(value), delete(value); end
-end
-
-function deleteIfPresent(path)
-if isfile(path), delete(path); end
 end
 
 function value = listText(items, delimiter)

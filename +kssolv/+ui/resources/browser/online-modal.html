@@ -1,0 +1,184 @@
+<!doctype html>
+<html><head><meta charset="utf-8"></head><body><script>
+/* Bridge only: the visible UI is rendered by MATLAB's existing modal and
+   embedded-figure services in the parent AppContainer page. */
+function setup(component) {
+    'use strict';
+    const host = window.parent;
+    let dialog, widget, holder, content, busyLayer, observer, revealTimer, controller, disposed = false;
+    let building = false, focusAfterReveal = false;
+    let lastSequence = -1;
+    let lastSize, appliedSize;
+    function resizeContent(size) {
+        if (!dialog || !holder || !widget) return;
+        lastSize = size;
+        const width = Math.min(size[0],host.innerWidth-48);
+        const height = Math.min(size[1],host.innerHeight-90);
+        if (appliedSize && appliedSize[0] === width && appliedSize[1] === height) return;
+        const box = dialog.domNode.getBoundingClientRect();
+        const bodyBox = dialog.domNode.querySelector('.mwDialogBody').getBoundingClientRect();
+        const extraWidth = box.width - bodyBox.width;
+        const extraHeight = box.height - bodyBox.height;
+        holder.style.width = `${width}px`; holder.style.height = `${height}px`;
+        // Clamp the viewport, not the native figure's layout. Fixed MATLAB
+        // grid rows can otherwise put their footer outside a smaller figure,
+        // where overflow is clipped and even scrolling cannot reach it.
+        content.style.width = `${size[0]}px`; content.style.height = `${size[1]}px`;
+        widget.resize({w:size[0],h:size[1]});
+        dialog.resizeTo({width:width+extraWidth,height:height+extraHeight});
+        dialog.moveTo();
+        appliedSize = [width,height];
+    }
+    // Hide partially constructed controls until their DOM/layout has settled.
+    // MATLAB explicitly holds Busy while constructors/updateUI run; mutations
+    // then extend the shield until the browser has painted the final layout.
+    function loading(value) {
+        if (!dialog) return;
+        dialog.domNode.setAttribute('aria-busy', String(value));
+        if (value && observer) observer.observe(content, {subtree:true,childList:true,attributes:true,characterData:true});
+        content.style.visibility = value ? 'hidden' : 'visible';
+        content.inert = value;
+        busyLayer.hidden = !value;
+        dialog.domNode.inert = value;
+    }
+    function settle() {
+        clearTimeout(revealTimer);
+        if (building || !dialog) return;
+        revealTimer = setTimeout(() => host.requestAnimationFrame(() => host.requestAnimationFrame(() => {
+            if (!building && dialog) {
+                if (observer) observer.disconnect();
+                loading(false);
+                // Creating the native shell while it is inert discards its
+                // initial focus. Focus it after reveal so Esc works immediately.
+                if (focusAfterReveal) {
+                    focusAfterReveal = false;
+                    dialog.bringToTop({setFocus:true});
+                }
+            }
+        })), 120);
+    }
+    let Dialogs, Factory, Interface;
+    const modalState = host.__kssolvOnlineModals || (host.__kssolvOnlineModals = {count:0});
+    let ownsBlocker = false;
+    function blockBackground() {
+        if (ownsBlocker) return;
+        const root = host.document.getElementById('uiroot');
+        if (modalState.count++ === 0 && root) { modalState.wasInert = root.inert; root.inert = true; }
+        ownsBlocker = true;
+    }
+    function releaseBackground() {
+        if (!ownsBlocker) return;
+        ownsBlocker = false;
+        const root = host.document.getElementById('uiroot');
+        if (--modalState.count === 0 && root) root.inert = modalState.wasInert;
+    }
+    const report = data => { if (!disposed) component.Data = data; };
+    function hide() {
+        if (!dialog) return;
+        clearTimeout(revealTimer);
+        if (observer) { observer.disconnect(); observer = null; }
+        // Retain the single connected figure view while a reusable dialog is
+        // hidden; remove only its modal shell and background/input blocker.
+        if (widget && widget.domNode) widget.domNode.remove();
+        releaseBackground();
+        dialog.close();
+        dialog = null;
+        focusAfterReveal = false;
+        appliedSize = null;
+    }
+    function dispose() {
+        if (disposed) return;
+        disposed = true;
+        hide();
+        if (widget) { widget.destroyRecursive(); widget = null; }
+    }
+    function apply(data) {
+        if (disposed || !Dialogs || !data || !data.action || data.sequence <= lastSequence) return;
+        lastSequence = data.sequence;
+        try {
+            if (data.action === 'hide' || data.visible === false) { hide(); return; }
+            if (data.action === 'busy') {
+                building = !!data.busy;
+                if (dialog) { loading(true); settle(); return; }
+            }
+            if (data.action === 'update') {
+                if (dialog) { dialog.title = data.title; return; }
+                if (!data.visible) return;
+            }
+            if (data.action === 'resize' && dialog) { resizeContent(data.size); return; }
+            if (!data.visible) return;
+            if (dialog) {
+                dialog.title = data.title;
+                building = !!data.busy;
+                loading(true);
+                focusAfterReveal = true;
+                settle();
+                return;
+            }
+            const width = Math.max(240, data.size[0]);
+            const height = Math.max(100, data.size[1]);
+            holder = host.document.createElement('div');
+            holder.style.cssText = `position:relative;width:${width}px;height:${height}px;max-width:calc(100vw - 48px);max-height:calc(100vh - 90px);overflow:auto`;
+            content = host.document.createElement('div');
+            content.style.cssText = 'width:100%;height:100%;visibility:hidden';
+            holder.appendChild(content);
+            busyLayer = host.document.createElement('div');
+            busyLayer.className = 'kssolv-modal-busy';
+            busyLayer.setAttribute('role','status');
+            busyLayer.setAttribute('aria-label','Loading dialog');
+            busyLayer.innerHTML = '<span class="kssolv-busy-spinner"></span><span>Loading…</span>';
+            holder.appendChild(busyLayer);
+            building = !!data.busy;
+            blockBackground();
+            dialog = Dialogs.createDialog({title:data.title, dialogType:Dialogs.MODAL,
+                content:holder, hideCloseButton:!data.closable, closeOnEscape:data.closable,
+                draggable:true, className:'kssolv-online-modal'});
+            focusAfterReveal = true;
+            dialog.domNode.dataset.kssolvModal = 'true';
+            if (!host.document.getElementById('kssolv-busy-style')) {
+                const style = host.document.createElement('style');
+                style.id = 'kssolv-busy-style';
+                style.textContent = '.kssolv-modal-busy{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:12px;background:var(--mw-backgroundColor,Canvas);color:inherit;font:14px system-ui;z-index:10}.kssolv-modal-busy[hidden]{display:none}.kssolv-busy-spinner{width:24px;height:24px;border:3px solid #9995;border-top-color:#339bde;border-radius:50%;animation:kssolv-spin .8s linear infinite}@keyframes kssolv-spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.kssolv-busy-spinner{animation:none}}';
+                host.document.head.appendChild(style);
+            }
+            busyLayer.style.backgroundColor = host.getComputedStyle(dialog.domNode).backgroundColor;
+            loading(true);
+            observer = new host.MutationObserver(settle);
+            observer.observe(content, {subtree:true,childList:true,attributes:true,characterData:true});
+            // MATLAB layouts already own their padding and button spacing.
+            // Avoid adding the modal shell's second, 20 px content inset.
+            dialog.domNode.querySelector('.mwDialogBody').style.padding = '0';
+            if (data.closable) dialog.addControlNodeEventListener('close',()=>report({event:'close'}));
+            if (!widget) {
+                const handler = new Interface();
+                handler.registerDivFigureMsgHandler = value => { controller = value; };
+                handler.handleFigurePropertyChange = (name,value) => {
+                    if ((name === 'Name' || name === 'Title') && dialog) dialog.title = value;
+                    if (name === 'Position') {
+                        const position = value.innerPos || value;
+                        resizeContent(position.slice(2,4));
+                    }
+                };
+                handler.handleFigureEvent = event => {
+                    if (event === 'windowClosed') hide();
+                };
+                widget = new Factory().createWidget({state:data.packet,handler,div:content});
+                widget.startup();
+            } else content.appendChild(widget.domNode);
+            resizeContent([width,height]);
+            settle();
+        } catch (error) { hide(); releaseBackground(); report({error:String(error)}); }
+    }
+    component.addEventListener('DataChanged',()=>apply(component.Data));
+    window.addEventListener('unload',dispose,{once:true});
+    const resizeViewport = () => { if (lastSize) resizeContent(lastSize); };
+    host.addEventListener('resize',resizeViewport);
+    window.addEventListener('unload',()=>host.removeEventListener('resize',resizeViewport),{once:true});
+    host.require(['mw-dialogs/Dialogs','gbtdivfigure/DivFigureFactory',
+        'gbtcomponents/controller/interface/DivFigureToAppLayerInterface'], (D,F,I)=>{
+        if (disposed) return;
+        Dialogs=D; Factory=F; Interface=I;
+        apply(component.Data);
+    });
+}
+</script></body></html>

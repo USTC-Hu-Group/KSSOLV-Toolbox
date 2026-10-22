@@ -93,8 +93,12 @@ classdef RemoteWorkflowRunner
             for index = 1:numel(snapshot.RemoteTasks)
                 task = snapshot.RemoteTasks(index);
                 taskStart = tic;
+                resources = kssolv.services.workflow.ExecutionResources.defaults();
+                if isfield(task, 'Resources')
+                    resources = task.Resources;
+                end
                 context = kssolv.services.remote.execution.ExecutionTaskRegistry. ...
-                    execute(task.ClassName, context, task.Options);
+                    execute(task.ClassName, context, task.Options, resources);
                 taskStates(index) = struct( ...
                     "NodeId", string(task.NodeId), ...
                     "State", "Finished", ...

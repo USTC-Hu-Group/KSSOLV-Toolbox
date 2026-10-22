@@ -37,6 +37,7 @@ classdef QABHelpButton < matlab.ui.internal.toolstrip.impl.QABPushButton
 
     methods (Hidden = true)
         function openHelp(this)
+            if isKSSOLVOnline(), return, end
             if isempty(this.DocName)
                 doc;
                 return;

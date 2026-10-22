@@ -1,4 +1,4 @@
-classdef BuildWorkflowFromTemplate < controllib.ui.internal.dialog.AbstractDialog
+classdef BuildWorkflowFromTemplate < kssolv.ui.components.dialog.SessionDialog
     %BUILDWORKFLOWFROMTEMPLATE 从预置和自定义的模板中导入工作流
 
     %   开发者：杨柳

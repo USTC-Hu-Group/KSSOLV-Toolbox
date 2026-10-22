@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KSSOLV Toolbox Online</title><link id="connection-icon" rel="icon" type="image/svg+xml" href="/_portal/favicon.svg?state=idle"><script src="/_portal/favicon.js" defer></script><style>__PORTAL_CRITICAL_CSS__</style><link id="portal-style" rel="stylesheet" href="/_portal/style.css" media="print"><script src="/_portal/i18n.js" defer></script><script src="/_portal/sizes.js" defer></script><script src="/_portal/app.js" defer></script></head>
+<body class="booting"><div id="page-loading" role="status" aria-label="正在加载" data-i18n-aria-label><div class="page-loading-box"><span class="page-loading-spinner"></span></div></div><main class="mwDialog" aria-labelledby="portal-title">
+<header class="mwDialogTitleBar"><h1 id="portal-title">KSSOLV Toolbox Online</h1><div class="language-control"><label for="portal-language" data-i18n>语言</label><select id="portal-language" aria-label="语言" data-i18n-aria-label><option value="zh-CN">中文</option><option value="en">English</option></select></div></header>
+<div class="mwDialogBody">
+<section id="account"><nav role="tablist" aria-label="账号" data-i18n-aria-label>
+<button id="login-tab" role="tab" aria-selected="true" aria-controls="account-form" class="selected" data-i18n>登录</button>
+<button id="register-tab" role="tab" aria-selected="false" aria-controls="account-form" tabindex="-1" data-i18n>注册账号</button></nav>
+<form id="account-form" role="tabpanel" aria-labelledby="login-tab" novalidate><div class="form-grid">
+<div class="field-with-help"><label for="username" data-i18n>用户名：</label><span id="username-help" class="field-help" hidden><button type="button" class="help-button" aria-label="用户名格式" data-i18n-aria-label aria-describedby="username-tooltip">?</button><span id="username-tooltip" role="tooltip" data-i18n>以小写字母开头，可用小写字母、数字和连字符（3–32 个字符）。</span></span></div><input id="username" name="username" autocomplete="username" required pattern="[a-z][a-z0-9\-]{2,31}" minlength="3" maxlength="32">
+<div class="field-with-help"><label for="password" data-i18n>密码：</label><span id="password-help" class="field-help" hidden><button type="button" class="help-button" aria-label="密码说明" data-i18n-aria-label aria-describedby="password-help-tooltip">?</button><span id="password-help-tooltip" role="tooltip" data-i18n>可用大小写字母、数字和特殊符号，区分大小写（12–128 个字符）。</span></span></div><input id="password" name="password" type="password" autocomplete="current-password" required maxlength="128">
+<div id="login-size-row" class="form-row"><label for="login-size" data-i18n>实例配置：</label><select id="login-size"><option id="login-size-small" value="small" data-i18n>小</option><option id="login-size-medium" value="medium" selected data-i18n>中</option><option id="login-size-large" value="large" data-i18n>大</option></select></div>
+<div id="confirm-row" class="form-row" hidden><label for="password-confirmation" data-i18n>确认密码：</label><input id="password-confirmation" name="passwordConfirmation" type="password" autocomplete="new-password" minlength="12" maxlength="128"></div>
+<div id="question-row" class="form-row" hidden><label for="recovery-question-input" data-i18n>备忘问题：</label><div class="input-help"><input id="recovery-question-input" name="recoveryQuestion" autocomplete="off" minlength="4" maxlength="200" placeholder="输入备忘问题" data-i18n-placeholder aria-describedby="recovery-question-input-tooltip"><span id="recovery-question-input-tooltip" role="tooltip" data-i18n>忘记密码时用于验证身份。例：我给第一盆植物起的昵称是什么？（4–200 个字符）</span></div></div>
+<div id="answer-row" class="form-row" hidden><label for="recovery-answer" data-i18n>备忘答案：</label><div class="input-help"><input id="recovery-answer" name="recoveryAnswer" type="password" autocomplete="off" minlength="2" maxlength="128" aria-describedby="recovery-answer-tooltip"><span id="recovery-answer-tooltip" role="tooltip" data-i18n>例：蓝色星云。忽略大小写及首尾空白，请设置难猜的答案并牢记（2–128 个字符）。</span></div></div>
+<div id="invite-row" class="form-row" hidden><label for="invitation" data-i18n>邀请码：</label><div class="input-help"><input id="invitation" name="invitation" autocomplete="off" aria-describedby="invitation-tooltip"><span id="invitation-tooltip" role="tooltip" data-i18n>请联系管理员获取邀请码。</span></div></div>
+</div><div class="mwDialogButtonBar"><button type="button" id="forgot-password" class="text-button" data-i18n>忘记密码</button><button type="submit" id="submit" class="primary" data-i18n>登录并打开工作空间</button></div></form></section>
+<section id="password-recovery" hidden><h2 data-i18n>忘记密码</h2>
+<form id="recovery-form" novalidate><div class="form-grid">
+<label for="recovery-username" data-i18n>用户名：</label><input id="recovery-username" autocomplete="username" required pattern="[a-z][a-z0-9\-]{2,31}" minlength="3" maxlength="32">
+<div id="recovery-fields" class="form-row" hidden>
+<span class="field-label" data-i18n>备忘问题：</span><p id="recovery-question" class="question-text"></p>
+<label for="reset-answer" data-i18n>备忘答案：</label><input id="reset-answer" type="password" autocomplete="off" minlength="2" maxlength="128">
+<label for="reset-password" data-i18n>新密码：</label><input id="reset-password" type="password" autocomplete="new-password" minlength="12" maxlength="128">
+<label for="reset-confirmation" data-i18n>确认新密码：</label><input id="reset-confirmation" type="password" autocomplete="new-password" minlength="12" maxlength="128">
+</div></div><p id="reset-policy" class="form-hint" hidden data-i18n>答案忽略大小写及首尾空白。重置后退出所有会话并释放实例，已保存文件保留，未保存内容可能丢失。</p>
+<div class="mwDialogButtonBar"><button type="button" id="recovery-back" data-i18n>返回登录</button><button type="button" id="recovery-change" hidden data-i18n>更换用户名</button><button type="submit" id="recovery-submit" class="primary" data-i18n>获取备忘问题</button></div></form></section>
+<section id="recovery-setup" hidden><h2 data-i18n>设置备忘问题</h2><p data-i18n>此账号尚未设置备忘问题。设置后可在忘记密码时验证答案并重置。</p>
+<form id="setup-form" novalidate><div class="form-grid">
+<label for="setup-password" data-i18n>当前密码：</label><input id="setup-password" type="password" autocomplete="current-password" required maxlength="128">
+<label for="setup-question" data-i18n>备忘问题：</label><input id="setup-question" autocomplete="off" required minlength="4" maxlength="200">
+<label for="setup-answer" data-i18n>备忘答案：</label><input id="setup-answer" type="password" autocomplete="off" required minlength="2" maxlength="128">
+</div><p class="form-hint" data-i18n>问题会公开显示，请使用非公开、难以猜测的答案；答案忽略大小写及首尾空白。</p>
+<div class="mwDialogButtonBar"><button type="button" id="setup-skip" data-i18n>稍后设置</button><button type="submit" id="setup-submit" class="primary" data-i18n>保存并打开工作空间</button></div></form></section>
+<section id="workspace" hidden><h2 id="welcome" data-i18n>工作空间</h2><p id="state"></p><div id="busy" class="busy" role="status" data-i18n>正在准备工作空间…</div>
+<div id="workspace-size-row" class="form-grid" hidden><label for="workspace-size" data-i18n>实例配置：</label><select id="workspace-size"><option id="workspace-size-small" value="small" data-i18n>小</option><option id="workspace-size-medium" value="medium" selected data-i18n>中</option><option id="workspace-size-large" value="large" data-i18n>大</option></select></div><div class="workspace-actions"><button id="open" hidden data-i18n>打开工作空间</button><button id="start" hidden data-i18n>启动工作空间</button><button id="restart" hidden data-i18n>重启工作空间</button><button id="logout" data-i18n>注销并释放实例</button></div></section>
+<p id="message" role="status" aria-live="polite"></p><footer id="policy" data-i18n>空闲超时后实例自动释放，请及时保存项目。</footer>
+</div></main><div id="session-error" role="alert" hidden></div>
+<dialog id="restart-confirm" class="mwDialog" aria-labelledby="restart-title"><header class="mwDialogTitleBar"><h2 id="restart-title" data-i18n>重启工作空间</h2></header><div class="mwDialogBody"><p data-i18n>重启会关闭当前实例，未保存的内容可能丢失。已保存的文件和设置保留。</p><p data-i18n>是否继续重启？</p></div><div class="mwDialogButtonBar"><button id="restart-cancel" data-i18n>取消</button><button id="restart-confirm-button" class="primary" data-i18n>重启</button></div></dialog>
+<iframe id="tenant-workspace" title="KSSOLV 独立工作空间" data-i18n-title hidden allow="fullscreen; clipboard-read; clipboard-write"></iframe>
+</body></html>

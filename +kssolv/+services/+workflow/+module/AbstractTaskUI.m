@@ -18,6 +18,10 @@ classdef (Abstract) AbstractTaskUI < matlab.mixin.SetGet
         isDirty (1, 1) logical = false
     end
 
+    events
+        OptionsChanged
+    end
+
     methods (Access = protected)
         function this = AbstractTaskUI()
             this.setupDefaultOptions();
@@ -26,6 +30,7 @@ classdef (Abstract) AbstractTaskUI < matlab.mixin.SetGet
 
         function markDirty(this)
             this.isDirty = true;
+            notify(this, 'OptionsChanged');
             project = kssolv.ui.util.DataStorage.getData('Project');
             if ~isempty(project)
                 project.isDirty = true;
@@ -44,6 +49,17 @@ classdef (Abstract) AbstractTaskUI < matlab.mixin.SetGet
     end
 
     methods
+        function value = getOptionsSnapshot(this)
+            % Loaded tasks remain usable before their transient UI is built.
+            if ~isempty(this.widgets)
+                value = this.options;
+            elseif ~isempty(fieldnames(this.privateOptions))
+                value = this.privateOptions;
+            else
+                value = this.defaultOptions;
+            end
+        end
+
         function setupUI(this)
             if ~isempty(fields(this.privateOptions))
                 this.setup(this.privateOptions);

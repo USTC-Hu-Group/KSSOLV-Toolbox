@@ -75,7 +75,7 @@ class PackagingTests(unittest.TestCase):
             resources = self.root / mode; resources.mkdir()
             output = resources / 'Distribution'
             requirements = dict(self.metadata, RuntimeDelivery=mode)
-            with mock.patch.object(distribution, 'runtime_license'):
+            with mock.patch.object(distribution, 'runtime_license', side_effect=lambda folder, _: (folder / 'RuntimeLicense.txt').write_text('runtime license fixture')):
                 distribution.write(resources, output, requirements, '0.4.1', license_file)
             root = ET.parse(output).getroot()
             choices = root.findall('choices-outline/line')
@@ -93,6 +93,32 @@ class PackagingTests(unittest.TestCase):
                 self.assertIsNone(selected)
             self.assertIsNone(root.find("choice[@id='runtime-support']").get('customLocation'))
             self.assertEqual(root.find("choice[@id='application']").get('customLocation'), '/Applications')
+
+    def test_installer_displays_application_license_before_runtime_terms(self):
+        # Use the repository's real license so the released agreement cannot
+        # silently regress to showing only the MathWorks license again.
+        license_file = ASSETS.parents[2] / 'LICENSE'
+        application_terms = license_file.read_text(encoding='utf-8')
+        vendor_terms = 'MATLAB RUNTIME LICENSE\nOfficial vendor agreement fixture.'
+        for mode in ('none', 'web', 'installer'):
+            with self.subTest(mode=mode):
+                resources = self.root / mode; resources.mkdir()
+                output = resources / 'Distribution'
+                with mock.patch.object(distribution, 'runtime_license', side_effect=lambda folder, _: (folder / 'RuntimeLicense.txt').write_text(vendor_terms)) as vendor:
+                    distribution.write(resources, output, dict(self.metadata, RuntimeDelivery=mode), '0.5.0', license_file)
+                agreement = ET.parse(output).getroot().find('license')
+                displayed = (resources / agreement.get('file')).read_text(encoding='utf-8')
+                self.assertEqual((resources / 'ApplicationLicense.txt').read_bytes(), license_file.read_bytes())
+                self.assertIn(application_terms, displayed)
+                self.assertEqual(agreement.get('mime-type'), 'text/plain')
+                if mode == 'none':
+                    self.assertEqual(displayed, application_terms)
+                    vendor.assert_not_called()
+                else:
+                    self.assertLess(displayed.index(application_terms), displayed.index(vendor_terms))
+                    self.assertIn('only if a compatible installation is not already available', displayed)
+                    self.assertTrue(displayed.endswith(vendor_terms))
+                    vendor.assert_called_once()
 
     def test_web_and_installer_stage_exact_matching_payload(self):
         for mode in ('web', 'installer'):

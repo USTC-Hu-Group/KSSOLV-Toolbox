@@ -8,7 +8,6 @@ classdef Settings
     % 版权 2025-2026 合肥瀚海量子科技有限公司
 
     properties (Constant, Access = private)
-        PreferenceGroup = 'KSSOLVToolbox'
         ModelCacheTTLDays = 7
     end
 
@@ -21,11 +20,11 @@ classdef Settings
             preferenceNames = { ...
                 'Locale', 'LLMType', 'OllamaServerURL', 'OllamaModel', ...
                 'OpenAIBaseURL', 'OpenAIModel'};
+            preferences = kssolv.settings.Preferences.read();
             for i = 1:numel(preferenceNames)
                 name = preferenceNames{i};
-                if ispref(kssolv.settings.Settings.PreferenceGroup, name)
-                    settings.(name) = getpref( ...
-                        kssolv.settings.Settings.PreferenceGroup, name);
+                if isfield(preferences, name)
+                    settings.(name) = preferences.(name);
                 end
             end
 
@@ -76,21 +75,29 @@ classdef Settings
             end
 
             settings = kssolv.settings.Settings.normalize(settings);
-            settings.OllamaModels = ...
+            [settings.OllamaModels, ollamaCached] = ...
                 kssolv.settings.Settings.loadCachedModels( ...
                 'Ollama', settings.OllamaServerURL, settings.OllamaModel);
 
-            cachedOpenAIModels = ...
+            [cachedOpenAIModels, openAICached] = ...
                 kssolv.settings.Settings.loadCachedModels( ...
                 'OpenAICompatible', settings.OpenAIBaseURL, settings.OpenAIModel);
             environmentModels = environment.OpenAIModelList;
-            if strlength(environmentModels) > 0
+            if ~openAICached && strlength(environmentModels) > 0
                 settings.OpenAIModels = ...
                     kssolv.settings.Settings.normalizeModelList( ...
                     [strip(split(environmentModels, ',')); ...
                     string(cachedOpenAIModels(:))], settings.OpenAIModel);
             else
                 settings.OpenAIModels = cachedOpenAIModels;
+            end
+            % A successful discovery is authoritative for its endpoint.
+            % Do not reinsert a default, stale selection or environment list.
+            if ollamaCached && ~ismember(settings.OllamaModel, string(settings.OllamaModels))
+                settings.OllamaModel = string(settings.OllamaModels{1});
+            end
+            if openAICached && ~ismember(settings.OpenAIModel, string(settings.OpenAIModels))
+                settings.OpenAIModel = string(settings.OpenAIModels{1});
             end
             settings = kssolv.settings.Settings.normalize(settings);
             if isdeployed
@@ -114,11 +121,12 @@ classdef Settings
             preferenceNames = { ...
                 'Locale', 'LLMType', 'OllamaServerURL', 'OllamaModel', ...
                 'OpenAIBaseURL', 'OpenAIModel'};
+            preferences = struct();
             for i = 1:numel(preferenceNames)
                 name = preferenceNames{i};
-                setpref(kssolv.settings.Settings.PreferenceGroup, ...
-                    name, settings.(name));
+                preferences.(name) = settings.(name);
             end
+            kssolv.settings.Preferences.write(preferences);
 
             kssolv.settings.Environment.apply(settings);
             if isdeployed
@@ -171,7 +179,7 @@ classdef Settings
 
     methods (Static, Access = private)
         function value = valueFromEnvironmentWhenUnset(name, savedValue, environmentValue)
-            if ~ispref(kssolv.settings.Settings.PreferenceGroup, name) && ...
+            if ~kssolv.settings.Preferences.has(name) && ...
                     strlength(string(strtrim(environmentValue))) > 0
                 value = string(strtrim(environmentValue));
             else
@@ -221,7 +229,8 @@ classdef Settings
             models = cellstr(models(:).');
         end
 
-        function models = loadCachedModels(provider, endpoint, selectedModel)
+        function [models, cached] = loadCachedModels(provider, endpoint, selectedModel)
+            cached = false;
             models = kssolv.settings.Settings.normalizeModelList( ...
                 {}, selectedModel);
             key = kssolv.settings.Settings.modelCacheKey(provider, endpoint);
@@ -243,8 +252,11 @@ classdef Settings
                     datetime('now', 'TimeZone', 'UTC')
                 return
             end
-            models = kssolv.settings.Settings.normalizeModelList( ...
-                entry.Models, selectedModel);
+            discovered = kssolv.settings.Settings.normalizeModelList(entry.Models, "");
+            if ~isempty(discovered)
+                models = discovered;
+                cached = true;
+            end
         end
 
         function key = modelCacheKey(provider, endpoint)

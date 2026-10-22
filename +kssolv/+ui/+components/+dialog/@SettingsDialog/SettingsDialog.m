@@ -1,4 +1,4 @@
-classdef SettingsDialog < controllib.ui.internal.dialog.AbstractDialog
+classdef SettingsDialog < kssolv.ui.components.dialog.SessionDialog
     %SETTINGSDIALOG 配置界面语言和大语言模型服务。
 
     % 开发者：杨柳
@@ -32,12 +32,21 @@ classdef SettingsDialog < controllib.ui.internal.dialog.AbstractDialog
         materialsProjectAPIKeyVisible (1, 1) logical = false
         isClosing (1, 1) logical = false
         connectionTestFuture = []
-        connectionTestCompletionFuture = []
         connectionTestProvider (1, 1) string = ""
         connectionTestToken (1, 1) uint64 = uint64(0)
     end
 
     methods
+        function selectAccountTab(this)
+            if isfield(this.widgets,'AccountTab')
+                this.tabGroup.SelectedTab = this.widgets.AccountTab;
+            end
+        end
+
+        function delete(this)
+            this.stopConnectionTest(false);
+        end
+
         function this = SettingsDialog()
             %SETTINGSDIALOG 构造设置对话框。
             import kssolv.ui.util.Localizer.message
@@ -58,7 +67,7 @@ classdef SettingsDialog < controllib.ui.internal.dialog.AbstractDialog
             this.loadSettingsIntoWidgets();
             this.isClosing = false;
             this.pendingDialogOptions = struct();
-            show@controllib.ui.internal.dialog.AbstractDialog(this, varargin{:});
+            show@kssolv.ui.components.dialog.SessionDialog(this, varargin{:});
         end
 
         function close(this)
@@ -85,7 +94,7 @@ classdef SettingsDialog < controllib.ui.internal.dialog.AbstractDialog
 
             this.isClosing = true;
             this.dialogOptions = options;
-            close@controllib.ui.internal.dialog.AbstractDialog(this);
+            close@kssolv.ui.components.dialog.SessionDialog(this);
 
             data = struct('KSSOLVOptions', this.dialogOptions);
             event = matlab.ui.internal.databrowser.GenericEventData(data);
@@ -112,7 +121,69 @@ classdef SettingsDialog < controllib.ui.internal.dialog.AbstractDialog
 
             this.buildGeneralTab();
             this.buildMaterialsProjectTab();
+            if isKSSOLVOnline(), this.buildAccountTab(); end
             this.createButtonPanel();
+        end
+
+        function buildAccountTab(this)
+            import kssolv.ui.util.Localizer.message
+            tab = uitab(this.tabGroup, 'Title', message('KSSOLV:dialogs:OnlineAccountTab'));
+            layout = uigridlayout(tab, [6 2], 'ColumnWidth', {160,'1x'}, ...
+                'RowHeight', {28,28,28,'fit','1x',24}, 'Padding', 18, 'RowSpacing', 12);
+            keys = {'OnlineAccountUsername','OnlineAccountStatus','OnlineAccountIdle'};
+            names = {'AccountUsername','AccountStatus','AccountIdle'};
+            for row = 1:3
+                label = uilabel(layout, 'Text', message(['KSSOLV:dialogs:' keys{row}]));
+                label.Layout.Row = row; label.Layout.Column = 1;
+                if row == 2
+                    status = uigridlayout(layout, [1 2], 'ColumnWidth', {10,'1x'}, ...
+                        'RowHeight', {'1x'}, 'Padding', 0, 'ColumnSpacing', 6);
+                    status.Layout.Row = row; status.Layout.Column = 2;
+                    this.widgets.AccountStatusIndicator = uilabel(status, 'Text', '●', ...
+                        'FontSize', 10, 'FontColor', [0.5 0.5 0.5], 'Tag', 'OnlineConnectionIndicator');
+                    value = uilabel(status, 'Text', '—');
+                    value.Layout.Column = 2;
+                else
+                    value = uilabel(layout, 'Text', '—');
+                    value.Layout.Row = row; value.Layout.Column = 2;
+                end
+                this.widgets.(names{row}) = value;
+            end
+            note = uilabel(layout, 'Text', message('KSSOLV:dialogs:OnlineAccountRetentionNote'), ...
+                'WordWrap', 'on');
+            note.Layout.Row = 4; note.Layout.Column = [1 2];
+            buttons = uigridlayout(layout, [1 3], 'ColumnWidth', {'1x','fit','fit'}, ...
+                'RowHeight', {'1x'}, 'Padding', 0);
+            buttons.Layout.Row = 6; buttons.Layout.Column = [1 2];
+            reconnect = uibutton(buttons, 'Text', message('KSSOLV:dialogs:OnlineAccountReconnect'), ...
+                'ButtonPushedFcn', @(~,~)kssolv.ui.util.DataStorage.getData('HomeTab').requestOnlineAccountAction('reconnect'));
+            reconnect.Layout.Column = 2;
+            logout = uibutton(buttons, 'Text', message('KSSOLV:dialogs:OnlineAccountSignOut'), ...
+                'ButtonPushedFcn', @(~,~)kssolv.ui.util.DataStorage.getData('QuickAccessBar').signOut());
+            logout.Layout.Column = 3;
+            this.widgets.AccountTab = tab;
+            this.widgets.AccountReconnect = reconnect;
+            this.widgets.AccountSignOut = logout;
+        end
+
+        function updateAccountTab(this)
+            if ~isfield(this.widgets, 'AccountTab'), return, end
+            import kssolv.ui.util.Localizer.message
+            state = kssolv.ui.util.DataStorage.getData('OnlineAccount');
+            connected = isstruct(state) && isfield(state, 'username') && strlength(string(state.username)) > 0;
+            if connected
+                this.widgets.AccountUsername.Text = char(string(state.username));
+                this.widgets.AccountStatus.Text = message('KSSOLV:dialogs:OnlineAccountConnected');
+                this.widgets.AccountStatusIndicator.FontColor = [0.12 0.62 0.29];
+                this.widgets.AccountIdle.Text = sprintf(message('KSSOLV:dialogs:OnlineAccountIdleMinutes'), ceil(state.idleSeconds/60));
+            else
+                this.widgets.AccountUsername.Text = '—';
+                this.widgets.AccountStatus.Text = message('KSSOLV:dialogs:OnlineAccountNotConnected');
+                this.widgets.AccountStatusIndicator.FontColor = [0.5 0.5 0.5];
+                this.widgets.AccountIdle.Text = '—';
+            end
+            this.widgets.AccountReconnect.Enable = connected;
+            this.widgets.AccountSignOut.Enable = connected;
         end
 
         function buildGeneralTab(this)
@@ -172,16 +243,29 @@ classdef SettingsDialog < controllib.ui.internal.dialog.AbstractDialog
             visibilityButton.Layout.Row = 1;
             visibilityButton.Layout.Column = 3;
 
-            dashboardButton = uibutton(layout, 'Text', message( ...
-                'KSSOLV:dialogs:SettingsDialogMaterialsProjectOpenAPIPage'), ...
-                'Interruptible', 'off', ...
-                'ButtonPushedFcn', ...
-                @(~, ~) this.openMaterialsProjectAPIPage());
+            if isKSSOLVOnline()
+                dashboardButton = uihyperlink(layout, 'Text', message( ...
+                    'KSSOLV:dialogs:SettingsDialogMaterialsProjectOpenAPIPage'), ...
+                    'URL', this.materialsProjectAPIURL);
+            else
+                dashboardButton = uibutton(layout, 'Text', message( ...
+                    'KSSOLV:dialogs:SettingsDialogMaterialsProjectOpenAPIPage'), ...
+                    'Interruptible', 'off', ...
+                    'ButtonPushedFcn', ...
+                    @(~, ~) this.openMaterialsProjectAPIPage());
+            end
             dashboardButton.Layout.Row = 2;
             dashboardButton.Layout.Column = [2 3];
 
-            note = uilabel(layout, 'Text', message( ...
-                'KSSOLV:dialogs:SettingsDialogMaterialsProjectKeyNote'), ...
+            noteText = message( ...
+                'KSSOLV:dialogs:SettingsDialogMaterialsProjectKeyNote');
+            if isKSSOLVOnline()
+                noteText = strrep(noteText, '系统浏览器', '浏览器');
+                noteText = strrep(noteText, 'system browser', 'browser');
+                noteText = strrep(noteText, '上方按钮', '上方链接');
+                noteText = strrep(noteText, 'button above', 'link above');
+            end
+            note = uilabel(layout, 'Text', noteText, ...
                 'FontAngle', 'italic', ...
                 'FontColor', [0.35 0.35 0.35], ...
                 'VerticalAlignment', 'top', ...
@@ -434,9 +518,15 @@ classdef SettingsDialog < controllib.ui.internal.dialog.AbstractDialog
                 'Padding', 0);
             layout.Layout.Row = 3;
 
-            helpButton = uibutton(layout, 'Text', ...
-                message('KSSOLV:dialogs:SettingsDialogHelpButtonText'), ...
-                'ButtonPushedFcn', @(~, ~) this.helpButtonClicked());
+            if isKSSOLVOnline()
+                helpButton = uihyperlink(layout, 'Text', ...
+                    message('KSSOLV:dialogs:SettingsDialogHelpButtonText'), ...
+                    'URL', [KSSOLV_Toolbox.CodeRepository '#readme']);
+            else
+                helpButton = uibutton(layout, 'Text', ...
+                    message('KSSOLV:dialogs:SettingsDialogHelpButtonText'), ...
+                    'ButtonPushedFcn', @(~, ~) this.helpButtonClicked());
+            end
             helpButton.Layout.Column = 1;
             okButton = uibutton(layout, 'Text', ...
                 message('KSSOLV:dialogs:SettingsDialogOKButtonText'), ...
@@ -455,6 +545,7 @@ classdef SettingsDialog < controllib.ui.internal.dialog.AbstractDialog
 
     methods (Access = private)
         function loadSettingsIntoWidgets(this)
+            this.updateAccountTab();
             if ~isfield(this.widgets, 'LanguageDropdown')
                 return
             end
@@ -553,18 +644,14 @@ classdef SettingsDialog < controllib.ui.internal.dialog.AbstractDialog
 
             future = [];
             try
-                future = parfeval(backgroundPool, ...
-                    @kssolv.ui.components.dialog.SettingsDialog.fetchModels, ...
-                    1, provider, url, apiKey);
+                future = this.createModelRequest(provider, url, apiKey, ...
+                    @(completed) this.connectionTestFinished( ...
+                    completed, token, provider, url));
                 this.connectionTestFuture = future;
-                this.connectionTestCompletionFuture = afterEach(future, ...
-                    @(completedFuture) this.connectionTestFinished( ...
-                    completedFuture, token, provider, url), ...
-                    0, PassFuture = true);
+                start(future);
             catch exception
                 this.cancelFuture(future);
                 this.connectionTestFuture = [];
-                this.connectionTestCompletionFuture = [];
                 this.connectionTestProvider = "";
                 this.setConnectionTestRunning(provider, false);
                 this.setConnectionState(provider, 'failure', ...
@@ -606,7 +693,6 @@ classdef SettingsDialog < controllib.ui.internal.dialog.AbstractDialog
             end
 
             this.connectionTestFuture = [];
-            this.connectionTestCompletionFuture = [];
             this.connectionTestProvider = "";
             this.setConnectionTestRunning(provider, false);
             this.setConnectionState(provider, state, detail);
@@ -714,17 +800,15 @@ classdef SettingsDialog < controllib.ui.internal.dialog.AbstractDialog
 
             provider = this.connectionTestProvider;
             requestFuture = this.connectionTestFuture;
-            completionFuture = this.connectionTestCompletionFuture;
 
             this.connectionTestToken = this.connectionTestToken + 1;
             this.connectionTestFuture = [];
-            this.connectionTestCompletionFuture = [];
             this.connectionTestProvider = "";
 
-            this.cancelFuture(completionFuture);
             this.cancelFuture(requestFuture);
 
-            if strlength(provider) == 0
+            if strlength(provider) == 0 || ...
+                    ~isvalid(this.widgets.([char(provider) 'TestButton']))
                 return
             end
             this.setConnectionTestRunning(char(provider), false);
@@ -1011,20 +1095,17 @@ classdef SettingsDialog < controllib.ui.internal.dialog.AbstractDialog
             value = "********************************";
         end
 
-        function models = fetchModels(provider, url, apiKey)
+        function request = createModelRequest(provider, url, apiKey, complete)
             if strcmp(provider, 'Ollama')
-                response = webread(url + "/api/tags", ...
-                    weboptions('Timeout', 10, 'ContentType', 'json'));
-                models = ...
-                    kssolv.ui.components.dialog.SettingsDialog.extractOllamaModels(response);
-                return
+                endpoint = url + "/api/tags";
+                headers = struct();
+                decode = @kssolv.ui.components.dialog.SettingsDialog.extractOllamaModels;
+            else
+                endpoint = url + "/models";
+                headers = struct('Authorization', 'Bearer ' + apiKey);
+                decode = @kssolv.ui.components.dialog.SettingsDialog.extractOpenAIModels;
             end
-
-            options = weboptions('Timeout', 10, 'ContentType', 'json', ...
-                'HeaderFields', {'Authorization', ['Bearer ' char(apiKey)]});
-            response = webread(url + "/models", options);
-            models = ...
-                kssolv.ui.components.dialog.SettingsDialog.extractOpenAIModels(response);
+            request = kssolv.services.http.HTTPJSONRequest(endpoint, headers, decode, complete);
         end
 
         function cancelFuture(future)
@@ -1111,14 +1192,14 @@ classdef SettingsDialog < controllib.ui.internal.dialog.AbstractDialog
         function setDropdownModels(dropdown, models, selectedModel)
             models = string(models(:));
             selectedModel = strip(string(selectedModel));
-            models = unique([selectedModel; strip(models)], 'stable');
+            models = unique(strip(models), 'stable');
             models(strlength(models) == 0) = [];
             if isempty(models)
-                models = "";
+                models = selectedModel;
             end
             dropdown.Items = cellstr(models(:).');
             dropdown.Value = char(models(1));
-            if strlength(selectedModel) > 0
+            if ismember(selectedModel, models)
                 dropdown.Value = char(selectedModel);
             end
         end

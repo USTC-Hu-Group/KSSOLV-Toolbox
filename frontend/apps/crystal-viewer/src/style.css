@@ -41,6 +41,12 @@ button {
   isolation: isolate;
 }
 
+/* A docked Online view can be shorter than the standalone viewer's minimum. */
+html[data-kssolv-online='true'] .crystal-viewer {
+  min-width: 0;
+  min-height: 0;
+}
+
 .crystal-viewer > canvas {
   display: block;
   width: 100%;

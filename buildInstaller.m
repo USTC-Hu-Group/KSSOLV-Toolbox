@@ -1,11 +1,13 @@
-function buildInstaller(runtimeDelivery)
+function buildInstaller(runtimeDelivery, packageInstaller)
 %BUILDINSTALLER 编译 KSSOLV Toolbox 为独立应用程序，并生成安装包
+% buildInstaller("none", false) 只生成供容器使用的独立应用载荷。
 
 % 开发者：杨柳
 % 版权 2025-2026 合肥瀚海量子科技有限公司
 
 arguments
     runtimeDelivery {mustBeMember(runtimeDelivery, ["web", "installer", "none"])} = "web"
+    packageInstaller (1, 1) logical = true
 end
 
 % 编译支持 OpenAI-compatible API 的 4.9.0 及以上版本
@@ -24,8 +26,11 @@ buildPathCleanup = isolateKssolvBuildPath(toolboxFolder);
     stageRequiredLLMAddonRuntimeFiles(toolboxFolder);
 additionalFiles = [dialogFrameworkFiles(:).', ...
     string(fullfile(toolboxFolder, ".env.example")), ...
+    string(fullfile(toolboxFolder, "LICENSE")), ...
+    string(fullfile(toolboxFolder, "THIRD-PARTY-LICENSES.md")), ...
     string(fullfile(toolboxFolder, "ks.ks")), ...
-    getApplicationRuntimeFiles(toolboxFolder), ...
+    kssolv.util.StandaloneBuild.documentationFiles(toolboxFolder), ...
+    kssolv.util.StandaloneBuild.applicationRuntimeFiles(toolboxFolder), ...
     string(fullfile(toolboxFolder, "+kssolv", "+analysis", "+seekpath", "+data")), ...
     getMatgenlabRuntimeData(), ...
     getKssolvRuntimeFiles(toolboxFolder), ...
@@ -51,8 +56,8 @@ end
 % 所有平台统一禁用 JVM；平台差异仅用于选择可执行文件格式、
 % 图标、启动画面以及待安装的文件。
 [buildResult, runtimeDefinition] = kssolv.util.StandaloneBuild.build(buildOptions);
-if ispc
-    validateWindowsStandalonePayload(buildOptions, toolboxFolder);
+if ispc || (isunix && ~ismac)
+    validateEmbeddedStandalonePayload(buildOptions, toolboxFolder);
 else
     validateStandalonePayload(buildOptions.OutputDir, toolboxFolder);
 end
@@ -66,6 +71,11 @@ runtimeMetadata = struct('RuntimeRelease', "R" + version('-release'), ...
     'RuntimeBuildVersion', string(regexp(version, '^\d+\.\d+\.\d+\.\d+', 'match', 'once')));
 writelines(jsonencode(runtimeMetadata), ...
     fullfile(buildOptions.OutputDir, 'runtime-metadata.json'), Encoding="UTF-8");
+
+% Container builds reuse the complete standalone payload without an installer.
+if ~packageInstaller
+    return
+end
 
 % 设置打包属性
 packageOptions = compiler.package.InstallerOptions('ApplicationName', KSSOLV_Toolbox.Name);
@@ -294,28 +304,6 @@ if isempty(runtimeFiles)
 end
 end
 
-function runtimeFiles = getApplicationRuntimeFiles(toolboxFolder)
-% 动态 UI 与服务代码按文件加入，避免递归带入普通测试目录
-runtimeRoots = fullfile(toolboxFolder, "+kssolv", ...
-    ["+ui", "+settings", "+services"]);
-runtimeFiles = strings(1, 0);
-for runtimeRoot = runtimeRoots
-    entries = dir(fullfile(runtimeRoot, "**", "*"));
-    entries = entries(~[entries.isdir]);
-    files = string(fullfile({entries.folder}, {entries.name}));
-    relativeFiles = extractAfter(files, runtimeRoot + filesep);
-    isTest = hasDeploymentPathSegment(relativeFiles, ...
-        ["+test", "+tests", "test", "tests"]) | ...
-        hasDeploymentTestFileName(relativeFiles);
-    isDevelopmentFile = endsWith(files, [ ...
-        filesep + ".DS_Store", filesep + ".gitignore", ...
-        ".asv", ".m~", ".swp"]);
-    runtimeFiles = [runtimeFiles, ...
-        files(~isTest & ~isDevelopmentFile)]; %#ok<AGROW>
-end
-runtimeFiles = unique(runtimeFiles, "stable");
-end
-
 function matches = hasDeploymentPathSegment(paths, segments)
 normalizedPaths = "/" + strip(replace(string(paths), "\", "/"), ...
     'both', '/') + "/";
@@ -326,10 +314,7 @@ end
 end
 
 function matches = hasDeploymentTestFileName(paths)
-[~, baseNames] = fileparts(string(paths));
-baseNames = lower(baseNames);
-matches = startsWith(baseNames, "test_") | ...
-    endsWith(baseNames, ["_test", "test", "tests"]);
+matches = kssolv.util.isTestFileName(paths);
 normalizedPaths = "/" + normalizeDeploymentPath(paths);
 matches = matches & ~endsWith(normalizedPaths, ...
     "/+remote/+diagnostics/RemoteLoginTest.m");
@@ -484,14 +469,16 @@ function normalized = normalizeDeploymentPath(paths)
 normalized = strip(replace(string(paths), "\", "/"), 'right', '/');
 end
 
-function validateWindowsStandalonePayload(buildOptions, toolboxFolder)
-% Windows 的 EmbedArchive 将资源写入 EXE，解出实际 CTF 载荷后再校验
+function validateEmbeddedStandalonePayload(buildOptions, toolboxFolder)
+% Windows/Linux 将资源嵌入可执行文件，解出实际 CTF 载荷后再校验
 outputDirectory = buildOptions.OutputDir;
 archiveFile = fullfile(outputDirectory, buildOptions.ExecutableName);
-extractor = fullfile(matlabroot, "bin", computer('arch'), "extractCTF.exe");
+extractorName = "extractCTF";
+if ispc, extractorName = extractorName + ".exe"; end
+extractor = fullfile(matlabroot, "bin", computer('arch'), extractorName);
 if ~buildOptions.EmbedArchive
     archiveFile = archiveFile + ".ctf";
-else
+elseif ispc
     archiveFile = archiveFile + ".exe";
 end
 payloadDirectory = string(tempname(fullfile(toolboxFolder, ...
@@ -535,15 +522,19 @@ end
 requiredSuffixes = [ ...
     "/.env.example"
     "/ks.ks"
+    "/docs/modeling-user-guide.md"
+    "/docs/modeling-user-guide.zh-CN.md"
+    "/docs/manuals/KSSOLV_Toolbox_User_Manual_zh-CN.pdf"
+    "/docs/manuals/KSSOLV_Toolbox_User_Manual_en.pdf"
     "/+kssolv/+analysis/+matgenlab/+core/+data/periodic_table.json"
     "/+kssolv/+analysis/+matgenlab/+io/+jdftx/BaseJdftxSet.yaml"
     "/+kssolv/+analysis/+matgenlab/+io/+lobster/lobster_basis/BASIS_PBE_54_standard.yaml"
     "/+kssolv/+analysis/+matgenlab/+symmetry/+maggroups/magnetic_space_groups.mat"
     ];
-if ispc
-    requiredSuffixes = requiredSuffixes.';
-end
-for suffix = requiredSuffixes
+requiredSuffixes = [requiredSuffixes(:); ...
+    "/+kssolv/+ui/resources/browser/" + ...
+    kssolv.ui.browser.resourceNames().'];
+for suffix = requiredSuffixes(:).'
     if ~any(endsWith(normalizedFiles, suffix))
         error('KSSOLV:Deployment:RequiredPayloadMissing', ...
             'Standalone payload is missing required data: %s', suffix);

@@ -13,7 +13,7 @@ classdef WorkflowGraph < handle
         function this = WorkflowGraph(graphJSON)
             % 构造函数，使用解码后的 graphJSON 初始化图
             arguments
-                graphJSON cell
+                graphJSON
             end
 
             this.Nodes = containers.Map();      % 存储自定义节点数据
@@ -110,7 +110,7 @@ classdef WorkflowGraph < handle
 
         function updateFromJSON(this, graphJSON)
             % 从 graphJSON 更新图结构
-            if isstruct(graphJSON)
+            if isstruct(graphJSON) && isscalar(graphJSON) && isfield(graphJSON, 'cells')
                 graphJSONCells = graphJSON.cells;
             else
                 graphJSONCells = graphJSON;

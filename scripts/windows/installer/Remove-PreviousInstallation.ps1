@@ -2,7 +2,8 @@
 param(
     [ValidateSet('User', 'Machine')][string]$Scope = 'User',
     [string]$LogPath,
-    [string]$PrepareUserLogDirectory
+    [string]$PrepareUserLogDirectory,
+    [string]$TargetDirectory
 )
 $ErrorActionPreference = 'Stop'
 
@@ -67,7 +68,7 @@ function Get-KssolvPreviousInstallations([string]$InstallScope) {
     }
 }
 
-function Get-KssolvUninstaller($Installation) {
+function Get-KssolvUninstaller($Installation, [string]$RepairDirectory = '') {
     # Only the project's Inno uninstaller is known to be native and supports the
     # silent flags below. Never execute an arbitrary registry command or shell.
     $command = $Installation.Command.Trim()
@@ -84,18 +85,30 @@ function Get-KssolvUninstaller($Installation) {
     if (!$Installation.Directory -or
         $directory.TrimEnd('\') -ine [IO.Path]::GetFullPath($Installation.Directory).TrimEnd('\') -or
         $directory -eq [IO.Path]::GetPathRoot($directory)) { throw 'Uninstaller directory does not match its registration.' }
-    if (!(Test-Path -LiteralPath $exe -PathType Leaf) -or
-        !(Test-Path -LiteralPath ([IO.Path]::ChangeExtension($exe, '.dat')) -PathType Leaf)) {
-        throw "Previous uninstaller is missing: $exe"
+    # Check existing ancestors even when the uninstaller or installation is gone.
+    for ($path = $exe; $path; $path = [IO.Path]::GetDirectoryName($path)) {
+        if (Test-Path -LiteralPath $path) {
+            $item = Get-Item -LiteralPath $path -Force
+            if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Previous installation contains a reparse point.' }
+        }
+    }
+    $missing = @($exe, [IO.Path]::ChangeExtension($exe, '.dat')) | Where-Object {
+        !(Test-Path -LiteralPath $_ -PathType Leaf)
+    }
+    if ($missing) {
+        $view = [Microsoft.Win32.RegistryView]::Registry32
+        if ([Environment]::Is64BitOperatingSystem) { $view = [Microsoft.Win32.RegistryView]::Registry64 }
+        if ($Installation.KnownId -and $Installation.View -eq $view -and $RepairDirectory -and
+            $directory.TrimEnd('\') -ieq [IO.Path]::GetFullPath($RepairDirectory).TrimEnd('\')) {
+            # Setup can rebuild its own missing uninstall files in the same
+            # directory and registry view. Preserve existing files/registration.
+            return $null
+        }
+        throw "Previous uninstall files are missing: $($missing -join ', '). Reinstall into '$directory' to repair this installation first."
     }
     if (!$Installation.KnownId -and
         !(Test-Path -LiteralPath (Join-Path $directory 'application\KSSOLV_Toolbox.exe') -PathType Leaf)) {
         throw 'Previous installation lacks the KSSOLV application identity.'
-    }
-    for ($item = Get-Item -LiteralPath $exe; $null -ne $item; $item = $item.Parent) {
-        if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Previous installation contains a reparse point.' }
-        if ($item -is [IO.FileInfo]) { $item = $item.Directory; if (!$item) { break } }
-        if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Previous installation contains a reparse point.' }
     }
     return $exe
 }
@@ -156,12 +169,16 @@ function Test-KssolvPendingRemoval([string[]]$Directories) {
     return $false
 }
 
-function Remove-KssolvPreviousInstallations([string]$InstallScope, [string]$UpgradeLog) {
+function Remove-KssolvPreviousInstallations([string]$InstallScope, [string]$UpgradeLog, [string]$InstallDirectory = '') {
     $installations = @(Get-KssolvPreviousInstallations $InstallScope)
     # Validate every match first, so a broken registration cannot cause a partial
     # removal followed by discovery of an unsupported legacy installer.
+    $repairDirectory = ''
+    # The new installer writes HKLM in the current native registry view. It must
+    # not leave a damaged HKCU registration behind by treating it as a repair.
+    if ($InstallScope -eq 'Machine') { $repairDirectory = $InstallDirectory }
     $validated = @($installations | ForEach-Object {
-        [pscustomobject]@{ Installation = $_; Executable = Get-KssolvUninstaller $_ }
+        [pscustomobject]@{ Installation = $_; Executable = Get-KssolvUninstaller $_ $repairDirectory }
     })
     if (!$validated.Count) { return 0 }
     if ($InstallScope -eq 'Machine') {
@@ -170,11 +187,20 @@ function Remove-KssolvPreviousInstallations([string]$InstallScope, [string]$Upgr
         finally { $identity.Dispose() }
         if (!$admin) { throw 'Run Setup as administrator to remove the previous all-users installation.' }
     }
-    $directories = @($validated | ForEach-Object { [IO.Path]::GetDirectoryName($_.Executable) })
+    $directories = @($validated | ForEach-Object {
+        if ($_.Executable) { [IO.Path]::GetDirectoryName($_.Executable) }
+        else { $_.Installation.Directory }
+    })
     Assert-KssolvNotRunning $directories
     $removed = @{}
     foreach ($entry in $validated) {
         $exe = $entry.Executable
+        if (!$exe) {
+            if (Test-KssolvPendingRemoval $directories) { return 3010 }
+            Add-Content -LiteralPath $UpgradeLog -Encoding UTF8 -Value (
+                'Repairing the existing KSSOLV installation in place; uninstall files are missing: ' + $entry.Installation.Directory)
+            continue
+        }
         if (!$removed.ContainsKey($exe)) {
             Add-Content -LiteralPath $UpgradeLog -Encoding UTF8 -Value "Removing $exe"
             $code = Invoke-KssolvUninstaller $exe ($UpgradeLog + '.uninstall-' + $removed.Count + '.log')
@@ -203,7 +229,7 @@ if ($MyInvocation.InvocationName -ne '.') {
         }
         if (!$LogPath) { throw 'An upgrade log path is required.' }
         Set-Content -LiteralPath $LogPath -Encoding UTF8 -Value "KSSOLV previous-installation removal: $Scope"
-        $code = Remove-KssolvPreviousInstallations $Scope $LogPath
+        $code = Remove-KssolvPreviousInstallations $Scope $LogPath $TargetDirectory
         Add-Content -LiteralPath $LogPath -Encoding UTF8 -Value "Completed with exit code $code"
         exit $code
     } catch {

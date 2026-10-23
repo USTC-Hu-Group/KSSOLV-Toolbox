@@ -28,6 +28,57 @@ $root = Join-Path ([IO.Path]::GetTempPath()) ('kssolv-upgrade-test-' + [Guid]::N
 $null = New-Item -ItemType Directory -Path $root
 $log = Join-Path $root 'upgrade.log'
 try {
+    $repair = Join-Path $root 'damaged installation'
+    $null = New-Item -ItemType Directory -Path $repair
+    $repairExe = Join-Path $repair 'unins000.exe'
+    $repairDat = [IO.Path]::ChangeExtension($repairExe, '.dat')
+    $view = [Microsoft.Win32.RegistryView]::Registry32
+    if ([Environment]::Is64BitOperatingSystem) { $view = [Microsoft.Win32.RegistryView]::Registry64 }
+    $registration = [pscustomobject]@{
+        Command = '"' + $repairExe + '"'; Directory = $repair
+        Name = 'KSSOLV Toolbox'; KnownId = $true; View = $view
+    }
+    foreach ($missing in @('exe and data', 'exe', 'data')) {
+        if ($missing -eq 'exe') { Set-Content -LiteralPath $repairDat -Value 'fixture' }
+        if ($missing -eq 'data') {
+            Remove-Item -LiteralPath $repairDat
+            Set-Content -LiteralPath $repairExe -Value 'fixture'
+        }
+        if ($null -ne (& $validateUninstaller $registration $repair)) { throw "Missing $missing did not select repair." }
+    }
+    foreach ($problem in @('different destination', 'unknown product', 'different registry view', 'no repair request')) {
+        $target = $repair
+        $registration.KnownId = $true; $registration.View = $view
+        switch ($problem) {
+            'different destination' { $target = Join-Path $root 'new installation' }
+            'unknown product' { $registration.KnownId = $false }
+            'different registry view' { $registration.View = [Microsoft.Win32.RegistryView]::Default }
+            'no repair request' { $target = '' }
+        }
+        $rejected = $false
+        try { $null = & $validateUninstaller $registration $target } catch { $rejected = $true }
+        if (!$rejected) { throw "Unexpected repair accepted: $problem" }
+    }
+    $registration.KnownId = $true; $registration.View = $view
+    Set-Content -LiteralPath $repairDat -Value 'fixture'
+    if ((& $validateUninstaller $registration $repair) -ne $repairExe) { throw 'Valid uninstaller did not retain the normal removal path.' }
+    Write-Output 'PASS missing uninstall files allow repair only for the same product, directory and registry view'
+
+    $redirectTarget = Join-Path $root 'redirect target'
+    $null = New-Item -ItemType Directory -Path $redirectTarget
+    $junction = Join-Path $root 'redirected installation'
+    $null = New-Item -ItemType Junction -Path $junction -Target $redirectTarget
+    try {
+        $redirected = [pscustomobject]@{
+            Command = '"' + (Join-Path $junction 'unins000.exe') + '"'; Directory = $junction
+            Name = 'KSSOLV Toolbox'; KnownId = $true; View = $view
+        }
+        $rejected = $false
+        try { $null = & $validateUninstaller $redirected $junction } catch { $rejected = $true }
+        if (!$rejected) { throw 'A redirected repair directory was accepted.' }
+    } finally { [IO.Directory]::Delete($junction) }
+    Write-Output 'PASS missing uninstall files do not bypass directory redirection checks'
+
     function Get-KssolvPreviousInstallations($InstallScope) { return $script:Entries }
     function Get-KssolvUninstaller($Installation) {
         if ($Installation.Broken) { throw 'invalid registration' }
@@ -96,4 +147,20 @@ try {
     Reset-Fixture; Add-Installation 'pending.exe'; Add-Installation 'not-yet-removed.exe'; $script:PendingRemoval = $true
     if ((Remove-KssolvPreviousInstallations 'User' $log) -ne 3010 -or $script:Calls.Count -ne 1) { throw 'Pending reboot did not stop installation.' }
     Write-Output 'PASS pending reboot pauses installation before new files are installed'
-} finally { Remove-Item -LiteralPath $root -Recurse -Force }
+
+    Reset-Fixture
+    $script:Entries = @([pscustomobject]@{ Executable = $null; Directory = $repair; Broken = $false })
+    $sentinel = Join-Path $repair 'project.ks'; Set-Content -LiteralPath $sentinel -Value 'preserve during repair'
+    if ((Remove-KssolvPreviousInstallations 'User' $log) -ne 0 -or $script:Calls.Count) { throw 'Repair attempted an external uninstall.' }
+    if (!(Test-Path -LiteralPath $sentinel) -or !(Test-Path -LiteralPath $repairExe)) { throw 'Repair removed existing files.' }
+    if (!(Select-String -LiteralPath $log -SimpleMatch 'Repairing the existing KSSOLV installation in place' -Quiet)) { throw 'Repair decision was not logged.' }
+    $script:Running = $true; Assert-Fails 'application running'; $script:Running = $false
+    $script:PendingRemoval = $true
+    if ((Remove-KssolvPreviousInstallations 'User' $log) -ne 3010 -or $script:Calls.Count) { throw 'Repair ignored pending deletion.' }
+    Write-Output 'PASS repair preserves application and user files and respects running processes and pending reboot'
+} finally {
+    $resolvedRoot = (Resolve-Path -LiteralPath $root).ProviderPath
+    if (!$resolvedRoot.StartsWith([IO.Path]::GetTempPath(), [StringComparison]::OrdinalIgnoreCase) -or
+        (Split-Path -Leaf $resolvedRoot) -notlike 'kssolv-upgrade-test-*') { throw 'Unexpected fixture cleanup path.' }
+    Remove-Item -LiteralPath $resolvedRoot -Recurse -Force
+}

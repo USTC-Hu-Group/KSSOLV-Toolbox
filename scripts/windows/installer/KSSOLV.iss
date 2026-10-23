@@ -363,6 +363,7 @@ begin
     Log('KSSOLV_UPGRADE_START scope=' + Path);
     Parameters := '-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "'
       + ExpandConstant('{tmp}\Remove-PreviousInstallation.ps1') + '" -Scope ' + Path + ' -LogPath "' + UpgradeLog + '"';
+    if I = 1 then Parameters := Parameters + ' -TargetDirectory "' + WizardDirValue + '"';
     if I = 0 then Success := ExecAsOriginalUser(PowerShell, Parameters, '', SW_HIDE, ewWaitUntilTerminated, Code)
     else Success := Exec(PowerShell, Parameters, '', SW_HIDE, ewWaitUntilTerminated, Code);
     Log(Format('KSSOLV_UPGRADE_RESULT scope=%s started=%d result=%d', [Path, Ord(Success), Code]));

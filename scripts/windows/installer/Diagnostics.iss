@@ -14,11 +14,11 @@ begin
   Result := mrOk;
   if AllowRetry then Result := mrCancel;
   if WizardSilent then Exit;
-  Dialog := CreateCustomForm(ScaleX(600), ScaleY(280), False, True);
+  { Inno 7 scales the form during construction. Scale only its controls below;
+    keep the dialog independent of the main wizard's extra size percentage. }
+  Dialog := CreateCustomForm(600, 280, True, True);
   try
     Dialog.Caption := CustomMessage('SetupTitle');
-    Dialog.Font.Name := WizardForm.Font.Name;
-    Dialog.Font.Size := 10;
     Body := TNewMemo.Create(Dialog);
     Body.Parent := Dialog;
     Body.SetBounds(ScaleX(20), ScaleY(18), ScaleX(560), ScaleY(162));

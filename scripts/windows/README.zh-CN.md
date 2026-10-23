@@ -88,6 +88,20 @@ macOS 基础 `.app` 同样缓存在 `base-installer/`，最终 `.pkg` / `.dmg` �
 未完成，不把实际运行环境错误误报为成功。原生文件操作错误关闭提示后也可使用向导
 底部的按钮查看日志。
 
+## 安装流程回归验证
+
+`Test-InstallerPostInstall.ps1` 使用生产安装脚本、真实进度页及 Runtime 文件条目，
+在构建缓存中执行隔离安装。中英文覆盖 web / installer / none 模式、新建及复用
+Runtime、启动失败、配置写入失败、预热状态缺失或不匹配、重试和取消。只有外部
+进程、注册表查询、旧版清理和提示响应被替换，检查安装退出码和完成页恢复。
+
+`Test-InstallerPayload.ps1` 安装实际应用载荷并调用真实启动器完成桌面预热，校验
+应用构建哈希、就绪结果及进程是否加载 JVM。它使用已有匹配 Runtime，安装到
+`.buildtool/installer-payload-tests/` 下的独立目录，不创建产品登记或快捷方式。
+增加 `-InstallRuntime` 会按正式安装包请求管理员权限并调用真实 Runtime 引导程序，以已登记 Runtime 的父目录
+为目标，验证引导和复用；这不代替干净 Windows 环境中的完整 Runtime 下载验收。
+这些测试跳过真实旧版卸载；卸载分支及日志按钮由前述两项测试单独验证。
+
 ## 日常启动卡片
 
 快捷方式仍指向 `KssolvLauncher.exe`。打包时直接渲染共用的

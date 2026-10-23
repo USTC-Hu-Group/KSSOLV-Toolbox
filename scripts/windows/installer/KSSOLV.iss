@@ -162,7 +162,7 @@ Source: "{#Stage}\brand-logo.bmp"; Flags: dontcopy
 Source: "{#Stage}\installer-art.bmp"; Flags: dontcopy
 #if RuntimeDelivery != "none"
   #if RuntimeIsZip == "0"
-Source: "{#RuntimeInstaller}"; DestDir: "{tmp}\kssolv-runtime"; DestName: "setup.exe"; Flags: deleteafterinstall; Check: InstallNewRuntime
+Source: "{#RuntimeInstaller}"; DestDir: "{tmp}\kssolv-runtime"; DestName: "{#RuntimeEntryPoint}"; Flags: deleteafterinstall; Check: InstallNewRuntime
   #else
 Source: "{#RuntimePayload}\*"; DestDir: "{tmp}\kssolv-runtime"; Flags: recursesubdirs createallsubdirs deleteafterinstall; Check: InstallNewRuntime
   #endif
@@ -375,55 +375,60 @@ begin
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
-var Code, Answer: Integer; LogFile, StatusFile, Parameters, Config: String; StatusText: AnsiString;
+var Code, Answer: Integer; LogFile, StatusFile, Parameters, Config, RuntimeSetup: String;
+  StatusText: AnsiString; Started: Boolean;
 begin
   if CurStep <> ssPostInstall then Exit;
   PreparationPage.Show;
-  PreparationPage.Animate;
   try
     try
-    if InstallNewRuntime then begin
-      PreparationPage.SetText(CustomMessage('RuntimePreparing'), CustomMessage('RuntimeWait'));
-      PreparationPage.SetProgress(0, 0);
-      WarmDetail.Caption := CustomMessage('RuntimeWait');
-      LogFile := ExpandConstant('{app}\installation-state\runtime-install.log');
+      { Marquee pages support Animate, but SetProgress always raises an error. }
+      PreparationPage.Animate;
+      if InstallNewRuntime then begin
+        PreparationPage.SetText(CustomMessage('RuntimePreparing'), CustomMessage('RuntimeWait'));
+        WarmDetail.Caption := CustomMessage('RuntimeWait');
+        LogFile := ExpandConstant('{app}\installation-state\runtime-install.log');
 #if RuntimeDelivery != "none"
-      Parameters := '-agreeToLicense yes -runtimeFolder "' + RuntimePage.Values[0] + '" -outputFile "' + LogFile + '"';
-      if not Exec(ExpandConstant('{tmp}\kssolv-runtime\{#RuntimeEntryPoint}'), Parameters, '', SW_HIDE, ewWaitUntilTerminated, Code)
-        or (Code <> 0) then RaiseException(CustomMessage('RuntimeFailed') + #13#10 + LogFile);
+        RuntimeSetup := ExpandConstant('{tmp}\kssolv-runtime\{#RuntimeEntryPoint}');
+        if not FileExists(RuntimeSetup) then RaiseException(CustomMessage('RuntimeFailed') + #13#10 + RuntimeSetup);
+        Parameters := '-agreeToLicense yes -runtimeFolder "' + RuntimePage.Values[0] + '" -outputFile "' + LogFile + '"';
+        Log('KSSOLV_RUNTIME_START ' + RuntimeSetup);
+        Started := Exec(RuntimeSetup, Parameters, ExtractFileDir(RuntimeSetup), SW_HIDE, ewWaitUntilTerminated, Code);
+        Log(Format('KSSOLV_RUNTIME_RESULT started=%d result=%d log=%s', [Ord(Started), Code, LogFile]));
+        if not Started then Log('Runtime launch error: ' + SysErrorMessage(Code));
+        if not Started or (Code <> 0) then RaiseException(CustomMessage('RuntimeFailed') + #13#10 + LogFile);
 #endif
-      ResolvedRuntime := AddBackslash(RuntimePage.Values[0]) + '{#RuntimeRelease}';
-    end else ResolvedRuntime := ExistingRuntime;
-    if not RuntimeIsUsable(ResolvedRuntime) then RaiseException(CustomMessage('RuntimeMissing') + #13#10 + ResolvedRuntime);
+        ResolvedRuntime := AddBackslash(RuntimePage.Values[0]) + '{#RuntimeRelease}';
+      end else ResolvedRuntime := ExistingRuntime;
+      if not RuntimeIsUsable(ResolvedRuntime) then RaiseException(CustomMessage('RuntimeMissing') + #13#10 + ResolvedRuntime);
 
-    Config := 'RuntimeRoot=' + ResolvedRuntime + #13#10 + 'RuntimeRelease={#RuntimeRelease}' + #13#10
-      + 'RuntimeVersion={#RuntimeVersion}' + #13#10 + 'Version={#AppVersion}' + #13#10 + 'BuildHash={#BuildHash}' + #13#10
-      + 'Language=' + ActiveLanguage + #13#10;
-    if not SaveStringToFile(ExpandConstant('{app}\launcher.ini'), Config, False) then RaiseException('Cannot write launcher.ini');
-    PreparationPage.SetText(CustomMessage('WarmStatus'), '');
-    WarmDetail.Caption := CustomMessage('WarmDetail');
-    Log('KSSOLV_PREWARM_START user-context=original-user');
-    repeat
-      WarmAttempt := WarmAttempt + 1;
-      StatusFile := ExpandConstant('{app}\installation-state\prewarm-')
-        + GetDateTimeString('yyyymmddhhnnss', #0, #0) + '-' + IntToStr(WarmAttempt) + '.json';
-      if FileExists(StatusFile) then DeleteFile(StatusFile);
-      Parameters := '--prewarm --language ' + ActiveLanguage + ' --result "' + StatusFile + '"';
-      WarmSucceeded := ExecAsOriginalUser(ExpandConstant('{app}\KssolvLauncher.exe'), Parameters,
-        ExpandConstant('{app}'), SW_HIDE, ewWaitUntilTerminated, Code);
-      if WarmSucceeded then WarmSucceeded := Code = 0;
-      if WarmSucceeded then WarmSucceeded := LoadStringFromFile(StatusFile, StatusText);
-      if WarmSucceeded then WarmSucceeded := (Pos('"status":"success"', StatusText) > 0)
-        and (Pos('{#BuildHash}', StatusText) > 0);
-      if not WarmSucceeded then begin
-        Log('KSSOLV_PREWARM_FAILED exit=' + IntToStr(Code) + ' status=' + StatusFile);
-        if WizardSilent then RaiseException(CustomMessage('WarmFailed') + #13#10 + StatusFile);
-        Answer := ShowInstallerDiagnostic(CustomMessage('WarmFailed'), True, False);
-        if Answer <> mrRetry then Exit;
-      end;
-    until WarmSucceeded;
-    Log('KSSOLV_INSTALL_PREWARM_OK ' + StatusFile);
-    PreparationPage.SetProgress(100, 100);
+      Config := 'RuntimeRoot=' + ResolvedRuntime + #13#10 + 'RuntimeRelease={#RuntimeRelease}' + #13#10
+        + 'RuntimeVersion={#RuntimeVersion}' + #13#10 + 'Version={#AppVersion}' + #13#10 + 'BuildHash={#BuildHash}' + #13#10
+        + 'Language=' + ActiveLanguage + #13#10;
+      if not SaveStringToFile(ExpandConstant('{app}\launcher.ini'), Config, False) then RaiseException('Cannot write launcher.ini');
+      PreparationPage.SetText(CustomMessage('WarmStatus'), '');
+      WarmDetail.Caption := CustomMessage('WarmDetail');
+      Log('KSSOLV_PREWARM_START user-context=original-user');
+      repeat
+        WarmAttempt := WarmAttempt + 1;
+        StatusFile := ExpandConstant('{app}\installation-state\prewarm-')
+          + GetDateTimeString('yyyymmddhhnnss', #0, #0) + '-' + IntToStr(WarmAttempt) + '.json';
+        if FileExists(StatusFile) then DeleteFile(StatusFile);
+        Parameters := '--prewarm --language ' + ActiveLanguage + ' --result "' + StatusFile + '"';
+        WarmSucceeded := ExecAsOriginalUser(ExpandConstant('{app}\KssolvLauncher.exe'), Parameters,
+          ExpandConstant('{app}'), SW_HIDE, ewWaitUntilTerminated, Code);
+        if WarmSucceeded then WarmSucceeded := Code = 0;
+        if WarmSucceeded then WarmSucceeded := LoadStringFromFile(StatusFile, StatusText);
+        if WarmSucceeded then WarmSucceeded := (Pos('"status":"success"', StatusText) > 0)
+          and (Pos('{#BuildHash}', StatusText) > 0);
+        if not WarmSucceeded then begin
+          Log('KSSOLV_PREWARM_FAILED exit=' + IntToStr(Code) + ' status=' + StatusFile);
+          if WizardSilent then RaiseException(CustomMessage('WarmFailed') + #13#10 + StatusFile);
+          Answer := ShowInstallerDiagnostic(CustomMessage('WarmFailed') + #13#10 + StatusFile, True, False);
+          if Answer <> mrRetry then Exit;
+        end;
+      until WarmSucceeded;
+      Log('KSSOLV_INSTALL_PREWARM_OK ' + StatusFile);
     except
       WarmSucceeded := False;
       ShowInstallerDiagnostic(GetExceptionMessage, False, False);

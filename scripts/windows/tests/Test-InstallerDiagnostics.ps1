@@ -8,21 +8,24 @@ if (!$compiler) { $compiler = Join-Path $env:LOCALAPPDATA 'Programs\Inno Setup 7
 if (!(Test-Path -LiteralPath $compiler)) { throw 'Set KSSOLV_ISCC to the Inno Setup 7 compiler.' }
 $root = Join-Path $repository ('.buildtool\installer-diagnostics-tests\' + [Guid]::NewGuid().ToString('N'))
 $null = New-Item -ItemType Directory -Path $root
-$main = Get-Content -LiteralPath (Join-Path $installer 'KSSOLV.iss') -Raw
+$main = Get-Content -LiteralPath (Join-Path $installer 'KSSOLV.iss') -Raw -Encoding UTF8
 $messages = [regex]::Match($main, '(?s)\[CustomMessages\](.*?)\[Tasks\]').Groups[1].Value
+$languageOptions = [regex]::Match($main, '(?s)\[LangOptions\].*?(?=\[Messages\])').Value
 $prepare = [regex]::Match($main, '(?s)function PrepareToInstall\(.*?(?=function UpdateReadyMemo)').Value
 if (!$messages -or !$prepare) { throw 'Cannot locate production messages or preparation callback.' }
-$diagnostics = Get-Content -LiteralPath (Join-Path $installer 'Diagnostics.iss') -Raw
+$diagnostics = Get-Content -LiteralPath (Join-Path $installer 'Diagnostics.iss') -Raw -Encoding UTF8
 $diagnostics = $diagnostics.Replace('ShellExec(', 'FixtureShellExec(')
 $diagnostics = $diagnostics.Replace('Result := Dialog.ShowModal;', @'
     FixtureDialogs := FixtureDialogs + 1;
+    if (Abs(Dialog.ClientWidth - ScaleX(600)) > 1) or (Abs(Dialog.ClientHeight - ScaleY(280)) > 1) then
+      RaiseException(Format('Dialog was scaled twice: %d x %d, expected %d x %d', [Dialog.ClientWidth, Dialog.ClientHeight, ScaleX(600), ScaleY(280)]));
     if OpenLogButton.Caption <> CustomMessage('OpenLog') then RaiseException('Missing log button');
     PostMessage(OpenLogButton.Handle, $00F5, 0, 0);
     if FixtureDismiss and AllowRetry then PostMessage(DismissButton.Handle, $00F5, 0, 0)
     else PostMessage(ConfirmButton.Handle, $00F5, 0, 0);
     Result := Dialog.ShowModal;
 '@)
-$upgrade = Get-Content -LiteralPath (Join-Path $installer 'Upgrade.iss') -Raw
+$upgrade = Get-Content -LiteralPath (Join-Path $installer 'Upgrade.iss') -Raw -Encoding UTF8
 $upgrade = [regex]::Replace($upgrade, '\b(?:ExecAsOriginalUser|Exec)\(', 'FixtureExec(')
 $upgrade = $upgrade.Replace('ExtractTemporaryFile(', 'FixtureExtract(')
 Set-Content -LiteralPath (Join-Path $root 'Diagnostics.iss') -Value $diagnostics -Encoding UTF8
@@ -43,11 +46,14 @@ PrivilegesRequired=lowest
 CreateAppDir=no
 Uninstallable=no
 SetupLogging=yes
+WizardStyle=modern light
+WizardSizePercent=120,120
 OutputDir=.
 OutputBaseFilename=fixture
 [Languages]
 Name: en; MessagesFile: compiler:Default.isl
 Name: zh; MessagesFile: compiler:Languages\ChineseSimplified.isl
+@LANGUAGEOPTIONS@
 [CustomMessages]
 @MESSAGES@
 [Code]
@@ -102,6 +108,7 @@ end;
 procedure InitializeWizard;
 var I, BeforeDialogs, Answer: Integer; Restart: Boolean; Message: String;
 begin
+  try
   AcceptRuntime := TNewCheckBox.Create(WizardForm);
   AcceptRuntime.Checked := True;
   if (ActiveLanguage = 'zh') and (CustomMessage('OpenLog') <> #25171#24320#26085#24535) then RaiseException('Chinese log label missing');
@@ -127,10 +134,13 @@ begin
   if Answer <> mrCancel then RaiseException('Cancel button failed');
   if (FixtureDialogs <> 12) or (FixtureOpenLogs <> 12) then RaiseException('Log click handlers were not exercised');
   SaveStringToFile(ExpandConstant('{param:RESULT|}'), 'PASS 10 cleanup outcomes; 12 dialogs and current-log clicks; retry/cancel', False);
+  except
+    SaveStringToFile(ExpandConstant('{param:RESULT|}'), 'FAIL ' + GetExceptionMessage, False);
+  end;
   Abort;
 end;
 '@
-$fixture = $fixture.Replace('@MESSAGES@', $messages)
+$fixture = $fixture.Replace('@MESSAGES@', $messages).Replace('@LANGUAGEOPTIONS@', $languageOptions)
 $file = Join-Path $root 'fixture.iss'
 Set-Content -LiteralPath $file -Value $fixture -Encoding UTF8
 $ErrorActionPreference = 'Continue' # Windows PowerShell wraps native stderr.
@@ -152,6 +162,7 @@ foreach ($language in @('en', 'zh')) {
     }
     # Abort exits the fixture before installation, after all callback assertions.
     if (!(Test-Path -LiteralPath $resultFile)) { Get-Content -LiteralPath $setupLog -Tail 25; throw "Fixture failed: $language" }
+    if (![IO.File]::ReadAllText($resultFile).StartsWith('PASS ')) { throw [IO.File]::ReadAllText($resultFile) }
     Write-Output "$language`: $([IO.File]::ReadAllText($resultFile))"
 }
 Write-Output "INSTALLER_DIAGNOSTICS_TEST_ROOT $root"

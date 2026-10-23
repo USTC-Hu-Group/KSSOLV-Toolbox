@@ -76,6 +76,13 @@ function FixturePrewarm(const Filename, Params, WorkingDir: String; const ShowCm
   const Wait: TExecWait; var Code: Integer): Boolean;
 var StatusPath, Status: String; Start: Integer;
 begin
+  if (PreparationPage.Msg1Label.Font.Name <> WizardForm.PageDescriptionLabel.Font.Name) or
+    (WarmDetail.Font.Name <> WizardForm.PageDescriptionLabel.Font.Name) or
+    (WizardForm.PageNameLabel.Font.Name <> WizardForm.PageDescriptionLabel.Font.Name) or
+    (PreparationPage.Msg1Label.Font.Size <> WizardForm.PageDescriptionLabel.Font.Size) or
+    (WarmDetail.Font.Size <> WizardForm.PageDescriptionLabel.Font.Size) or
+    (WizardForm.PageNameLabel.Font.Size - WarmDetail.Font.Size <> 2) then
+    RaiseException('Inconsistent preparation page typography');
   FixturePrewarmCalls := FixturePrewarmCalls + 1;
   if Filename <> ExpandConstant('{app}\KssolvLauncher.exe') then RaiseException('Unexpected prewarm executable');
   if not FileExists(ExpandConstant('{app}\launcher.ini')) then RaiseException('Missing launcher configuration');

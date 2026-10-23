@@ -16,25 +16,9 @@ classdef StartupSplash
             end
             completion = struct('file', string(getenv('KSSOLV_STARTUP_COMPLETION')), ...
                 'nonce', string(getenv('KSSOLV_STARTUP_NONCE')));
-            container = app.getAppContainer();
             bounds = [100 100 1200 800];
-            oldUnits = get(groot, 'Units');
-            unitsCleanup = onCleanup(@() set(groot, 'Units', oldUnits));
-            set(groot, 'Units', 'pixels');
-            monitors = get(groot, 'MonitorPositions');
-            container.WindowBounds = [max(monitors(:,1) + monitors(:,3)) + 200, ...
-                100, bounds(3:4)];
-            clear unitsCleanup
-            container.HostInBrowser = false;
-            container.Busy = true;
-            % Visible creates the front end. The native Window is hidden separately.
-            container.Visible = true;
-            warningState = warning('off', 'MATLAB:structOnObject');
-            warningCleanup = onCleanup(@() warning(warningState));
-            internals = struct(container);
-            window = internals.Window;
-            clear warningCleanup
-            window.hide();
+            container = app.getAppContainer();
+            window = kssolv.ui.util.StartupSplash.prepareHiddenWindow(app);
             % Hand off the native shell immediately. Project HTML and the other
             % panels continue loading in the visible, busy Toolbox window.
             kssolv.ui.util.StartupSplash.publish('shell-ready');
@@ -78,6 +62,30 @@ classdef StartupSplash
             if kssolv.ui.util.StartupSplash.isRequested()
                 kssolv.ui.util.StartupSplash.publish('failed', exception.message);
             end
+        end
+
+        function window = prepareHiddenWindow(app)
+            % AppContainer.Visible initializes the CEF view and calls show.
+            % Keep that first native window outside every monitor, then hide
+            % it before processing any render callbacks. The client remains
+            % active so prewarm can wait for real Figure and HTML readiness.
+            container = app.getAppContainer();
+            oldUnits = get(groot, 'Units');
+            unitsCleanup = onCleanup(@() set(groot, 'Units', oldUnits));
+            set(groot, 'Units', 'pixels');
+            monitors = get(groot, 'MonitorPositions');
+            container.WindowBounds = [max(monitors(:,1) + monitors(:,3)) + 200, ...
+                100, 1200, 800];
+            clear unitsCleanup
+            container.HostInBrowser = false;
+            container.Busy = true;
+            container.Visible = true;
+            warningState = warning('off', 'MATLAB:structOnObject');
+            warningCleanup = onCleanup(@() warning(warningState));
+            internals = struct(container);
+            window = internals.Window;
+            clear warningCleanup
+            window.hide();
         end
     end
 

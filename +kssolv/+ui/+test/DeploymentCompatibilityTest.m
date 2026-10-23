@@ -30,6 +30,29 @@ classdef DeploymentCompatibilityTest < matlab.unittest.TestCase
                 previousContainer);
         end
 
+        function backgroundPrewarmRendersWithoutRevealingWindow(testCase)
+            app = kssolv("", false, true);
+            cleanup = onCleanup(@() delete(app));
+            container = app.getAppContainer();
+            warningState = warning('off', 'MATLAB:structOnObject');
+            warningCleanup = onCleanup(@() warning(warningState));
+            internals = struct(container);
+            clear warningCleanup
+            window = internals.Window;
+            testCase.verifyFalse(window.isVisible());
+            app.waitUntilReady();
+            pause(0.5); % Process pending UI callbacks after readiness.
+            testCase.verifyFalse(window.isVisible());
+            testCase.verifyEqual(container.State, ...
+                matlab.ui.container.internal.appcontainer.AppState.RUNNING);
+            testCase.verifyFalse(container.HostInBrowser);
+            testCase.verifyFalse(container.Busy);
+            clear cleanup
+            testCase.verifyFalse(isvalid(window));
+            testCase.verifyEmpty( ...
+                kssolv.ui.util.DataStorage.getData("KSSOLVToolbox"));
+        end
+
         function prewarmPreservesExistingUnsavedSession(testCase)
             testCase.assertEmpty( ...
                 kssolv.ui.util.DataStorage.getData("KSSOLVToolbox"));

@@ -50,33 +50,57 @@ Write-Output "INSTALLER_PAYLOAD_TEST_ROOT $root"
 $process = Start-Process -FilePath (Join-Path $root 'payload-test.exe') -ArgumentList $arguments -WindowStyle Hidden -PassThru
 $watch = [Diagnostics.Stopwatch]::StartNew()
 $observations = 0
+$windowObservations = 0
 $jvmFound = $false
+$visibleWindows = @{}
 while (!$process.WaitForExit(1000)) {
     # Match only this fixture's installed application, not any existing session.
+    $applicationIds = @()
     foreach ($child in Get-Process -Name KSSOLV_Toolbox -ErrorAction SilentlyContinue) {
         if ($child.Path -eq (Join-Path $app 'application\KSSOLV_Toolbox.exe')) {
+            $applicationIds += $child.Id
             $observations++
             if (@($child.Modules | Where-Object ModuleName -eq 'jvm.dll').Count) { $jvmFound = $true }
+            if ($child.MainWindowHandle -ne [IntPtr]::Zero) { $visibleWindows[$child.Id] = $child.MainWindowTitle }
+        }
+    }
+    if ($applicationIds.Count) {
+        $windows = @(Get-CimInstance Win32_Process -Filter "Name='MATLABWindow.exe'")
+        $descendants = @($applicationIds)
+        do {
+            $previousCount = $descendants.Count
+            $descendants += @($windows | Where-Object {
+                $_.ParentProcessId -in $descendants -and $_.ProcessId -notin $descendants
+            } | ForEach-Object { [int]$_.ProcessId })
+        } while ($descendants.Count -gt $previousCount)
+        foreach ($windowProcess in Get-Process -Id $descendants -ErrorAction SilentlyContinue) {
+            if ($windowProcess.ProcessName -eq 'MATLABWindow') { $windowObservations++ }
+            if ($windowProcess.MainWindowHandle -ne [IntPtr]::Zero) {
+                $visibleWindows[$windowProcess.Id] = $windowProcess.MainWindowTitle
+            }
         }
     }
     if ($watch.Elapsed.TotalMinutes -gt 20) { throw "Payload test timed out; inspect $setupLog" }
 }
 $logText = [IO.File]::ReadAllText($setupLog)
 if ($process.ExitCode -ne 0 -or !$logText.Contains('KSSOLV_INSTALL_PREWARM_OK') -or
-    $logText.Contains('KSSOLV_INSTALL_DIAGNOSTIC') -or $jvmFound) {
+    $logText.Contains('KSSOLV_INSTALL_DIAGNOSTIC') -or $jvmFound -or $visibleWindows.Count) {
     Get-Content -LiteralPath $setupLog -Tail 30
-    throw "Real payload installation failed (exit=$($process.ExitCode), JVM=$jvmFound): $root"
+    throw "Real payload installation failed (exit=$($process.ExitCode), JVM=$jvmFound, visible=$($visibleWindows | ConvertTo-Json -Compress)): $root"
 }
 $status = Get-ChildItem -LiteralPath (Join-Path $app 'installation-state') -Filter 'prewarm-*.json' |
     Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
 $result = Get-Content -LiteralPath $status.FullName -Raw -Encoding UTF8 | ConvertFrom-Json
-if ($result.status -ne 'success' -or $result.buildHash -ne $hash -or !$observations) { throw 'Missing verified real application readiness.' }
+if ($result.status -ne 'success' -or $result.buildHash -ne $hash -or !$observations -or !$windowObservations) {
+    throw 'Missing verified real application readiness or native window process observations.'
+}
 $report = [ordered]@{
     InstallerExitCode = $process.ExitCode; ApplicationVersion = $metadata.ApplicationVersion;
     ApplicationSHA256 = $hash; RuntimeRoot = $result.runtimeRoot;
     RuntimeBootstrapExecuted = [bool]$InstallRuntime; PrewarmStatus = $result.status;
     PrewarmSeconds = $result.elapsedSeconds; ApplicationProcessObservations = $observations;
-    JVMObserved = $jvmFound; TestRoot = $root
+    NativeWindowProcessObservations = $windowObservations;
+    JVMObserved = $jvmFound; VisiblePrewarmWindows = $visibleWindows.Count; TestRoot = $root
 }
 $report | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $root 'result.json') -Encoding UTF8
 $report | ConvertTo-Json

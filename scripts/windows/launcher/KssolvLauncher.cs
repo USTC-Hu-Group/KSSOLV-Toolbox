@@ -90,6 +90,8 @@ internal static class KssolvLauncher
                     }
                     start.EnvironmentVariables["KSSOLV_PREWARM_RESULT"] = readyFile;
                     start.EnvironmentVariables["KSSOLV_PREWARM_NONCE"] = nonce;
+                    start.CreateNoWindow = true;
+                    start.WindowStyle = ProcessWindowStyle.Hidden;
                     WriteLog(logFile, "Start " + DateTime.UtcNow.ToString("o") + " user=" + sid + " runtime=" + runtime);
                     var watch = Stopwatch.StartNew();
                     using (var child = Process.Start(start))

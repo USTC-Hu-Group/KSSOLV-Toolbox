@@ -1,5 +1,5 @@
 function kssolvPrewarm()
-%KSSOLVPREWARM 初始化完整桌面界面，渲染就绪后关闭应用。
+%KSSOLVPREWARM 在隐藏窗口中初始化完整桌面界面，就绪后关闭应用。
 
 % 开发者：杨柳
 % 版权 2026 合肥瀚海量子科技有限公司
@@ -13,7 +13,7 @@ end
 startupTimer = tic;
 fprintf('KSSOLV_STARTUP_ENTRY prefdir=%s\n', prefdir(1));
 
-app = kssolv("", false);
+app = kssolv("", false, true);
 cleanup = onCleanup(@() delete(app));
 app.waitUntilReady();
 

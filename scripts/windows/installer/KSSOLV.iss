@@ -45,7 +45,7 @@ Name: "zh"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
 [LangOptions]
 en.DialogFontName=Segoe UI
 zh.DialogFontName=Microsoft YaHei UI
-DialogFontSize=9
+DialogFontSize=10
 
 [Messages]
 en.WelcomeLabel1=KSSOLV Toolbox Setup
@@ -185,6 +185,8 @@ const
   ThemeText = $003B3026;
   ThemeMuted = $00746759;
   ThemeBorder = $00E8E2DA;
+  ThemeBodyFontSize = 10;
+  ThemeHeadingFontSize = 12;
   DesignRailWidth = 200;
   DesignContentWidth = 560;
   DesignInset = 32;
@@ -269,6 +271,7 @@ begin
   InitializeDesign;
   InstallerLogButton := TNewButton.Create(WizardForm);
   InstallerLogButton.Parent := WizardForm;
+  SetBodyFont(InstallerLogButton.Font);
   InstallerLogButton.SetBounds(ScaleX(232), ScaleY(436), ScaleX(130), ScaleY(28));
   InstallerLogButton.Caption := CustomMessage('OpenLog');
   InstallerLogButton.OnClick := @OpenInstallerLog;
@@ -289,9 +292,9 @@ begin
   ReuseRuntime.Enabled := ExistingRuntime <> '';
   ReuseRuntime.Checked := (ExistingRuntime <> '') and (ExpandConstant('{param:REUSERUNTIME|yes}') <> 'no');
   ReuseRuntime.OnClick := @RuntimeSelectionChanged;
-  RuntimeHint := NewLabel(RuntimePage.Surface, CustomMessage('RuntimeExisting') + ExistingRuntime, 0, 144, 430, 52, 9, $006A635B);
-  RuntimeNotes := NewLabel(RuntimePage.Surface, CustomMessage('RuntimeNote'), 0, 206, 430, 66, 10, $006A635B);
-  LicenseLink := NewLabel(RuntimePage.Surface, CustomMessage('ViewRuntimeLicense'), 0, 278, 430, 28, 10, $007A7042);
+  RuntimeHint := NewLabel(RuntimePage.Surface, CustomMessage('RuntimeExisting') + ExistingRuntime, 0, 144, 430, 52, ThemeBodyFontSize, ThemeMuted);
+  RuntimeNotes := NewLabel(RuntimePage.Surface, CustomMessage('RuntimeNote'), 0, 206, 430, 66, ThemeBodyFontSize, ThemeMuted);
+  LicenseLink := NewLabel(RuntimePage.Surface, CustomMessage('ViewRuntimeLicense'), 0, 278, 430, 28, ThemeBodyFontSize, $007A7042);
   LicenseLink.Font.Style := [fsUnderline];
   LicenseLink.Cursor := crHand;
   LicenseLink.OnClick := @ShowRuntimeLicense;
@@ -305,7 +308,7 @@ begin
   RuntimeSelectionChanged(nil);
 
   PreparationPage := CreateOutputMarqueeProgressPage(CustomMessage('WarmTitle'), CustomMessage('WarmDescription'));
-  WarmDetail := NewLabel(PreparationPage.Surface, CustomMessage('WarmDetail'), 0, 110, 430, 220, 11, $006A635B);
+  WarmDetail := NewLabel(PreparationPage.Surface, CustomMessage('WarmDetail'), 0, 110, 430, 220, ThemeBodyFontSize, ThemeMuted);
   LayoutPreparationPage;
 end;
 

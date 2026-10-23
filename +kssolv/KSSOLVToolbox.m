@@ -186,8 +186,18 @@ classdef KSSOLVToolbox < handle
             appcontainer = this.AppContainer;
         end
 
-        function show(this)
+        function show(this, background)
             % 绘制并展示 App 界面
+            arguments
+                this
+                background (1,1) logical = false
+            end
+            if background
+                kssolv.ui.util.StartupSplash.prepareHiddenWindow(this);
+                this.waitUntilReady();
+                this.AppContainer.Busy = false;
+                return
+            end
             if kssolv.ui.util.StartupSplash.tryShow(this)
                 return
             end

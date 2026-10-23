@@ -1,4 +1,4 @@
-function app = kssolv(ksFile, hostInBrowser)
+function app = kssolv(ksFile, hostInBrowser, background)
 %KSSOLV 运行 KSSOLV 的图形用户界面
 
 % 开发者：杨柳
@@ -7,12 +7,17 @@ function app = kssolv(ksFile, hostInBrowser)
 arguments
     ksFile string = ""
     hostInBrowser (1, 1) logical = kssolv.settings.Environment.hostInBrowser()
+    background (1, 1) logical = false
 end
 
 % 清除遗留的 AppContainer、uihtml 页面和监听器，
 % 以消除 HTML Source JavaScript 警告。
 existingApp = kssolv.ui.util.DataStorage.getData("KSSOLVToolbox");
 if isa(existingApp, "kssolv.KSSOLVToolbox") && isvalid(existingApp)
+    if background
+        error('KSSOLV:Startup:ExistingSession', ...
+            'Prewarm requires a new application session.');
+    end
     existingContainer = existingApp.getAppContainer();
     if ~isempty(existingContainer) && isvalid(existingContainer)
         if ksFile == ""
@@ -68,7 +73,7 @@ kssolv.ui.util.DataStorage.setData("KSSOLVToolbox", app);
 
 % 展示图形用户界面
 try
-    app.show();
+    app.show(background);
 catch exception
     delete(app);
     rethrow(exception);

@@ -121,8 +121,8 @@ en.RuntimeSummary=MATLAB Runtime:
 zh.RuntimeSummary=MATLAB Runtime：
 en.UpgradeStatus=Removing the previous KSSOLV Toolbox installation...
 zh.UpgradeStatus=正在卸载旧版 KSSOLV Toolbox……
-en.UpgradeFailed=The previous KSSOLV Toolbox installation could not be removed. Close the application and retry. See:
-zh.UpgradeFailed=未能卸载旧版 KSSOLV Toolbox。请关闭应用后重试。详细信息：
+en.UpgradeFailed=Could not check or remove previous KSSOLV Toolbox installations. Details:
+zh.UpgradeFailed=无法完成旧版 KSSOLV Toolbox 的检查或卸载。详细信息：
 en.UpgradeRestart=Restart Windows to finish removing the previous KSSOLV Toolbox installation, then run Setup again.
 zh.UpgradeRestart=请重启 Windows 完成旧版 KSSOLV Toolbox 的卸载，然后重新运行安装程序。
 
@@ -188,6 +188,7 @@ var
   ExistingRuntime, ResolvedRuntime, SuggestedRuntime: String;
   WarmSucceeded: Boolean;
   WarmAttempt: Integer;
+  UpgradeAttempt: Integer;
 
 function NewLabel(Parent: TWinControl; Caption: String; X, Y, W, H, Size: Integer; Color: TColor): TNewStaticText;
 begin
@@ -321,7 +322,7 @@ begin
 end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;
-var Path, PowerShell, Parameters, UpgradeLog: String; I, J, Code: Integer; Success: Boolean; UpgradeText: TArrayOfString;
+var Path, PowerShell, Parameters, UpgradeLog, UserLogDirectory: String; I, J, Code: Integer; Success: Boolean; UpgradeText: TArrayOfString;
 begin
   Result := '';
   if not AcceptRuntime.Checked then Result := CustomMessage('RuntimeLicenseRequired');
@@ -337,16 +338,37 @@ begin
   ExtractTemporaryFile('Remove-PreviousInstallation.ps1');
   PowerShell := ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe');
   WizardForm.StatusLabel.Caption := CustomMessage('UpgradeStatus');
+  UpgradeAttempt := UpgradeAttempt + 1;
+  UserLogDirectory := ExpandConstant('{tmp}\upgrade-user-') + IntToStr(UpgradeAttempt);
+  UpgradeLog := ExpandConstant('{tmp}\kssolv-upgrade-prepare.log');
+  { Keep executable code protected; only original-user diagnostic logs are writable. }
+  Parameters := '-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "'
+    + ExpandConstant('{tmp}\Remove-PreviousInstallation.ps1') + '" -PrepareUserLogDirectory "' + UserLogDirectory
+    + '" -LogPath "' + UpgradeLog + '"';
+  Success := Exec(PowerShell, Parameters, '', SW_HIDE, ewWaitUntilTerminated, Code);
+  Log(Format('KSSOLV_UPGRADE_LOG_PREPARE started=%d result=%d', [Ord(Success), Code]));
+  if LoadStringsFromFile(UpgradeLog, UpgradeText) then
+    for J := 0 to GetArrayLength(UpgradeText) - 1 do Log(UpgradeText[J]);
+  if not Success or (Code <> 0) then begin
+    if not Success then Log('Upgrade log preparation launch error: ' + SysErrorMessage(Code));
+    Result := CustomMessage('UpgradeFailed') + #13#10 + ExpandConstant('{log}');
+    Exit;
+  end;
   { The per-user uninstall must run as the original user, even after UAC. }
   for I := 0 to 1 do begin
     if I = 0 then Path := 'User' else Path := 'Machine';
-    UpgradeLog := ExpandConstant('{tmp}\kssolv-upgrade-') + Path + '.log';
+    if I = 0 then UpgradeLog := UserLogDirectory + '\kssolv-upgrade-User.log'
+    else UpgradeLog := ExpandConstant('{tmp}\kssolv-upgrade-Machine.log');
+    Log('KSSOLV_UPGRADE_START scope=' + Path);
     Parameters := '-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "'
       + ExpandConstant('{tmp}\Remove-PreviousInstallation.ps1') + '" -Scope ' + Path + ' -LogPath "' + UpgradeLog + '"';
     if I = 0 then Success := ExecAsOriginalUser(PowerShell, Parameters, '', SW_HIDE, ewWaitUntilTerminated, Code)
     else Success := Exec(PowerShell, Parameters, '', SW_HIDE, ewWaitUntilTerminated, Code);
+    Log(Format('KSSOLV_UPGRADE_RESULT scope=%s started=%d result=%d', [Path, Ord(Success), Code]));
     if LoadStringsFromFile(UpgradeLog, UpgradeText) then
-      for J := 0 to GetArrayLength(UpgradeText) - 1 do Log(UpgradeText[J]);
+      for J := 0 to GetArrayLength(UpgradeText) - 1 do Log(UpgradeText[J])
+    else Log('Upgrade helper produced no log: ' + UpgradeLog);
+    if not Success then Log('Upgrade helper launch error: ' + SysErrorMessage(Code));
     if Success and (Code = 3010) then begin
       NeedsRestart := True;
       Result := CustomMessage('UpgradeRestart');

@@ -1,9 +1,34 @@
 [CmdletBinding()]
 param(
     [ValidateSet('User', 'Machine')][string]$Scope = 'User',
-    [string]$LogPath
+    [string]$LogPath,
+    [string]$PrepareUserLogDirectory
 )
 $ErrorActionPreference = 'Stop'
+
+function Initialize-KssolvUserUpgradeLog([string]$Directory, [string]$Helper) {
+    # Setup's protected temporary directory is read-only to the original user.
+    # Grant write access only to a fresh log subdirectory, never to helper code.
+    if (Test-Path -LiteralPath $Directory) { throw 'The user upgrade log directory must be new.' }
+    $null = New-Item -ItemType Directory -Path $Directory -ErrorAction Stop
+    $users = [Security.Principal.SecurityIdentifier]::new('S-1-5-32-545')
+    $acl = Get-Acl -LiteralPath $Directory
+    $rule = [Security.AccessControl.FileSystemAccessRule]::new($users,
+        [Security.AccessControl.FileSystemRights]::Modify,
+        [Security.AccessControl.InheritanceFlags]'ContainerInherit, ObjectInherit',
+        [Security.AccessControl.PropagationFlags]::None,
+        [Security.AccessControl.AccessControlType]::Allow)
+    $null = $acl.AddAccessRule($rule)
+    Set-Acl -LiteralPath $Directory -AclObject $acl
+    # A different account may have supplied the UAC credentials. Let the original
+    # user read the helper by its exact path without granting write access.
+    $acl = Get-Acl -LiteralPath $Helper
+    $rule = [Security.AccessControl.FileSystemAccessRule]::new($users,
+        [Security.AccessControl.FileSystemRights]::ReadAndExecute,
+        [Security.AccessControl.AccessControlType]::Allow)
+    $null = $acl.AddAccessRule($rule)
+    Set-Acl -LiteralPath $Helper -AclObject $acl
+}
 
 function Test-KssolvProductName([string]$Key, [string]$Name) {
     return $Key -eq '{5200919D-0E3D-4525-AD64-977F32DEDD5D}_is1' -or
@@ -87,7 +112,7 @@ function Test-KssolvRegistration($Installation) {
 
 function Invoke-KssolvUninstaller([string]$Executable, [string]$UninstallLog) {
     $parameters = '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /LOG="' + $UninstallLog + '"'
-    $process = Start-Process -FilePath $Executable -ArgumentList $parameters -PassThru -Wait
+    $process = Start-Process -FilePath $Executable -ArgumentList $parameters -WindowStyle Hidden -PassThru -Wait
     return $process.ExitCode
 }
 
@@ -169,6 +194,13 @@ function Remove-KssolvPreviousInstallations([string]$InstallScope, [string]$Upgr
 # registry, starting a process, or changing the machine.
 if ($MyInvocation.InvocationName -ne '.') {
     try {
+        if ($PrepareUserLogDirectory) {
+            if (!$LogPath) { throw 'An upgrade log preparation path is required.' }
+            Set-Content -LiteralPath $LogPath -Encoding UTF8 -Value 'Preparing original-user upgrade diagnostics'
+            Initialize-KssolvUserUpgradeLog $PrepareUserLogDirectory $PSCommandPath
+            Add-Content -LiteralPath $LogPath -Encoding UTF8 -Value 'Original-user upgrade diagnostics ready'
+            exit 0
+        }
         if (!$LogPath) { throw 'An upgrade log path is required.' }
         Set-Content -LiteralPath $LogPath -Encoding UTF8 -Value "KSSOLV previous-installation removal: $Scope"
         $code = Remove-KssolvPreviousInstallations $Scope $LogPath

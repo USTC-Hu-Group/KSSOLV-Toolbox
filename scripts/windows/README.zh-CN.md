@@ -75,6 +75,14 @@ macOS 基础 `.app` 同样缓存在 `base-installer/`，最终 `.pkg` / `.dmg` �
 可运行 `scripts/windows/tests/Test-InstallerUpgrade.ps1` 验证识别和卸载失败分支；
 Windows 的真实注册表、UAC 和安装器执行仍需在 Windows 上验收。
 
+普通启动并通过 UAC 提权时，原用户检查仍使用未提权的用户身份运行。
+安装器临时目录保持只读，只为该检查创建可写的独立日志子目录，机器级日志仍保存在
+受保护目录中。每次重试使用新子目录；不放宽脚本、应用或整个临时目录的写权限。
+可在未提权 PowerShell 中运行 `scripts/windows/tests/Test-UpgradeLogPermissions.ps1`，
+通过真实 ACL 和 Windows PowerShell 子进程复现旧路径失败、验证新路径成功。
+安装日志中的 `KSSOLV_UPGRADE_*` 记录准备阶段、检查范围及启动结果／退出码；
+缺少辅助日志会单独记录，避免把尚未开始的检查直接解释为卸载失败。
+
 ## 日常启动卡片
 
 快捷方式仍指向 `KssolvLauncher.exe`。打包时直接渲染共用的

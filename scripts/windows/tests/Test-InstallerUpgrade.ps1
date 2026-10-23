@@ -63,6 +63,13 @@ try {
     Set-Content -LiteralPath $repairDat -Value 'fixture'
     if ((& $validateUninstaller $registration $repair) -ne $repairExe) { throw 'Valid uninstaller did not retain the normal removal path.' }
     Write-Output 'PASS missing uninstall files allow repair only for the same product, directory and registry view'
+    foreach ($destination in @($repair, (Join-Path $repair 'nested'), $root)) {
+        if ($null -ne (& $validateUninstaller $registration '' $destination)) { throw 'An overlapping destination would run an external uninstaller.' }
+    }
+    if ((& $validateUninstaller $registration '' (Join-Path $root 'separate destination')) -ne $repairExe) {
+        throw 'Separate installations stopped supporting optional cleanup.'
+    }
+    Write-Output 'PASS overlapping installation directories use native upgrades without external uninstall'
 
     $redirectTarget = Join-Path $root 'redirect target'
     $null = New-Item -ItemType Directory -Path $redirectTarget
@@ -153,7 +160,7 @@ try {
     $sentinel = Join-Path $repair 'project.ks'; Set-Content -LiteralPath $sentinel -Value 'preserve during repair'
     if ((Remove-KssolvPreviousInstallations 'User' $log) -ne 0 -or $script:Calls.Count) { throw 'Repair attempted an external uninstall.' }
     if (!(Test-Path -LiteralPath $sentinel) -or !(Test-Path -LiteralPath $repairExe)) { throw 'Repair removed existing files.' }
-    if (!(Select-String -LiteralPath $log -SimpleMatch 'Repairing the existing KSSOLV installation in place' -Quiet)) { throw 'Repair decision was not logged.' }
+    if (!(Select-String -LiteralPath $log -SimpleMatch 'Installing directly over the existing KSSOLV files' -Quiet)) { throw 'Repair decision was not logged.' }
     $script:Running = $true; Assert-Fails 'application running'; $script:Running = $false
     $script:PendingRemoval = $true
     if ((Remove-KssolvPreviousInstallations 'User' $log) -ne 3010 -or $script:Calls.Count) { throw 'Repair ignored pending deletion.' }

@@ -122,10 +122,20 @@ en.RuntimeSummary=MATLAB Runtime:
 zh.RuntimeSummary=MATLAB Runtime：
 en.UpgradeStatus=Removing the previous KSSOLV Toolbox installation...
 zh.UpgradeStatus=正在卸载旧版 KSSOLV Toolbox……
-en.UpgradeFailed=Could not check or remove previous KSSOLV Toolbox installations. Details:
-zh.UpgradeFailed=无法完成旧版 KSSOLV Toolbox 的检查或卸载。详细信息：
-en.UpgradeRestart=Restart Windows to finish removing the previous KSSOLV Toolbox installation, then run Setup again.
-zh.UpgradeRestart=请重启 Windows 完成旧版 KSSOLV Toolbox 的卸载，然后重新运行安装程序。
+en.UpgradeSkipped=The previous installation could not be fully removed. Setup will skip the remaining cleanup and continue installing KSSOLV Toolbox. Open the log for details.
+zh.UpgradeSkipped=未能完整清理旧版本，将跳过剩余清理并继续安装 KSSOLV Toolbox。您可以打开日志查看详情。
+en.OpenLog=Open log
+zh.OpenLog=打开日志
+en.LogOpenFailed=The log could not be opened. You can copy this path to open it manually:
+zh.LogOpenFailed=无法打开日志，您可以复制以下路径手动打开：
+en.DiagnosticOK=OK
+zh.DiagnosticOK=确定
+en.DiagnosticRetry=Retry
+zh.DiagnosticRetry=重试
+en.DiagnosticCancel=Cancel
+zh.DiagnosticCancel=取消
+en.ContinueInstallation=Continue installation
+zh.ContinueInstallation=继续安装
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:DesktopShortcut}"; Flags: unchecked
@@ -190,6 +200,11 @@ var
   WarmSucceeded: Boolean;
   WarmAttempt: Integer;
   UpgradeAttempt: Integer;
+  UpgradeNeedsRestart: Boolean;
+  InstallerLogButton: TNewButton;
+
+#include "Diagnostics.iss"
+#include "Upgrade.iss"
 
 function NewLabel(Parent: TWinControl; Caption: String; X, Y, W, H, Size: Integer; Color: TColor): TNewStaticText;
 begin
@@ -229,6 +244,11 @@ begin
   if WarmSucceeded then Result := 0 else Result := 1;
 end;
 
+function NeedRestart: Boolean;
+begin
+  Result := UpgradeNeedsRestart;
+end;
+
 procedure RuntimeSelectionChanged(Sender: TObject);
 begin
   RuntimePage.Edits[0].Enabled := not ReuseRuntime.Checked;
@@ -247,6 +267,11 @@ end;
 procedure InitializeWizard;
 begin
   InitializeDesign;
+  InstallerLogButton := TNewButton.Create(WizardForm);
+  InstallerLogButton.Parent := WizardForm;
+  InstallerLogButton.SetBounds(ScaleX(232), ScaleY(436), ScaleX(130), ScaleY(28));
+  InstallerLogButton.Caption := CustomMessage('OpenLog');
+  InstallerLogButton.OnClick := @OpenInstallerLog;
 
   RuntimePage := CreateInputDirPage(wpSelectTasks, CustomMessage('RuntimeTitle'),
     CustomMessage('RuntimeDescription'), CustomMessage('RuntimePrompt'), False, '');
@@ -308,22 +333,22 @@ begin
   Result := True;
   if CurPageID <> RuntimePage.ID then Exit;
   if not AcceptRuntime.Checked then begin
-    MsgBox(CustomMessage('RuntimeLicenseRequired'), mbError, MB_OK); Result := False; Exit;
+    ShowInstallerDiagnostic(CustomMessage('RuntimeLicenseRequired'), False, False); Result := False; Exit;
   end;
 #if RuntimeDelivery == "none"
   if InstallNewRuntime then begin
-    MsgBox(CustomMessage('RuntimeMissing'), mbError, MB_OK); Result := False; Exit;
+    ShowInstallerDiagnostic(CustomMessage('RuntimeMissing'), False, False); Result := False; Exit;
   end;
 #endif
   if not InstallNewRuntime then Exit;
   Path := RuntimePage.Values[0];
   Result := (Length(Path) >= 3) and (Copy(Path, 2, 2) = ':\');
   for I := 1 to Length(Path) do if Ord(Path[I]) > 127 then Result := False;
-  if not Result then MsgBox(CustomMessage('AsciiPath'), mbError, MB_OK);
+  if not Result then ShowInstallerDiagnostic(CustomMessage('AsciiPath'), False, False);
 end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;
-var Path, PowerShell, Parameters, UpgradeLog, UserLogDirectory: String; I, J, Code: Integer; Success: Boolean; UpgradeText: TArrayOfString;
+var Path: String; I: Integer;
 begin
   Result := '';
   if not AcceptRuntime.Checked then Result := CustomMessage('RuntimeLicenseRequired');
@@ -336,51 +361,7 @@ begin
   if InstallNewRuntime then Result := CustomMessage('RuntimeMissing');
 #endif
   if Result <> '' then Exit;
-  ExtractTemporaryFile('Remove-PreviousInstallation.ps1');
-  PowerShell := ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe');
-  WizardForm.StatusLabel.Caption := CustomMessage('UpgradeStatus');
-  UpgradeAttempt := UpgradeAttempt + 1;
-  UserLogDirectory := ExpandConstant('{tmp}\upgrade-user-') + IntToStr(UpgradeAttempt);
-  UpgradeLog := ExpandConstant('{tmp}\kssolv-upgrade-prepare.log');
-  { Keep executable code protected; only original-user diagnostic logs are writable. }
-  Parameters := '-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "'
-    + ExpandConstant('{tmp}\Remove-PreviousInstallation.ps1') + '" -PrepareUserLogDirectory "' + UserLogDirectory
-    + '" -LogPath "' + UpgradeLog + '"';
-  Success := Exec(PowerShell, Parameters, '', SW_HIDE, ewWaitUntilTerminated, Code);
-  Log(Format('KSSOLV_UPGRADE_LOG_PREPARE started=%d result=%d', [Ord(Success), Code]));
-  if LoadStringsFromFile(UpgradeLog, UpgradeText) then
-    for J := 0 to GetArrayLength(UpgradeText) - 1 do Log(UpgradeText[J]);
-  if not Success or (Code <> 0) then begin
-    if not Success then Log('Upgrade log preparation launch error: ' + SysErrorMessage(Code));
-    Result := CustomMessage('UpgradeFailed') + #13#10 + ExpandConstant('{log}');
-    Exit;
-  end;
-  { The per-user uninstall must run as the original user, even after UAC. }
-  for I := 0 to 1 do begin
-    if I = 0 then Path := 'User' else Path := 'Machine';
-    if I = 0 then UpgradeLog := UserLogDirectory + '\kssolv-upgrade-User.log'
-    else UpgradeLog := ExpandConstant('{tmp}\kssolv-upgrade-Machine.log');
-    Log('KSSOLV_UPGRADE_START scope=' + Path);
-    Parameters := '-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "'
-      + ExpandConstant('{tmp}\Remove-PreviousInstallation.ps1') + '" -Scope ' + Path + ' -LogPath "' + UpgradeLog + '"';
-    if I = 1 then Parameters := Parameters + ' -TargetDirectory "' + WizardDirValue + '"';
-    if I = 0 then Success := ExecAsOriginalUser(PowerShell, Parameters, '', SW_HIDE, ewWaitUntilTerminated, Code)
-    else Success := Exec(PowerShell, Parameters, '', SW_HIDE, ewWaitUntilTerminated, Code);
-    Log(Format('KSSOLV_UPGRADE_RESULT scope=%s started=%d result=%d', [Path, Ord(Success), Code]));
-    if LoadStringsFromFile(UpgradeLog, UpgradeText) then
-      for J := 0 to GetArrayLength(UpgradeText) - 1 do Log(UpgradeText[J])
-    else Log('Upgrade helper produced no log: ' + UpgradeLog);
-    if not Success then Log('Upgrade helper launch error: ' + SysErrorMessage(Code));
-    if Success and (Code = 3010) then begin
-      NeedsRestart := True;
-      Result := CustomMessage('UpgradeRestart');
-      Exit;
-    end;
-    if not Success or (Code <> 0) then begin
-      Result := CustomMessage('UpgradeFailed') + #13#10 + ExpandConstant('{log}');
-      Exit;
-    end;
-  end;
+  TryRemovePreviousInstallations;
 end;
 
 function UpdateReadyMemo(Space, NewLine, MemoUserInfoInfo, MemoDirInfo, MemoTypeInfo,
@@ -400,6 +381,7 @@ begin
   PreparationPage.Show;
   PreparationPage.Animate;
   try
+    try
     if InstallNewRuntime then begin
       PreparationPage.SetText(CustomMessage('RuntimePreparing'), CustomMessage('RuntimeWait'));
       PreparationPage.SetProgress(0, 0);
@@ -436,12 +418,16 @@ begin
       if not WarmSucceeded then begin
         Log('KSSOLV_PREWARM_FAILED exit=' + IntToStr(Code) + ' status=' + StatusFile);
         if WizardSilent then RaiseException(CustomMessage('WarmFailed') + #13#10 + StatusFile);
-        Answer := MsgBox(CustomMessage('WarmFailed') + #13#10 + StatusFile, mbError, MB_RETRYCANCEL);
-        if Answer <> IDRETRY then RaiseException(CustomMessage('WarmFailed'));
+        Answer := ShowInstallerDiagnostic(CustomMessage('WarmFailed'), True, False);
+        if Answer <> mrRetry then Exit;
       end;
     until WarmSucceeded;
     Log('KSSOLV_INSTALL_PREWARM_OK ' + StatusFile);
     PreparationPage.SetProgress(100, 100);
+    except
+      WarmSucceeded := False;
+      ShowInstallerDiagnostic(GetExceptionMessage, False, False);
+    end;
   finally
     PreparationPage.Hide;
   end;

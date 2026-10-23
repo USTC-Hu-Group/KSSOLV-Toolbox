@@ -68,7 +68,7 @@ function Get-KssolvPreviousInstallations([string]$InstallScope) {
     }
 }
 
-function Get-KssolvUninstaller($Installation, [string]$RepairDirectory = '') {
+function Get-KssolvUninstaller($Installation, [string]$RepairDirectory = '', [string]$InstallDirectory = '') {
     # Only the project's Inno uninstaller is known to be native and supports the
     # silent flags below. Never execute an arbitrary registry command or shell.
     $command = $Installation.Command.Trim()
@@ -109,6 +109,15 @@ function Get-KssolvUninstaller($Installation, [string]$RepairDirectory = '') {
     if (!$Installation.KnownId -and
         !(Test-Path -LiteralPath (Join-Path $directory 'application\KSSOLV_Toolbox.exe') -PathType Leaf)) {
         throw 'Previous installation lacks the KSSOLV application identity.'
+    }
+    if ($InstallDirectory) {
+        $target = [IO.Path]::GetFullPath($InstallDirectory).TrimEnd('\')
+        $previous = $directory.TrimEnd('\')
+        # Native Inno upgrades retain their uninstall history. Never run a
+        # separate uninstaller over the destination or one of its ancestors.
+        if ($target -ieq $previous -or
+            $target.StartsWith($previous + '\', [StringComparison]::OrdinalIgnoreCase) -or
+            $previous.StartsWith($target + '\', [StringComparison]::OrdinalIgnoreCase)) { return $null }
     }
     return $exe
 }
@@ -178,7 +187,7 @@ function Remove-KssolvPreviousInstallations([string]$InstallScope, [string]$Upgr
     # not leave a damaged HKCU registration behind by treating it as a repair.
     if ($InstallScope -eq 'Machine') { $repairDirectory = $InstallDirectory }
     $validated = @($installations | ForEach-Object {
-        [pscustomobject]@{ Installation = $_; Executable = Get-KssolvUninstaller $_ $repairDirectory }
+        [pscustomobject]@{ Installation = $_; Executable = Get-KssolvUninstaller $_ $repairDirectory $InstallDirectory }
     })
     if (!$validated.Count) { return 0 }
     if ($InstallScope -eq 'Machine') {
@@ -198,7 +207,7 @@ function Remove-KssolvPreviousInstallations([string]$InstallScope, [string]$Upgr
         if (!$exe) {
             if (Test-KssolvPendingRemoval $directories) { return 3010 }
             Add-Content -LiteralPath $UpgradeLog -Encoding UTF8 -Value (
-                'Repairing the existing KSSOLV installation in place; uninstall files are missing: ' + $entry.Installation.Directory)
+                'Installing directly over the existing KSSOLV files without running a separate uninstaller: ' + $entry.Installation.Directory)
             continue
         }
         if (!$removed.ContainsKey($exe)) {

@@ -2,7 +2,8 @@
 set -euo pipefail
 
 SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
-RELEASE_DIR="$SCRIPTS_DIR/../../Release/StandaloneDesktopApp"
+RELEASE_DIR="$SCRIPTS_DIR/../../Release"
+BASE_DIR="$SCRIPTS_DIR/../../.buildtool/standalone/base-installer"
 DEV_ID="Developer ID Application: Liu Yang (T3ML58STY8)"
 NOTARY_PROFILE="AC_PASSWORD"
 
@@ -11,18 +12,20 @@ fail() {
     exit 1
 }
 
-[[ -d "$RELEASE_DIR" ]] || fail "找不到发布目录: $RELEASE_DIR"
-cd "$RELEASE_DIR"
+[[ -d "$BASE_DIR" ]] || fail "找不到基础安装包缓存: $BASE_DIR"
+mkdir -p "$RELEASE_DIR"
+RELEASE_DIR="$(cd "$RELEASE_DIR" && pwd)"
+cd "$BASE_DIR"
 
 shopt -s nullglob
 APP_CANDIDATES=(KSSOLV_Toolbox_V*.app)
 shopt -u nullglob
 (( ${#APP_CANDIDATES[@]} == 1 )) || \
-    fail "发布目录中应当恰好有一个 KSSOLV_Toolbox_V*.app，实际找到 ${#APP_CANDIDATES[@]} 个"
+    fail "基础安装包缓存中应当恰好有一个 KSSOLV_Toolbox_V*.app，实际找到 ${#APP_CANDIDATES[@]} 个"
 
 APP_NAME="${APP_CANDIDATES[0]}"
 APP_BASENAME="${APP_NAME%.app}"
-DMG_NAME="${APP_BASENAME}.dmg"
+DMG_NAME="$RELEASE_DIR/${APP_BASENAME}.dmg"
 VOL_NAME="$APP_BASENAME"
 DMG_INSTALLER_NAME="Install KSSOLV Toolbox.app"
 
@@ -78,5 +81,7 @@ xcrun stapler staple "$DMG_NAME"
 xcrun stapler validate "$DMG_NAME"
 spctl --assess --type open --context context:primary-signature \
     --verbose=2 "$DMG_NAME"
+source "$SCRIPTS_DIR/write_release_checksums.sh"
+write_release_checksums "$DMG_NAME"
 
-echo "全部完成！最终文件: $(pwd)/$DMG_NAME"
+echo "全部完成！最终文件: $DMG_NAME"

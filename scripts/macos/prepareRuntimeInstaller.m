@@ -5,7 +5,7 @@ arguments
     outputDirectory (1,1) string = ""
 end
 root = fileparts(fileparts(fileparts(mfilename('fullpath'))));
-buildDirectory = fullfile(root, 'Release', 'StandaloneDesktopApp', 'build');
+buildDirectory = fullfile(root, '.buildtool', 'standalone', 'build');
 metadataFile = fullfile(buildDirectory, 'runtime-metadata.json');
 dependencies = fullfile(buildDirectory, 'buildresult.json');
 metadata = jsondecode(fileread(metadataFile));

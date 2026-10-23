@@ -2,7 +2,8 @@
 set -euo pipefail
 SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPOSITORY_DIR="$SCRIPTS_DIR/../.."
-RELEASE_DIR="$REPOSITORY_DIR/Release/StandaloneDesktopApp"
+RELEASE_DIR="$REPOSITORY_DIR/Release"
+CACHE_DIR="$REPOSITORY_DIR/.buildtool/standalone"
 PKG_ASSETS_DIR="$SCRIPTS_DIR/pkg"
 PKG_IDENTIFIER=com.pwdft.kssolv
 DELIVERY="${PKG_RUNTIME_DELIVERY:-auto}"
@@ -21,7 +22,7 @@ import sys
 sys.exit(0 if Path(sys.argv[1]).stat().st_mtime_ns >= Path(sys.argv[2]).stat().st_mtime_ns else 1)
 PY
 }
-METADATA="$RELEASE_DIR/build/runtime-metadata.json"
+METADATA="$CACHE_DIR/build/runtime-metadata.json"
 [[ -f "$METADATA" ]] || fail 'Missing runtime-metadata.json. Run buildInstaller() first.'
 RUNTIME_RELEASE=$(/usr/bin/plutil -extract RuntimeRelease raw -o - "$METADATA")
 STARTUP_PROTOCOL=$(/usr/bin/plutil -extract StartupProtocolVersion raw -o - "$METADATA")
@@ -33,7 +34,7 @@ VERSION=$(sed -nE "s/^[[:space:]]*Version[[:space:]]+string[[:space:]]*=[[:space
 [[ -z "${MATLAB_RUNTIME_RELEASE:-}" || "$MATLAB_RUNTIME_RELEASE" == "$RUNTIME_RELEASE" ]] || fail 'Runtime 版本与基础构建不一致'
 /usr/bin/xcrun --find swiftc >/dev/null 2>&1 || fail '请安装 Xcode Command Line Tools'
 command -v python3 >/dev/null || fail '打包需要 Python 3；安装后的应用和安装脚本不依赖 Python'
-INSTALLER_APP="$RELEASE_DIR/KSSOLV_Toolbox_V$VERSION.app"
+INSTALLER_APP="$CACHE_DIR/base-installer/KSSOLV_Toolbox_V$VERSION.app"
 BUNDLE_ZIP="$INSTALLER_APP/Contents/Resources/bundle.zip"
 [[ -f "$BUNDLE_ZIP" ]] && timestamp_at_least "$BUNDLE_ZIP" "$METADATA" || fail '基础安装器缺失或早于编译元数据，请运行 buildInstaller()'
 for asset in preinstall postinstall prewarm.sh prepare-runtime runtime-common.sh com.gleamoe.kssolv.prewarm.plist; do
@@ -49,10 +50,11 @@ SUPPORT_SCRIPTS="$WORK_DIR/support-scripts"
 PACKAGES="$WORK_DIR/packages"
 RESOURCES="$WORK_DIR/resources"
 mkdir -p "$APP_PAYLOAD" "$APP_SCRIPTS" "$SUPPORT_SCRIPTS" "$PACKAGES" "$RESOURCES" "$WORK_DIR/extracted"
-python3 "$SCRIPTS_DIR/stage_runtime_payload.py" "$RELEASE_DIR/build" "$INSTALLER_APP" "$SUPPORT_SCRIPTS" --delivery "$DELIVERY" > "$WORK_DIR/runtime-staging.json"
+python3 "$SCRIPTS_DIR/stage_runtime_payload.py" "$CACHE_DIR/build" "$INSTALLER_APP" "$SUPPORT_SCRIPTS" --delivery "$DELIVERY" > "$WORK_DIR/runtime-staging.json"
 REQUIREMENTS="$SUPPORT_SCRIPTS/runtime-requirements.plist"
 DELIVERY=$(/usr/libexec/PlistBuddy -c 'Print :RuntimeDelivery' "$REQUIREMENTS")
-OUTPUT_PKG="${PKG_OUTPUT_PATH:-$RELEASE_DIR/KSSOLV_Toolbox_V${VERSION}_${DELIVERY}.pkg}"
+OUTPUT_PKG="${PKG_OUTPUT_PATH:-$RELEASE_DIR/KSSOLV_Toolbox_V${VERSION}.pkg}"
+mkdir -p "$(dirname "$OUTPUT_PKG")"
 
 ditto -x -k "$BUNDLE_ZIP" "$WORK_DIR/extracted"
 ORIGINAL="$WORK_DIR/extracted/application/KSSOLV_Toolbox.app"
@@ -128,5 +130,7 @@ pkgbuild --root "$APP_PAYLOAD" --component-plist "$COMPONENTS" --scripts "$APP_S
 python3 "$SCRIPTS_DIR/write_pkg_distribution.py" "$RESOURCES" "$WORK_DIR/Distribution" "$REQUIREMENTS" "$VERSION" "$REPOSITORY_DIR/LICENSE"
 productbuild --distribution "$WORK_DIR/Distribution" --package-path "$PACKAGES" --resources "$RESOURCES" "$WORK_DIR/final.pkg"
 mv -f "$WORK_DIR/final.pkg" "$OUTPUT_PKG"
+source "$SCRIPTS_DIR/write_release_checksums.sh"
+write_release_checksums "$OUTPUT_PKG"
 echo "已生成原生 PKG ($DELIVERY): $OUTPUT_PKG"
 echo "下一步: $SCRIPTS_DIR/sign_and_notarize_app.sh --pkg \"$OUTPUT_PKG\""

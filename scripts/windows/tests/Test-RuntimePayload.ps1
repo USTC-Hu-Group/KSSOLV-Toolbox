@@ -3,12 +3,12 @@ $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $repository = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\..'))
-$release = Join-Path $repository 'Release\StandaloneDesktopApp'
-$base = Get-ChildItem -LiteralPath $release -File | Where-Object {
+$cache = Join-Path $repository '.buildtool\standalone'
+$base = Get-ChildItem -LiteralPath (Join-Path $cache 'base-installer') -File | Where-Object {
     $_.Name -match '^KSSOLV_Toolbox_V\d+(?:\.\d+){1,3}\.exe$'
 } | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
 if (!$base) { throw 'Build a MathWorks web base installer before running this test.' }
-$app = Join-Path $release 'build\KSSOLV_Toolbox.exe'
+$app = Join-Path $cache 'build\KSSOLV_Toolbox.exe'
 $root = Join-Path $repository ('.buildtool\runtime-payload-tests\' + [Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $root | Out-Null
 $tool = Join-Path $root 'RuntimePayload.exe'

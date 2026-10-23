@@ -25,7 +25,7 @@ WizardBackColor=#ffffff
 SetupIconFile={#Stage}\kssolv.ico
 UninstallDisplayIcon={app}\KssolvLauncher.exe
 OutputDir={#ReleaseDirectory}
-OutputBaseFilename=KSSOLV_Toolbox_V{#AppVersion}_Windows
+OutputBaseFilename=KSSOLV_Toolbox_V{#AppVersion}
 Compression=lzma2/fast
 SolidCompression=yes
 LicenseFile={#Repository}\LICENSE
@@ -134,7 +134,7 @@ Name: "{app}\installation-state"; Permissions: users-modify
 
 [Files]
 Source: "Remove-PreviousInstallation.ps1"; Flags: dontcopy
-Source: "{#ReleaseDirectory}\build\KSSOLV_Toolbox.exe"; DestDir: "{app}\application"; Flags: ignoreversion
+Source: "{#Application}"; DestDir: "{app}\application"; Flags: ignoreversion
 Source: "{#Stage}\KssolvLauncher.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#Stage}\Microsoft.Web.WebView2.Core.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#Stage}\Microsoft.Web.WebView2.WinForms.dll"; DestDir: "{app}"; Flags: ignoreversion

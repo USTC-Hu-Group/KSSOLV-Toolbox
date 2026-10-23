@@ -20,7 +20,7 @@ buildInstaller("installer"); % MathWorks 离线基础安装包，需要 Runtime 
 buildInstaller("none");      % MathWorks 仅应用基础安装包
 ```
 
-基础包输出为 `Release/StandaloneDesktopApp/KSSOLV_Toolbox_V<版本>.exe`，
+基础包输出为 `.buildtool/standalone/base-installer/KSSOLV_Toolbox_V<版本>.exe`，
 载荷较大时 MathWorks 会输出 `.zip`。此阶段不调用 PowerShell 或 Inno Setup，
 不要求安装 Inno Setup，也不会自动生成最终 Windows 分发包。
 
@@ -31,7 +31,7 @@ buildInstaller("none");      % MathWorks 仅应用基础安装包
 ```
 
 第二阶段完全不启动 MATLAB，也不要求 MATLAB 在 PATH 中。
-RuntimeRelease 和 RuntimeVersion 从基础构建产物 `build/runtime-metadata.json`
+RuntimeRelease 和 RuntimeVersion 从基础构建产物 `.buildtool/standalone/build/runtime-metadata.json`
 自动获取，无需手动传入。
 该文件由 `buildInstaller()` 记录实际 MATLAB 构建环境，包含应用版本；打包脚本
 拒绝缺失、版本不符或早于编译产物的元数据，不根据本机其他 MATLAB 版本猜测。
@@ -48,7 +48,14 @@ ZIP 解压会检查路径边界。每次使用独立暂存目录，不修改基�
 可以主动省略 Runtime 载荷。此前重复生成载荷的 `prepareRuntime.m` 已移除。
 预热仍由最终安装包在用户安装末尾执行。
 
-最终输出 `Release/StandaloneDesktopApp/KSSOLV_Toolbox_V<版本>_Windows.exe`。
+最终输出 `Release/KSSOLV_Toolbox_V<版本>.exe`，不附加平台后缀。
+编译产物和打包暂存文件分别放在 `.buildtool/standalone/build/` 和
+`.buildtool/standalone/windows-stage/`；`Release/` 只用于最终分发包、`.mltbx` 和校验和。
+macOS 基础 `.app` 同样缓存在 `base-installer/`，最终 `.pkg` / `.dmg` 输出到
+`Release/KSSOLV_Toolbox_V<版本>.pkg` / `.dmg`，不附加平台或 Runtime 分发模式后缀。
+平台打包脚本会更新同目录下的 `SHA256SUMS-V<版本>-Windows.txt` 或
+`SHA256SUMS-V<版本>-macOS.txt`，仅包含最终安装包、离线分卷（Windows）和已有的同版本
+`.mltbx`；macOS 的 PKG 签名及 DMG 公证完成后会再次更新校验和。
 第一阶段 `buildInstaller("installer")` 后，第二阶段无需参数即可生成离线分发包。
 离线包启用分卷，必须一起分发同名 `.bin` 文件。仅复用已有 Runtime 时指定
 `-RuntimeDelivery none`。
@@ -165,7 +172,7 @@ Runtime 子进程，不影响其他应用实例。系统服务的 Session 0 不�
 首次安装 Runtime 时安装器需要管理员权限。路径应使用实际的本地盘符。
 
 ```powershell
-$installer = Get-ChildItem .\Release\StandaloneDesktopApp\KSSOLV_Toolbox_V*_Windows.exe |
+$installer = Get-ChildItem .\Release\KSSOLV_Toolbox_V*.exe |
   Sort-Object LastWriteTime -Descending | Select-Object -First 1
 & $installer.FullName /VERYSILENT /SUPPRESSMSGBOXES /NORESTART `
   /LANG=zh /DIR="E:\Apps\KSSOLV Toolbox" `

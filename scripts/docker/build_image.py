@@ -37,7 +37,7 @@ def validate_payload(payload):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--payload", type=Path, default=Path("Release/StandaloneDesktopApp/build"))
+    parser.add_argument("--payload", type=Path, default=Path(".buildtool/standalone/build"))
     parser.add_argument("--image", default="kssolv-toolbox:local")
     parser.add_argument("--runtime-image", help="Matching official Runtime tag, optionally pinned by digest")
     args = parser.parse_args()

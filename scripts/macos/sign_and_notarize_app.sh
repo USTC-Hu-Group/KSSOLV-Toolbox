@@ -3,7 +3,8 @@ set -euo pipefail
 
 SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPOSITORY_DIR="$SCRIPTS_DIR/../.."
-RELEASE_DIR="$REPOSITORY_DIR/Release/StandaloneDesktopApp"
+RELEASE_DIR="$REPOSITORY_DIR/Release"
+BASE_DIR="$REPOSITORY_DIR/.buildtool/standalone/base-installer"
 DEV_ID="${APP_SIGN_IDENTITY:-Developer ID Application: Liu Yang (T3ML58STY8)}"
 INSTALLER_IDENTITY="${PKG_SIGN_IDENTITY:-Developer ID Installer: Liu Yang (T3ML58STY8)}"
 NOTARY_PROFILE="${NOTARY_PROFILE:-AC_PASSWORD}"
@@ -189,6 +190,8 @@ PY
     spctl --assess --type install --verbose=2 "$signed_pkg"
     # 全部验证成功后才替换原包；失败时保留可重试的未签名产物。
     mv -f "$signed_pkg" "$input_pkg"
+    source "$SCRIPTS_DIR/write_release_checksums.sh"
+    write_release_checksums "$input_pkg"
     echo "PKG 签名和公证完成: $input_pkg"
 }
 
@@ -218,15 +221,7 @@ case "$MODE" in
                 "s/^[[:space:]]*Version[[:space:]]+string[[:space:]]*=[[:space:]]*'([^']+)'.*/\1/p" \
                 "$REPOSITORY_DIR/KSSOLV_Toolbox.m" | head -n 1)
             [[ -n "$VERSION" ]] || fail "无法从 KSSOLV_Toolbox.m 读取版本号"
-            local_delivery="${PKG_RUNTIME_DELIVERY:-auto}"
-            if [[ "$local_delivery" == auto ]]; then
-                local_delivery=$(/usr/bin/plutil -extract RuntimeDelivery raw -o - \
-                    "$RELEASE_DIR/build/runtime-metadata.json" 2>/dev/null || true)
-            fi
-            case "$local_delivery" in
-                web|installer|none) INPUT_PKG="$RELEASE_DIR/KSSOLV_Toolbox_V${VERSION}_${local_delivery}.pkg" ;;
-                *) INPUT_PKG="$RELEASE_DIR/KSSOLV_Toolbox_V$VERSION.pkg" ;;
-            esac
+            INPUT_PKG="$RELEASE_DIR/KSSOLV_Toolbox_V$VERSION.pkg"
         fi
         sign_and_notarize_pkg "$INPUT_PKG"
         exit 0
@@ -239,15 +234,15 @@ case "$MODE" in
         ;;
 esac
 
-[[ -d "$RELEASE_DIR" ]] || fail "找不到发布目录: $RELEASE_DIR"
+[[ -d "$BASE_DIR" ]] || fail "找不到基础安装包缓存: $BASE_DIR"
 [[ -f "$ENTITLEMENTS" ]] || fail "找不到 entitlements 文件: $ENTITLEMENTS"
 
-cd "$RELEASE_DIR"
+cd "$BASE_DIR"
 shopt -s nullglob
 APP_CANDIDATES=(KSSOLV_Toolbox_V*.app)
 shopt -u nullglob
 (( ${#APP_CANDIDATES[@]} == 1 )) || \
-    fail "发布目录中应当恰好有一个 KSSOLV_Toolbox_V*.app，实际找到 ${#APP_CANDIDATES[@]} 个"
+    fail "基础安装包缓存中应当恰好有一个 KSSOLV_Toolbox_V*.app，实际找到 ${#APP_CANDIDATES[@]} 个"
 
 APP_NAME="${APP_CANDIDATES[0]}"
 FINAL_ZIP_NAME="${APP_NAME%.app}.zip"

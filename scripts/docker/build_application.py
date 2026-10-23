@@ -140,7 +140,7 @@ def build(args: argparse.Namespace) -> None:
         print(f'Compiling Linux application: IncludeGPU={args.include_gpu}', flush=True)
         subprocess.run([args.matlab, '-nojvm', '-batch',
                         command], cwd=stage, check=True)
-        payload = stage / 'Release/StandaloneDesktopApp/build'
+        payload = stage / '.buildtool/standalone/build'
         manifest = json.loads((payload / 'buildresult.json').read_text())
         gpu_dependencies = [item for item in manifest['RuntimeDependencies']
                             if 'GPU' in item['DisplayName'].upper() and

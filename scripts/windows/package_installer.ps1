@@ -11,9 +11,11 @@ if ($env:OS -ne 'Windows_NT') { throw 'This packaging script is Windows only.' }
 Import-Module (Join-Path $PSHOME 'Modules\Microsoft.PowerShell.Utility')
 Import-Module (Join-Path $PSHOME 'Modules\Microsoft.PowerShell.Management')
 $repository = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
-$releaseDirectory = Join-Path $repository 'Release\StandaloneDesktopApp'
-$stage = Join-Path $releaseDirectory 'windows-stage'
-$application = Join-Path $releaseDirectory 'build\KSSOLV_Toolbox.exe'
+$releaseDirectory = Join-Path $repository 'Release'
+$cacheDirectory = Join-Path $repository '.buildtool\standalone'
+$baseDirectory = Join-Path $cacheDirectory 'base-installer'
+$stage = Join-Path $cacheDirectory 'windows-stage'
+$application = Join-Path $cacheDirectory 'build\KSSOLV_Toolbox.exe'
 if (!(Test-Path -LiteralPath $application)) { throw "Missing application: $application" }
 
 # KSSOLV_Toolbox.Version is the single project version source, shared with MATLAB.
@@ -35,16 +37,16 @@ if ($applicationVersion -ne $expectedFileVersion) {
 Write-Output "WINDOWS_INSTALLER_VERSION $Version (KSSOLV_Toolbox.Version; compiled application verified)"
 
 # buildInstaller completes MathWorks base packaging first, just like on macOS.
-$baseInstaller = @("$releaseDirectory\KSSOLV_Toolbox_V$Version.exe",
-    "$releaseDirectory\KSSOLV_Toolbox_V$Version.zip") |
+$baseInstaller = @("$baseDirectory\KSSOLV_Toolbox_V$Version.exe",
+    "$baseDirectory\KSSOLV_Toolbox_V$Version.zip") |
     ForEach-Object { if (Test-Path -LiteralPath $_) { Get-Item -LiteralPath $_ } } |
     Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
 if (!$baseInstaller -or $baseInstaller.LastWriteTimeUtc -lt (Get-Item -LiteralPath $application).LastWriteTimeUtc) {
     throw 'Missing or stale MathWorks base installer. Run buildInstaller() before this script.'
 }
-$buildMetadata = Join-Path $releaseDirectory 'build\buildresult.json'
+$buildMetadata = Join-Path $cacheDirectory 'build\buildresult.json'
 if (!(Test-Path -LiteralPath $buildMetadata)) { throw 'Missing buildresult.json. Run buildInstaller() first.' }
-$runtimeMetadataPath = Join-Path $releaseDirectory 'build\runtime-metadata.json'
+$runtimeMetadataPath = Join-Path $cacheDirectory 'build\runtime-metadata.json'
 if (!(Test-Path -LiteralPath $runtimeMetadataPath)) {
     throw 'Missing runtime-metadata.json. Run buildInstaller() to record the build Runtime versions.'
 }
@@ -104,10 +106,20 @@ $runtimePayload = $runtimeDirectory
 $runtimeEntryPoint = 'RuntimeSetup.exe'
 $defines = @("/DAppVersion=$Version", "/DRuntimeRelease=$RuntimeRelease", "/DRuntimeVersion=$RuntimeVersion",
     "/DBuildHash=$buildHash", "/DRuntimeDelivery=$RuntimeDelivery", "/DRepository=$repository",
-    "/DStage=$stage", "/DReleaseDirectory=$releaseDirectory", "/DRuntimeInstaller=$runtimeInstaller",
+    "/DStage=$stage", "/DReleaseDirectory=$releaseDirectory", "/DApplication=$application", "/DRuntimeInstaller=$runtimeInstaller",
     "/DRuntimePayload=$runtimePayload", "/DRuntimeIsZip=$runtimeIsZip", "/DRuntimeEntryPoint=$runtimeEntryPoint")
 if ($OutputName) { $defines += "/F$OutputName" }
 & $InnoCompiler @defines "$PSScriptRoot\installer\KSSOLV.iss"
 if ($LASTEXITCODE -ne 0) { throw 'Inno Setup packaging failed.' }
-if (!$OutputName) { $OutputName = "KSSOLV_Toolbox_V${Version}_Windows" }
+if (!$OutputName) { $OutputName = "KSSOLV_Toolbox_V${Version}" }
+$artifacts = @(Get-Item -LiteralPath "$releaseDirectory\$OutputName.exe")
+# Offline installers may have companion volumes; the base installer stays private.
+$artifacts += @(Get-ChildItem -LiteralPath $releaseDirectory -Filter "$OutputName-*.bin" -File)
+$toolbox = Join-Path $releaseDirectory "KSSOLV_Toolbox_V$Version.mltbx"
+if (Test-Path -LiteralPath $toolbox) { $artifacts += Get-Item -LiteralPath $toolbox }
+$checksums = foreach ($artifact in $artifacts | Sort-Object Name) {
+    $hash = (Get-FileHash -LiteralPath $artifact.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+    "$hash  $($artifact.Name)"
+}
+$checksums | Set-Content -LiteralPath "$releaseDirectory\SHA256SUMS-V$Version-Windows.txt" -Encoding ascii
 Write-Output "WINDOWS_INSTALLER_SUCCESS $releaseDirectory\$OutputName.exe"

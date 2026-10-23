@@ -15,7 +15,8 @@ DisableWelcomePage=no
 DisableDirPage=no
 DisableProgramGroupPage=yes
 PrivilegesRequired=admin
-PrivilegesRequiredOverridesAllowed=commandline
+; Always request UAC on launch; /CURRENTUSER must not bypass elevation.
+PrivilegesRequiredOverridesAllowed=
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0
@@ -405,14 +406,8 @@ begin
       LogFile := ExpandConstant('{app}\installation-state\runtime-install.log');
 #if RuntimeDelivery != "none"
       Parameters := '-agreeToLicense yes -runtimeFolder "' + RuntimePage.Values[0] + '" -outputFile "' + LogFile + '"';
-      if IsAdminInstallMode then begin
-        if not Exec(ExpandConstant('{tmp}\kssolv-runtime\{#RuntimeEntryPoint}'), Parameters, '', SW_HIDE, ewWaitUntilTerminated, Code)
-          or (Code <> 0) then RaiseException(CustomMessage('RuntimeFailed') + #13#10 + LogFile);
-      end else begin
-        { /CURRENTUSER can reuse Runtime without elevation; a new Runtime needs UAC. }
-        if not ShellExec('runas', ExpandConstant('{tmp}\kssolv-runtime\{#RuntimeEntryPoint}'), Parameters, '', SW_HIDE, ewWaitUntilTerminated, Code)
-          or (Code <> 0) then RaiseException(CustomMessage('RuntimeFailed') + #13#10 + LogFile);
-      end;
+      if not Exec(ExpandConstant('{tmp}\kssolv-runtime\{#RuntimeEntryPoint}'), Parameters, '', SW_HIDE, ewWaitUntilTerminated, Code)
+        or (Code <> 0) then RaiseException(CustomMessage('RuntimeFailed') + #13#10 + LogFile);
 #endif
       ResolvedRuntime := AddBackslash(RuntimePage.Values[0]) + '{#RuntimeRelease}';
     end else ResolvedRuntime := ExistingRuntime;

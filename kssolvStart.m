@@ -4,6 +4,10 @@ function kssolvStart(ksFile, hostInBrowser)
 % 该函数会展示图形用户界面并阻塞主进程，直到界面关闭。
 % 用于编译独立应用程序时作为程序的主入口，以保持界面的持续显示。
 
+% Compiler automatically discovers the core startup script; its development
+% project is not a runtime dependency.
+%#exclude KSSOLV3.prj
+
 % 开发者：杨柳
 % 版权 2024-2026 合肥瀚海量子科技有限公司
 

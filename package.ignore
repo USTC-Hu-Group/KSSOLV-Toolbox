@@ -24,6 +24,11 @@ fmt
 
 **/*.prj
 **/*.prj.bak
+**/*.mlx
+**/buildfile.m
+**/buildfile.p
++kssolv/+core/kssolv-3o/startup.m
++kssolv/+core/kssolv-3o/startup.p
 **/resources/project/**/*
 resources
 
@@ -40,6 +45,7 @@ AGENTS.md
 docs/presentations
 docs/manual-research
 docs/manual-plan.zh-CN.md
+docs/development-layout.md
 docs/kssolv-mcp-skills-development-plan.zh-CN.md
 docs/manual-zh
 
@@ -57,6 +63,7 @@ Release
 !**/+remote/+diagnostics/RemoteLoginTest.*
 **/doc/**/*
 +kssolv/**/docs/**/*
+!+kssolv/+analysis/+matgenlab/docs/THIRD_PARTY_NOTICES.md
 
 % buildfile.m explicitly adds only the non-test KSSOLV-3o runtime payload
 % after these repository-wide test exclusions have been applied.

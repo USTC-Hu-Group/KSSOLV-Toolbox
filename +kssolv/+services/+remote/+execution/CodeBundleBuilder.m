@@ -48,6 +48,10 @@ classdef CodeBundleBuilder < handle
                 if isfile(onlineEntry)
                     copyfile(onlineEntry, stagingPath);
                 end
+                licenseFiles = kssolv.util.Packaging.rootLicenseFiles(sourceRoot);
+                for licenseFile = licenseFiles.'
+                    copyfile(licenseFile, stagingPath);
+                end
                 if mode == "Probe"
                     this.copyProbeRuntime(sourceRoot, stagingPath);
                 else
@@ -88,6 +92,8 @@ classdef CodeBundleBuilder < handle
                 if isfile(onlineEntry)
                     archiveEntries(end+1) = onlineName + onlineExtension;
                 end
+                [~, licenseNames, licenseExtensions] = fileparts(licenseFiles);
+                archiveEntries = [archiveEntries, (licenseNames + licenseExtensions).'];
                 zip(archivePath, archiveEntries, stagingPath);
                 if ~isfile(archivePath)
                     error("KSSOLV:Remote:BundleArchiveFailed", ...
@@ -213,6 +219,9 @@ classdef CodeBundleBuilder < handle
                 if entries(index).isdir
                     this.copyTree(sourcePath, destinationPath);
                 else
+                    if kssolv.util.Packaging.isDevelopmentFile(sourcePath)
+                        continue
+                    end
                     if kssolv.util.isTestFileName(name) && ...
                             ~any(name == ["RemoteLoginTest.m", "RemoteLoginTest.p"])
                         continue

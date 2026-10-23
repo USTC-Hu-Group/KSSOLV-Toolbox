@@ -160,6 +160,14 @@ classdef WorkflowRemoteTest < matlab.unittest.TestCase
                 "RemoteWorkflowRunner.p")));
             testCase.verifyEmpty(dir(fullfile(bundle, "+kssolv", ...
                 "**", "*.m")));
+            for notice = ["LICENSE", "THIRD-PARTY-LICENSES.md", "COMMERCIAL-LICENSE.md"]
+                testCase.verifyEqual(fileread(fullfile(bundle, notice)), ...
+                    fileread(fullfile(runtimeRoot, notice)));
+            end
+            entries = dir(fullfile(bundle, '**', '*'));
+            entries = entries(~[entries.isdir]);
+            paths = string(fullfile({entries.folder}, {entries.name}));
+            testCase.verifyFalse(any(kssolv.util.Packaging.isDevelopmentFile(paths)));
         end
 
         function installedPcodeRuntimeBuildsProbeBundle(testCase)
@@ -201,6 +209,9 @@ end
 
 function createRuntimeFixture(root, extension)
 mkdir(root);
+for notice = kssolv.util.Packaging.rootLicenseFiles(KSSOLV_Toolbox.RootDirectory).'
+    copyfile(notice, root);
+end
 writelines("classdef KSSOLV_Toolbox; end", ...
     fullfile(root, "KSSOLV_Toolbox.m"));
 relativeFiles = [ ...
@@ -233,6 +244,14 @@ dataPath = fullfile(root, "+kssolv", "+core", "kssolv-3o", ...
     "ppdata", "fixture.upf");
 mkdir(fileparts(dataPath));
 writelines("pseudopotential-fixture", dataPath);
+for name = ["buildfile.p", "startup.p", "KSSOLV3.prj", ".gitignore", "README.mlx"]
+    writelines('development fixture', ...
+        fullfile(root, '+kssolv', '+core', 'kssolv-3o', name));
+end
+docs = fullfile(root, '+kssolv', '+analysis', 'docs');
+mkdir(docs);
+writelines('development fixture', fullfile(docs, 'COMPATIBILITY_SPEC.md'));
+writelines('retained third-party notice', fullfile(docs, 'THIRD_PARTY_NOTICES.md'));
 end
 
 function workflow = singleNodeWorkflow(nodeId)
